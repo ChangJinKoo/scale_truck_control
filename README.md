@@ -1,10 +1,40 @@
 # Scale Truck Control
 
-# Hardware
->Nvidia Jetson Xavier  
->USB Camera (Camera)   
->RPLidar A3 (Lidar)  
->OpenCR 1.0 (ARM)  
+[![Video Label](http://img.youtube.com/vi/wKmWD8BPldw/0.jpg)](https://youtu.be/wKmWD8BPldw?t=0s)
+
+# I. Hardware
+>~~~
+> High-level Controller - Nvidia Jetson AGX Xavier 8GB
+> Low-level Controller  - OpenCR 1.0 (ARM Cortex-M7)
+> USB Camera            - ELP-USBFHD04H-BL180
+> Lidar                 - RPLidar A3
+>~~~
+
+# II. Software
+> High-level Controller
+>~~~
+> Jetpack   : 4.5.1 version - Ubuntu 18.04 LTS
+> OpenCV    : 4.4.0 version - include options (GPU, CUDA, CUDNN)
+> ZeroMQ    : stable version
+> ROS 1     : melodic version
+>~~~
+>
+> Low-level Controller
+>~~~
+> ros library
+>~~~
+
+# III. Demonstration
+> Three Scale Truck Platooning
+> ~~~
+> https://www.youtube.com/watch?v=wKmWD8BPldw
+> 
+> Intro. 0:00
+> Scenario 1. 0:35
+> Scenario 2. 1:36
+> Case Study: Camera Failure. 2:31
+> Emergency Stop. 2:45
+> ~~~
 
 # 0. Install Environment
 >## 0.1 Jetpack 4.5.1 (ubuntu 18.04 LTS)
@@ -18,7 +48,7 @@
 >sudo find /usr/local/ -name "*opencv*" -exec rm -i {} \;
 >~~~
 >
->-install 4.4.0 version of OpenCV
+>-Install 4.4.0 version of OpenCV
 >~~~
 >sudo apt-get update
 >sudo apt-get upgrade
@@ -107,6 +137,70 @@
 >~~~
 >sudo -H pip3 install jetson-stats
 >jeson_release
+>~~~
+
+>## 0.3.1 ZeroMQ (cppzmq)
+>-Install and Build of ZeroMQ for cpp
+>~~~
+>sudo apt update
+>sudo apt upgrade
+>sudo apt remove libzmq3-dev
+>sudo apt remove cmake
+>~~~
+>http://github.com/zeromq/cppzmq
+>~~~
+># Upgrade cmake (CMake 3.10 or higher is required)
+>wget https://github.com/Kitware/CMake/archive/master.zip
+>unzip master.zip
+>rm master.zip
+>cd CMake-master
+>./bootstrap
+>sudo make -j8
+>sudo make install
+>sudo ldconfig
+>cmake --version
+>cd ../
+>
+>wget https://download.libsodium.org/libsodium/releases/libsodium-1.0.18-stable.tar.gz
+>tar -xvf libsodium-*
+>rm *libsodium-1.0.18-stable.tar.gz
+>cd libsodium-stable
+>./configure
+>sudo make clean
+>sudo make -j8
+>sudo make install 
+>sudo ldconfig
+>cd ../
+>
+># Build, check, and install the latest version of ZeroMQ
+>wget https://github.com/zeromq/libzmq/archive/master.zip
+>unzip master.zip
+>rm master.zip
+>cd libzmq-master
+>./autogen.sh 
+>./configure --with-libsodium
+>mkdir build
+>cd build && cmake .. -DENABLE_DRAFTS=ON
+>sudo make -j8 install
+>sudo ldconfig
+>cd ../../
+>
+># Now install CPPZMQ
+>wget https://github.com/zeromq/cppzmq/archive/master.zip
+>unzip master.zip
+>rm master.zip
+>cd cppzmq-master
+>mkdir build
+>cd build && cmake .. -DENABLE_DRAFTS=ON
+>sudo make -j8 install
+>sudo ldconfig
+>cd ../../
+>~~~
+
+>## 0.3.2 Environment setup
+>-Setup the path
+>~~~
+>sudo cp -R /usr/local/lib/* /usr/lib
 >~~~
 
 # 1. Install ROS (melodic)
