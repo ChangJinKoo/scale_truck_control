@@ -16,8 +16,6 @@
 
 #include <zmq.hpp>
 
-#include <ros/ros.h>
-
 typedef struct LaneCoef{
 	float a;
 	float b;
@@ -48,7 +46,7 @@ typedef struct ZmqData{
 
 class ZMQ_CLASS{
 public:
-  explicit ZMQ_CLASS(ros::NodeHandle nh);
+  ZMQ_CLASS();
   ~ZMQ_CLASS();
   
   std::string getIPAddress();
@@ -62,7 +60,6 @@ public:
   ZmqData* zmq_data_;
   
 private:
-  ros::NodeHandle nodeHandle_;
   void init();
   bool readParameters();
   void* subscribeZMQ();

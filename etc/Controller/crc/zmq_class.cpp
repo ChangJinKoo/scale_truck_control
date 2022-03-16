@@ -1,7 +1,7 @@
-#include "zmq_class/zmq_class.h"
+#include "zmq_class.h"
 
-ZMQ_CLASS::ZMQ_CLASS(ros::NodeHandle nh)
-  :nodeHandle_(nh), context_(1)	//zmq constructor dealing with the initialisation and termination of a zmq context
+ZMQ_CLASS::ZMQ_CLASS()
+  :context_(1)	//zmq constructor dealing with the initialisation and termination of a zmq context
 {
   if(!readParameters())
   {
@@ -123,30 +123,31 @@ std::string ZMQ_CLASS::getIPAddress(){
 
 bool ZMQ_CLASS::readParameters()
 {
-  std::string tcp_ip_server, tcp_ip_client, tcpsub_port, tcppub_port, tcpreq_port, tcprep_port;
+  std::string tcp_ip_server, tcp_ip_client0, tcpsub_port, tcppub_port, tcpreq_port, tcprep_port;
   std::string udp_ip, udp_port;
-  nodeHandle_.param("tcp_ip/interface_name",interface_name_,std::string("ens33"));
+  interface_name_ = std::string("ens33");
 
-  nodeHandle_.param("tcp_ip/server_ip_addr",tcp_ip_server,std::string("tcp://*"));
-  nodeHandle_.param("tcp_ip/client_ip_addr",tcp_ip_client,std::string("tcp://192.168.0.19"));
-//  nodeHandle_.param("tcp_ip/sub_port",tcpsub_port,std::string("5555"));
-//  nodeHandle_.param("tcp_ip/pub_port",tcpsub_port,std::string("5555"));
-  nodeHandle_.param("tcp_ip/req_port",tcpreq_port,std::string("4444"));
-  nodeHandle_.param("tcp_ip/rep_port",tcpreq_port,std::string("4444"));
+  tcp_ip_server = std::string("tcp://*");
+  tcp_ip_client0 = std::string("tcp://192.168.0.19");
 
-  nodeHandle_.param("tcp_ip/zipcode",zipcode_,std::string("00001"));
+//  tcppub_port = std::string("5555");
+//  tcpsub_port = std::string("5555");
+  tcpreq_port = std::string("4444");
+  tcprep_port = std::string("4444");
 
-  nodeHandle_.param("udp_ip/ip_addr",udp_ip,std::string("udp://127.0.0.1"));
-  nodeHandle_.param("udp_ip/port",udp_port,std::string("9090"));
-  nodeHandle_.param("udp_ip/send_group",rad_group_,std::string("FV1"));
-  nodeHandle_.param("udp_ip/recv_group",dsh_group_,std::string("LV"));
+  zipcode_ = std::string("00001");
+
+  udp_ip = std::string("udp://239.255.255.250");
+  udp_port = std::string("9090");
+  rad_group_ = std::string("FV1");
+  dsh_group_ = std::string("LV");
   
-  nodeHandle_.param("socket/rad_flag",rad_flag_,false);
-  nodeHandle_.param("socket/dsh_flag",dsh_flag_,false);
-  nodeHandle_.param("socket/req_flag",req_flag_,false);
-  nodeHandle_.param("socket/rep_flag",rep_flag_,false);
-  nodeHandle_.param("socket/sub_flag",sub_flag_,false);
-  nodeHandle_.param("socket/pub_flag",pub_flag_,false);
+  sub_flag_ = false;
+  pub_flag_ = false;
+  req_flag_ = false;
+  rep_flag_ = true;
+  rad_flag_ = false;
+  dsh_flag_ = false;
 
 //  tcppub_ip_ = tcp_ip;
 //  tcppub_ip_.append(":");
@@ -156,7 +157,7 @@ bool ZMQ_CLASS::readParameters()
 //  tcpsub_ip_.append(tcpsub_port);
 
   //set request socket ip
-  tcpreq_ip_ = tcp_ip_client;
+  tcpreq_ip_ = tcp_ip_client0;
   tcpreq_ip_.append(":");
   tcpreq_ip_.append(tcpreq_port);
 
