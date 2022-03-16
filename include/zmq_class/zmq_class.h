@@ -19,29 +19,29 @@
 #include <ros/ros.h>
 
 typedef struct LaneCoef{
-	float a;
-	float b;
-	float c;
+	float a = 0.0f;
+	float b = 0.0f;
+	float c = 0.0f;
 }LaneCoef;
 
 typedef struct ZmqData{
 	//Control center = 10, CRC = 11, LRC = 22, LV = 0, FV1 = 1, FV2 = 2
-	uint8_t src_num;
+	uint8_t src_num = 255;
 	
 	//sensor failure
-	bool alpha;
-	bool beta;
-	bool gamma;
+	bool alpha = false;
+	bool beta = false;
+	bool gamma = false;
 
-	float cur_vel;
-	float cur_dist;
-	float tar_vel;
-	float tar_dist;
-	float est_vel;  //estimated velocity
+	float cur_vel = 0.0f;
+	float cur_dist = 0.0f;
+	float tar_vel = 0.0f;
+	float tar_dist = 0.0f;
+	float est_vel = 0.0f;  //estimated velocity
 
 	//TM = 0, RCM = 1, GDM = 2
-	uint8_t lrc_mode;
-	uint8_t crc_mode;
+	uint8_t lrc_mode = 0;
+	uint8_t crc_mode = 0;
 
 	LaneCoef lc;
 }ZmqData;
