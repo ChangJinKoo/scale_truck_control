@@ -1,158 +1,168 @@
-#include "crc.hpp"
+#include "includes/crc.hpp"
 
 namespace CenterResiliencyCoordinator{
-	
+  
 CenterRC::CenterRC()
-	: UDPsend_(), UDPrecv_(){
+  : ZMQ_SOCKET_(){
 
-	init();	
+  init();  
 }
 
 CenterRC::~CenterRC(){
-
+  delete lv_data_;
+  delete fv1_data_;
+  delete fv2_data_;
 }
 
 void CenterRC::init(){
-	Index_ = 100;
+  index_ = 30;
+  sys_mode_ = 0;
 
-	UDPsend_.GROUP_ = "239.255.255.250";
-	UDPsend_.PORT_ = 9392;
-	UDPsend_.sendInit();
+  lv_data_ = new ZmqData;
+  fv1_data_ = new ZmqData;
+  fv2_data_ = new ZmqData;
 
-	UDPrecv_.GROUP_ = "239.255.255.250";
-	UDPrecv_.PORT_ = 9392;
-	UDPrecv_.recvInit();
+  lv_data_->src_index = index_;
+  lv_data_->tar_index = 0;
+
+  fv1_data_->src_index = index_;
+  fv1_data_->tar_index = 1;
+
+  fv2_data_->src_index = index_;
+  fv2_data_->tar_index = 2;
+
+  fv1_prev_dist_ = 0.8f;
+  fv2_prev_dist_ = 0.8f;
+
+  time_flag_ = false;
+  sampling_time_ = 0.1;
 }
 
-void CenterRC::UDPsendData(float pred_vel, int to){
-	struct UDPsock::UDP_DATA udpData;
-
-	udpData.index = Index_;
-	udpData.to = to;
-	udpData.mode = CrcMode_;
-	udpData.predict_vel = pred_vel;
-
-	UDPsend_.sendData(udpData);
+void CenterRC::reply(ZmqData* zmq_data){
+  if(zmq_data->tar_index == 0){  //LV
+    zmq_data->est_vel = lv_est_vel_;
+    zmq_data->crc_mode = sys_mode_;
+    ZMQ_SOCKET_.replyZMQ(lv_data_);
+  }
+  else if(zmq_data->tar_index == 1){  //FV1
+    zmq_data->est_vel = fv1_est_vel_;
+    zmq_data->crc_mode = sys_mode_;
+    ZMQ_SOCKET_.replyZMQ(fv1_data_);
+  }
+  else if(zmq_data->tar_index == 2){  //FV2
+    zmq_data->est_vel = fv2_est_vel_;
+    zmq_data->crc_mode = sys_mode_;
+    ZMQ_SOCKET_.replyZMQ(fv2_data_);
+  }
 }
 
-void CenterRC::UDPrecvTruckData(){
-	struct UDPsock::UDP_DATA udpData;
-	UDPrecv_.recvData(&udpData);
+void CenterRC::estimateVelocity(uint8_t index){
+  assert(index < 3);
 
-	if (udpData.index == 0 && udpData.to == 100){	//LV
-		alpha0_ = udpData.alpha;
-		beta0_ = udpData.beta;
-		gamma0_ = udpData.gamma;
-		lv_cur_vel_ = udpData.current_vel;
-		lv_cur_dist_ = udpData.current_dist;
-		lv_lrc_mode_ = udpData.mode;
-	}
-	if (udpData.index == 1 && udpData.to == 100){	//FV1
-		fv1_prev_cur_dist_ = fv1_cur_dist_;
-
-		alpha1_ = udpData.alpha;
-		beta1_ = udpData.beta;
-		gamma1_ = udpData.gamma;
-		fv1_cur_vel_ = udpData.current_vel;
-		fv1_cur_dist_ = udpData.current_dist;
-		fv1_lrc_mode_ = udpData.mode;
-	}
-	if (udpData.index == 2 && udpData.to == 100){	//FV2
-		fv2_prev_cur_dist_ = fv2_cur_dist_;
-
-		alpha2_ = udpData.alpha;
-		beta2_ = udpData.beta;
-		gamma2_ = udpData.gamma;
-		fv2_cur_vel_ = udpData.current_vel;
-		fv2_cur_dist_ = udpData.current_dist;
-		fv2_lrc_mode_ = udpData.mode;
-	}
+  if (index == 0){  //LV
+    if (!lv_data_->alpha){
+      lv_data_->est_vel = lv_data_->cur_vel;
+    }
+    else if (lv_data_->alpha && !lv_data_->alpha){
+      lv_data_->est_vel = ((fv1_data_->cur_dist - fv1_prev_dist_) / sampling_time_) + fv1_data_->cur_vel;
+    }
+    else if ((lv_data_->alpha || fv1_data_->alpha) && !fv2_data_->alpha){
+      lv_data_->est_vel = ((fv1_data_->cur_dist - fv1_prev_dist_) / sampling_time_) + ((fv2_data_->cur_dist - fv2_prev_dist_) / sampling_time_) + fv2_data_->cur_vel;
+    }
+    else{  //All trucks' velocity sensors are fail 
+      lv_data_->est_vel = 0;
+      sys_mode_ = 2;
+    }
+  }
+  else if (index == 1){  //FV1
+    if (!fv1_data_->alpha){
+      fv1_data_->est_vel = fv1_data_->cur_vel;
+    }
+    else if (fv1_data_->alpha && !lv_data_->alpha){
+      fv1_data_->est_vel = ((-1.0f) * ((fv1_data_->cur_dist - fv1_prev_dist_) / sampling_time_)) + lv_data_->cur_vel;
+    }
+    else if ((fv1_data_->alpha || lv_data_->alpha) && !fv2_data_->alpha){
+      fv1_data_->est_vel = ((fv2_data_->cur_dist - fv2_prev_dist_) / sampling_time_) + fv2_data_->cur_vel;
+    }
+    else{  //All trucks' velocity sensors are fail
+      fv1_data_->est_vel = 0;
+      sys_mode_ = 2;
+    }
+  }
+  else if (index == 2){  //FV2
+    if (!fv2_data_->alpha){
+      fv2_data_->est_vel = fv2_data_->cur_vel;
+    }
+    else if (fv2_data_->alpha && !fv1_data_->alpha){
+      fv2_data_->est_vel = ((-1.0f) * ((fv2_data_->cur_dist - fv2_prev_dist_) / sampling_time_)) + fv1_data_->cur_vel;
+    }
+    else if ((fv2_data_->alpha || fv1_data_->alpha) && !lv_data_->alpha){
+      fv2_data_->est_vel = ((-1.0f) * ((fv1_data_->cur_dist - fv1_prev_dist_) / sampling_time_)) + ((-1.0f) * ((fv2_data_->cur_dist - fv2_prev_dist_) / sampling_time_)) + lv_data_->cur_vel;
+    }
+    else{  //All trucks' velocity sensors are fail
+      fv2_data_->est_vel = 0;
+      sys_mode_ = 2;
+    }
+  }
 }
 
-void CenterRC::UDPrecvControlCenterData(){
-	struct UDPsock::UDP_DATA udpData;
-	UDPrecv_.recvData(&udpData);
+void CenterRC::modeCheck(uint8_t lv_mode, uint8_t fv1_mode, uint8_t fv2_mode){
+  if ((lv_mode == 0) && (fv1_mode == 0) && (fv2_mode == 0)){
+    sys_mode_ = 0;
+  }
+  else if (((lv_mode == 2) || (fv1_mode == 2) || (fv2_mode == 2)) || ((lv_mode == 1) && (fv1_mode == 1) && (fv2_mode == 1))){
+    sys_mode_ = 2;
+  }
+  else{
+    sys_mode_ = 1;
+  }
 }
 
-float CenterRC::PredictVelocity(int index){
-	if (index == 0){	//LV
-		if (!alpha0_){
-			lv_pred_vel_ = lv_cur_vel_;
-		}
-		else if (alpha0_ && !alpha1_){
-			lv_pred_vel_ = ((fv1_cur_dist_ - fv1_prev_cur_dist_) / sampling_time_) + fv1_cur_vel_;
-		}
-		else if ((alpha0_ || alpha1_) && !alpha2_){
-			lv_pred_vel_ = ((fv1_cur_dist_ - fv1_prev_cur_dist_) / sampling_time_) + ((fv2_cur_dist_ - fv2_prev_cur_dist_) / sampling_time_) + fv2_cur_vel_;
-		}
-		else{	//All trucks' velocity sensors are fail 
-			lv_pred_vel_ = 0;
-			CrcMode_ = 2;
-		}
-		return lv_pred_vel_;
-	}
-	else if (index == 1){	//FV1
-		if (!alpha1_){
-			fv1_pred_vel_ = fv1_cur_vel_;
-		}
-		else if (alpha1_ && !alpha0_){
-			fv1_pred_vel_ = ((-1.0) * ((fv1_cur_dist_ - fv1_prev_cur_dist_) / sampling_time_)) + lv_cur_vel_;
-		}
-		else if ((alpha1_ || alpha0_) && !alpha2_){
-			fv1_pred_vel_ = ((fv2_cur_dist_ - fv2_prev_cur_dist_) / sampling_time_) + fv2_cur_vel_;
-		}
-		else{	//All trucks' velocity sensors are fail
-			fv1_pred_vel_ = 0;
-			CrcMode_ = 2;
-		}
-		return fv1_pred_vel_;
-	}
-	else if (index == 2){	//FV2
-		if (!alpha2_){
-			fv2_pred_vel_ = fv2_cur_vel_;
-		}
-		else if (alpha2_ && !alpha1_){
-			fv2_pred_vel_ = ((-1.0) * ((fv2_cur_dist_ - fv2_prev_cur_dist_) / sampling_time_)) + fv1_cur_vel_;
-		}
-		else if ((alpha2_ || alpha1_) && !alpha0_){
-			fv2_pred_vel_ = ((-1.0) * ((fv1_cur_dist_ - fv1_prev_cur_dist_) / sampling_time_)) + ((-1.0) * ((fv2_cur_dist_ - fv2_prev_cur_dist_) / sampling_time_)) + lv_cur_vel_;
-		}
-		else{	//All trucks' velocity sensors are fail
-			fv2_pred_vel_ = 0;
-			CrcMode_ = 2;
-		}
-		return fv2_pred_vel_;
-	}
-	else{
-		printf("Invalid Truck index!\n");
-		return -1;
-	}
+void CenterRC::printStatus(){
+  printf("\033[2J\033[1;1H");
+  printf("CRC is running ...\n");
+  printf("CRC and each MODEs of LV, FV1, FV2:\t%d || %d, %d, %d\n", sys_mode_, lv_data_->lrc_mode, fv1_data_->lrc_mode, fv2_data_->lrc_mode);
+  printf("Predict Velocitys of LV, FV1, FV2:\t%.3f, %.3f, %.3f\n", lv_data_->est_vel, fv1_data_->est_vel, fv2_data_->est_vel);
+  printf("Sampling_time_:\t%.3f\n", sampling_time_);
 }
 
-void CenterRC::ModeCheck(uint8_t lv_mode, uint8_t fv1_mode, uint8_t fv2_mode){
-	if ((lv_mode == 0) && (fv1_mode == 0) && (fv2_mode == 0)){
-		CrcMode_ = 0;
-	}
-	else if (((lv_mode == 2) || (fv1_mode == 2) || (fv2_mode == 2)) || ((lv_mode == 1) && (fv1_mode == 1) && (fv2_mode == 1))){
-		CrcMode_ = 2;
-	}
-	else{
-		CrcMode_ = 1;
-	}
-}
+void CenterRC::Communicate(){  
+  modeCheck(lv_data_->lrc_mode, fv1_data_->lrc_mode, fv2_data_->lrc_mode);
+ 
+  //update current states
+  repThread0_ = std::thread(&CenterRC::reply, this, lv_data_);
+  repThread1_ = std::thread(&CenterRC::reply, this, fv1_data_);
+  repThread2_ = std::thread(&CenterRC::reply, this, fv2_data_);
 
-void CenterRC::Communicate(){	
-	UDPrecvTruckData();
-	ModeCheck(lv_lrc_mode_, fv1_lrc_mode_, fv2_lrc_mode_);
+  repThread0_.join();
+  repThread1_.join();
+  repThread2_.join();
 
-	UDPsendData(PredictVelocity(0), 0);
-	UDPsendData(PredictVelocity(1), 1);
-	UDPsendData(PredictVelocity(2), 2);
+  if(time_flag_){
+    gettimeofday(&end_time_, NULL);
+    sampling_time_ = (end_time_.tv_sec - start_time_.tv_sec) + ((end_time_.tv_usec - start_time_.tv_usec)/1000000.0);  //seconds
+  }
 
-	printf("\033[2J\033[1;1H");
-	printf("CRC is running ...\n");
-	printf("CRC and each MODEs of LV, FV1, FV2:\t%d || %d, %d, %d\n", CrcMode_, lv_lrc_mode_,fv1_lrc_mode_,fv2_lrc_mode_);
-	printf("Predict Velocitys of LV, FV1, FV2:\t%.3f, %.3f, %.3f\n", lv_pred_vel_, fv1_pred_vel_, fv2_pred_vel_);
+  estimateVelocity(0);
+  estimateVelocity(1);
+  estimateVelocity(2);
+
+  //send data -> ToDo: multithreading
+  repThread0_ = std::thread(&CenterRC::reply, this, lv_data_);
+  repThread1_ = std::thread(&CenterRC::reply, this, fv1_data_);
+  repThread2_ = std::thread(&CenterRC::reply, this, fv2_data_);
+
+  repThread0_.join();
+  repThread1_.join();
+  repThread2_.join();
+  
+  gettimeofday(&start_time_, NULL);
+  if(!time_flag_) time_flag_ = true;
+
+  fv1_prev_dist_ = fv1_data_->cur_dist;
+  fv2_prev_dist_ = fv2_data_->cur_dist;
+
+  printStatus();
 }
 
 }

@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
+#include <sys/time.h>
 
 #include <arpa/inet.h>
 #include <ifaddrs.h>
@@ -16,6 +17,8 @@
 
 #include <zmq.hpp>
 
+#define DATASIZE 50
+
 typedef struct LaneCoef{
 	float a = 0.0f;
 	float b = 0.0f;
@@ -23,9 +26,10 @@ typedef struct LaneCoef{
 }LaneCoef;
 
 typedef struct ZmqData{
-	//Control center = 10, CRC = 11, LRC = 22, LV = 0, FV1 = 1, FV2 = 2
-	uint8_t src_num = 255;
-	
+	//Control center = 20, CRC = 30, LRC = 10, 11, 12, LV = 0, FV1 = 1, FV2 = 2
+	uint8_t src_index = 255;
+	uint8_t tar_index = 255;
+
 	//sensor failure
 	bool alpha = false;
 	bool beta = false;
@@ -36,6 +40,7 @@ typedef struct ZmqData{
 	float tar_vel = 0.0f;
 	float tar_dist = 0.0f;
 	float est_vel = 0.0f;  //estimated velocity
+	float est_dist = 0.0f;
 
 	//TM = 0, RCM = 1, GDM = 2
 	uint8_t lrc_mode = 0;
@@ -49,31 +54,26 @@ public:
   ZMQ_CLASS();
   ~ZMQ_CLASS();
   
+  void* replyZMQ(ZmqData* send_data);
   std::string getIPAddress();
 
   std::string zipcode_;
   std::string rad_group_, dsh_group_;
-  std::string udp_ip_, tcpsub_ip_, tcppub_ip_, tcpreq_ip_, tcprep_ip_;
+  std::string udp_ip_, tcpreq_ip_, tcprep_ip0_, tcprep_ip1_, tcprep_ip2_;
+
 
   bool controlDone_;
-  std::string send_req_, recv_req_, send_rep_, recv_rep_, recv_sub_, send_pub_, send_rad_, recv_dsh_;
-  ZmqData* zmq_data_;
+  ZmqData *rad_send_, *dsh_recv_, *req_send_, *req_recv_, *rep_send_, *rep_recv0_, *rep_recv1_, *rep_recv2_;
   
 private:
   void init();
   bool readParameters();
-  void* subscribeZMQ();
-  void* publishZMQ();
-  void* requestZMQ();
-  void* replyZMQ();
-  void* radioZMQ();
+  void* requestZMQ(ZmqData *send_data);
+  void* radioZMQ(ZmqData *send_data);
   void* dishZMQ();
-  void* clientZMQ();
-  void* serverZMQ();
   
   std::string interface_name_;
-  std::thread subThread_, pubThread_, reqThread_, repThread_, radThread_, dshThread_;
+  zmq::socket_t rad_socket_, dsh_socket_, req_socket_, rep_socket0_, rep_socket1_, rep_socket2_;
   zmq::context_t context_;
-  zmq::socket_t sub_socket_, pub_socket_, req_socket_, rep_socket_, rad_socket_, dsh_socket_;
-  bool sub_flag_, pub_flag_, rad_flag_, dsh_flag_, req_flag_, rep_flag_;
+  bool rad_flag_, dsh_flag_, req_flag_, rep_flag0_, rep_flag1_, rep_flag2_;
 };

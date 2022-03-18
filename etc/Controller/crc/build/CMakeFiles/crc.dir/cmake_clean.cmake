@@ -1,9 +1,8 @@
 file(REMOVE_RECURSE
   "CMakeFiles/crc.dir/main.cpp.o"
-  "CMakeFiles/crc.dir/crc.cpp.o"
-  "CMakeFiles/crc.dir/sock_udp.cpp.o"
-  "crc.pdb"
+  "CMakeFiles/crc.dir/main.cpp.o.d"
   "crc"
+  "crc.pdb"
 )
 
 # Per-language clean rules from dependency scanning.
