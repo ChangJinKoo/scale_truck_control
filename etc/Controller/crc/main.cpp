@@ -1,10 +1,10 @@
 #include "includes/crc.hpp"
 
 int main(int argc, char *argv[]){
-	CenterResiliencyCoordinator::CenterRC CRC;
+	CentralResiliencyCoordinator::CentralRC CRC;
 	
 	while(1){
-		CRC.Communicate();
+		CRC.communicate();
 		usleep(30);  //cycle_time
 	}
 

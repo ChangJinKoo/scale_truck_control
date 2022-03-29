@@ -1,4 +1,5 @@
 tcp_ip:
+  client_ip_addr: "tcp://192.168.0.18"
   sub_port: "5555"
   pub_port: "5555"
   req_port: "4444"
@@ -6,16 +7,17 @@ tcp_ip:
   zipcode: "00000"
 
 udp_ip:
+  ip_addr: "udp://239.255.255.250"
   port: "8080"
   send_group: "FV1"
   recv_group: "LV"
 
 socket:
   rad_flag: true
-  dsh_flag: true
+  dsh_flag: false
   req_flag: true
   rep_flag: false
-  sub_flag: true
+  sub_flag: false
   pub_flag: false
 
 params:

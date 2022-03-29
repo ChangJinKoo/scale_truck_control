@@ -53,10 +53,10 @@ RM = /usr/local/bin/cmake -E rm -f
 EQUALS = =
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /home/avees/scale_truck_control/etc/Controller/crc
+CMAKE_SOURCE_DIR = /home/jetson/catkin_ws/src/scale_truck_control/etc/Controller/crc
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /home/avees/scale_truck_control/etc/Controller/crc/build
+CMAKE_BINARY_DIR = /home/jetson/catkin_ws/src/scale_truck_control/etc/Controller/crc/build
 
 # Include any dependencies generated for this target.
 include CMakeFiles/crc_lib.dir/depend.make
@@ -72,30 +72,30 @@ include CMakeFiles/crc_lib.dir/flags.make
 CMakeFiles/crc_lib.dir/zmq_class.cpp.o: CMakeFiles/crc_lib.dir/flags.make
 CMakeFiles/crc_lib.dir/zmq_class.cpp.o: ../zmq_class.cpp
 CMakeFiles/crc_lib.dir/zmq_class.cpp.o: CMakeFiles/crc_lib.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/avees/scale_truck_control/etc/Controller/crc/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "Building CXX object CMakeFiles/crc_lib.dir/zmq_class.cpp.o"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/crc_lib.dir/zmq_class.cpp.o -MF CMakeFiles/crc_lib.dir/zmq_class.cpp.o.d -o CMakeFiles/crc_lib.dir/zmq_class.cpp.o -c /home/avees/scale_truck_control/etc/Controller/crc/zmq_class.cpp
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/jetson/catkin_ws/src/scale_truck_control/etc/Controller/crc/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "Building CXX object CMakeFiles/crc_lib.dir/zmq_class.cpp.o"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/crc_lib.dir/zmq_class.cpp.o -MF CMakeFiles/crc_lib.dir/zmq_class.cpp.o.d -o CMakeFiles/crc_lib.dir/zmq_class.cpp.o -c /home/jetson/catkin_ws/src/scale_truck_control/etc/Controller/crc/zmq_class.cpp
 
 CMakeFiles/crc_lib.dir/zmq_class.cpp.i: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/crc_lib.dir/zmq_class.cpp.i"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/avees/scale_truck_control/etc/Controller/crc/zmq_class.cpp > CMakeFiles/crc_lib.dir/zmq_class.cpp.i
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/jetson/catkin_ws/src/scale_truck_control/etc/Controller/crc/zmq_class.cpp > CMakeFiles/crc_lib.dir/zmq_class.cpp.i
 
 CMakeFiles/crc_lib.dir/zmq_class.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/crc_lib.dir/zmq_class.cpp.s"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/avees/scale_truck_control/etc/Controller/crc/zmq_class.cpp -o CMakeFiles/crc_lib.dir/zmq_class.cpp.s
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/jetson/catkin_ws/src/scale_truck_control/etc/Controller/crc/zmq_class.cpp -o CMakeFiles/crc_lib.dir/zmq_class.cpp.s
 
 CMakeFiles/crc_lib.dir/crc.cpp.o: CMakeFiles/crc_lib.dir/flags.make
 CMakeFiles/crc_lib.dir/crc.cpp.o: ../crc.cpp
 CMakeFiles/crc_lib.dir/crc.cpp.o: CMakeFiles/crc_lib.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/avees/scale_truck_control/etc/Controller/crc/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Building CXX object CMakeFiles/crc_lib.dir/crc.cpp.o"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/crc_lib.dir/crc.cpp.o -MF CMakeFiles/crc_lib.dir/crc.cpp.o.d -o CMakeFiles/crc_lib.dir/crc.cpp.o -c /home/avees/scale_truck_control/etc/Controller/crc/crc.cpp
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/jetson/catkin_ws/src/scale_truck_control/etc/Controller/crc/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Building CXX object CMakeFiles/crc_lib.dir/crc.cpp.o"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/crc_lib.dir/crc.cpp.o -MF CMakeFiles/crc_lib.dir/crc.cpp.o.d -o CMakeFiles/crc_lib.dir/crc.cpp.o -c /home/jetson/catkin_ws/src/scale_truck_control/etc/Controller/crc/crc.cpp
 
 CMakeFiles/crc_lib.dir/crc.cpp.i: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/crc_lib.dir/crc.cpp.i"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/avees/scale_truck_control/etc/Controller/crc/crc.cpp > CMakeFiles/crc_lib.dir/crc.cpp.i
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/jetson/catkin_ws/src/scale_truck_control/etc/Controller/crc/crc.cpp > CMakeFiles/crc_lib.dir/crc.cpp.i
 
 CMakeFiles/crc_lib.dir/crc.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/crc_lib.dir/crc.cpp.s"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/avees/scale_truck_control/etc/Controller/crc/crc.cpp -o CMakeFiles/crc_lib.dir/crc.cpp.s
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/jetson/catkin_ws/src/scale_truck_control/etc/Controller/crc/crc.cpp -o CMakeFiles/crc_lib.dir/crc.cpp.s
 
 # Object files for target crc_lib
 crc_lib_OBJECTS = \
@@ -109,7 +109,7 @@ libcrc_lib.a: CMakeFiles/crc_lib.dir/zmq_class.cpp.o
 libcrc_lib.a: CMakeFiles/crc_lib.dir/crc.cpp.o
 libcrc_lib.a: CMakeFiles/crc_lib.dir/build.make
 libcrc_lib.a: CMakeFiles/crc_lib.dir/link.txt
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir=/home/avees/scale_truck_control/etc/Controller/crc/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_3) "Linking CXX static library libcrc_lib.a"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir=/home/jetson/catkin_ws/src/scale_truck_control/etc/Controller/crc/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_3) "Linking CXX static library libcrc_lib.a"
 	$(CMAKE_COMMAND) -P CMakeFiles/crc_lib.dir/cmake_clean_target.cmake
 	$(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/crc_lib.dir/link.txt --verbose=$(VERBOSE)
 
@@ -122,6 +122,6 @@ CMakeFiles/crc_lib.dir/clean:
 .PHONY : CMakeFiles/crc_lib.dir/clean
 
 CMakeFiles/crc_lib.dir/depend:
-	cd /home/avees/scale_truck_control/etc/Controller/crc/build && $(CMAKE_COMMAND) -E cmake_depends "Unix Makefiles" /home/avees/scale_truck_control/etc/Controller/crc /home/avees/scale_truck_control/etc/Controller/crc /home/avees/scale_truck_control/etc/Controller/crc/build /home/avees/scale_truck_control/etc/Controller/crc/build /home/avees/scale_truck_control/etc/Controller/crc/build/CMakeFiles/crc_lib.dir/DependInfo.cmake --color=$(COLOR)
+	cd /home/jetson/catkin_ws/src/scale_truck_control/etc/Controller/crc/build && $(CMAKE_COMMAND) -E cmake_depends "Unix Makefiles" /home/jetson/catkin_ws/src/scale_truck_control/etc/Controller/crc /home/jetson/catkin_ws/src/scale_truck_control/etc/Controller/crc /home/jetson/catkin_ws/src/scale_truck_control/etc/Controller/crc/build /home/jetson/catkin_ws/src/scale_truck_control/etc/Controller/crc/build /home/jetson/catkin_ws/src/scale_truck_control/etc/Controller/crc/build/CMakeFiles/crc_lib.dir/DependInfo.cmake --color=$(COLOR)
 .PHONY : CMakeFiles/crc_lib.dir/depend
 

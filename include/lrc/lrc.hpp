@@ -11,7 +11,7 @@
 #include <sys/time.h>
 #include <string>
 
-#include "sock_udp/sock_udp.hpp"
+#include "zmq_class/zmq_class.h"
 
 #include <scale_truck_control/xav2lrc.h>
 #include <scale_truck_control/ocr2lrc.h>
@@ -23,65 +23,59 @@ using namespace std;
 namespace LocalResiliencyCoordinator{
 
 class LocalRC{
-	public:
-		LocalRC(ros::NodeHandle nh);
-		~LocalRC();
+  public:
+    LocalRC(ros::NodeHandle nh);
+    ~LocalRC();
 
-		void spin();
+    void spin();
 
-	private:
-		ros::NodeHandle nodeHandle_;
-		ros::Subscriber XavSubscriber_;	
-		ros::Subscriber OcrSubscriber_;	
-		ros::Publisher XavPublisher_;
-		ros::Publisher OcrPublisher_;
+  private:
+    ZMQ_CLASS ZMQ_SOCKET_;
 
-		UDPsock::UDPsocket UDPsend_;
-		UDPsock::UDPsocket UDPrecv_;
-		std::string ADDR_;
-		int Index_;
-		int PORT_;
-		struct UDPsock::UDP_DATA udpData_;
+    ros::NodeHandle nodeHandle_;
+    ros::Subscriber XavSubscriber_;  
+    ros::Subscriber OcrSubscriber_;  
+    ros::Publisher XavPublisher_;
+    ros::Publisher OcrPublisher_;
 
-		void init();
-		bool isNodeRunning();
-		void XavCallback(const scale_truck_control::xav2lrc &msg);
-		void OcrCallback(const scale_truck_control::ocr2lrc &msg);
-		void LrcPub();
-		void UDPsendFunc();
-		void* UDPrecvInThread();
-		void VelocitySensorCheck();
-		void ModeCheck(uint8_t crc_mode);
-		void RecordData(struct timeval *startTime);
-		void PrintData();
+    int index_;
+    ZmqData* lrc_data_;
+    uint8_t lrc_mode_;
+    uint8_t crc_mode_;
 
-		std::string PATH_;
-		bool Alpha_ = false;
-		bool Beta_ = false;
-		bool Gamma_ = false;
-		bool EnableConsoleOutput_;
-		bool isNodeRunning_;
-		uint8_t LrcMode_ = 0;
-		uint8_t CrcMode_ = 0;
-		float A_, B_, L_;
-		float Epsilon_;
-		float AngleDegree_;
-		float CurDist_;
-		float TarDist_;
-		float CurVel_ = 0;
-		float TarVel_ = 0;
-		float PredVel_ = 0;
-		float HatVel_ = 0;
-		float SatVel_ = 0;
-		double Time_ = 0;
+    void init();
+    bool isNodeRunning();
+    void XavCallback(const scale_truck_control::xav2lrc &msg);
+    void OcrCallback(const scale_truck_control::ocr2lrc &msg);
+    void rosPub();
+    void radio(ZmqData* zmq_data);
+    void request(ZmqData* zmq_data);
+    void velSensorCheck();
+    void updateMode(uint8_t crc_mode);
+    void updateData(ZmqData* zmq_data);
+    void recordData(struct timeval *startTime);
+    void printStatus();
 
-		std::thread spinThread_;
-		//std::thread udpsendThread_;
-		std::thread udprecvThread_;
+    bool is_node_running_;
+    bool EnableConsoleOutput_;
+    std::string log_path_;
+    float a_, b_, l_;
+    float epsilon_;
+    bool alpha_ = false;
+    bool beta_ = false;
+    bool gamma_ = false;
 
-		std::mutex mutexNodeStatus_;
-		std::mutex mutexXavCallback_;
-		std::mutex mutexOcrCallback_;
+    float angle_degree_;
+    float cur_dist_;
+    float tar_dist_;
+    float cur_vel_ = 0;
+    float tar_vel_ = 0;
+    float est_vel_ = 0;
+    float hat_vel_ = 0;
+    float sat_vel_ = 0;
+    double time_ = 0;
+
+    std::mutex data_mutex_;
 };
 
 }

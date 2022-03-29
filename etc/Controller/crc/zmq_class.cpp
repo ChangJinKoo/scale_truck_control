@@ -191,7 +191,7 @@ void* ZMQ_CLASS::replyZMQ(ZmqData* send_data)  //server: recv -> send
 {
   zmq::message_t recv_msg(DATASIZE), send_msg(DATASIZE);
   ZmqData* recv_data = new ZmqData;
-  if(send_data->tar_index == 0){  //LV
+  if(send_data->tar_index == 10){  //LV LRC
     if(rep_socket0_.connected() && !controlDone_)
     {
       //recv
@@ -204,7 +204,7 @@ void* ZMQ_CLASS::replyZMQ(ZmqData* send_data)  //server: recv -> send
       rep_socket0_.send(send_msg);  
     }
   }
-  else if(send_data->tar_index == 1){  //FV1
+  else if(send_data->tar_index == 11){  //FV1 LRC
     if(rep_socket1_.connected() && !controlDone_)
     {
       //recv
@@ -217,7 +217,7 @@ void* ZMQ_CLASS::replyZMQ(ZmqData* send_data)  //server: recv -> send
       rep_socket1_.send(send_msg);  
     }
   }
-  else if(send_data->tar_index == 2){  //FV2
+  else if(send_data->tar_index == 12){  //FV2 LRC
     if(rep_socket2_.connected() && !controlDone_)
     {
       //recv
@@ -230,6 +230,8 @@ void* ZMQ_CLASS::replyZMQ(ZmqData* send_data)  //server: recv -> send
       rep_socket2_.send(send_msg);  
     }
   }
+
+  delete recv_data;
 }
 
 void* ZMQ_CLASS::radioZMQ(ZmqData *send_data)

@@ -16,14 +16,15 @@ ZMQ_CLASS::~ZMQ_CLASS()
 {
   std::cout << "Disconnected" << std::endl;
   controlDone_ = true;
-  sub_socket_.close();
-  pub_socket_.close();
+//  sub_socket_.close();
+//  pub_socket_.close();
   req_socket_.close();
   rep_socket_.close();
   rad_socket_.close();
   dsh_socket_.close();
 
-  delete zmq_data_;
+  delete rad_send_;
+  delete req_recv_;
 
   context_.close();
 }
@@ -33,7 +34,8 @@ void ZMQ_CLASS::init()
   controlDone_ = false;
 
   /* Initialize zmq data */
-  zmq_data_ = new ZmqData;
+  rad_send_ = new ZmqData;
+  req_recv_ = new ZmqData;
 
 //  /* Initialize Subscribe Socket */
 //  if(sub_flag_)
@@ -80,20 +82,6 @@ void ZMQ_CLASS::init()
     dsh_socket_.bind(udp_ip_);
     dsh_socket_.join(dsh_group_.c_str());
   }
-
-  /* Initialize Threads */
-//  if(sub_flag_)
-//    subThread_ = std::thread(&ZMQ_CLASS::subscribeZMQ, this);
-//  if(pub_flag_)
-//    pubThread_ = std::thread(&ZMQ_CLASS::publishZMQ, this);
-  if(req_flag_)
-    reqThread_ = std::thread(&ZMQ_CLASS::requestZMQ, this);
-  if(rep_flag_)
-    repThread_ = std::thread(&ZMQ_CLASS::replyZMQ, this);
-  if(rad_flag_)
-    radThread_ = std::thread(&ZMQ_CLASS::radioZMQ, this);
-  if(dsh_flag_)
-    dshThread_ = std::thread(&ZMQ_CLASS::dishZMQ, this);
 }
 
 std::string ZMQ_CLASS::getIPAddress(){
@@ -123,12 +111,12 @@ std::string ZMQ_CLASS::getIPAddress(){
 
 bool ZMQ_CLASS::readParameters()
 {
-  std::string tcp_ip_server, tcp_ip_client, tcpsub_port, tcppub_port, tcpreq_port, tcprep_port;
+  std::string tcp_ip_server, tcp_ip_client, tcpreq_port, tcprep_port;
   std::string udp_ip, udp_port;
   nodeHandle_.param("tcp_ip/interface_name",interface_name_,std::string("ens33"));
 
   nodeHandle_.param("tcp_ip/server_ip_addr",tcp_ip_server,std::string("tcp://*"));
-  nodeHandle_.param("tcp_ip/client_ip_addr",tcp_ip_client,std::string("tcp://192.168.0.19"));
+  nodeHandle_.param("tcp_ip/client_ip_addr",tcp_ip_client,std::string("tcp://192.168.0.18"));
 //  nodeHandle_.param("tcp_ip/sub_port",tcpsub_port,std::string("5555"));
 //  nodeHandle_.param("tcp_ip/pub_port",tcpsub_port,std::string("5555"));
   nodeHandle_.param("tcp_ip/req_port",tcpreq_port,std::string("4444"));
@@ -136,7 +124,7 @@ bool ZMQ_CLASS::readParameters()
 
   nodeHandle_.param("tcp_ip/zipcode",zipcode_,std::string("00001"));
 
-  nodeHandle_.param("udp_ip/ip_addr",udp_ip,std::string("udp://127.0.0.1"));
+  nodeHandle_.param("udp_ip/ip_addr",udp_ip,std::string("udp://239.255.255.250"));
   nodeHandle_.param("udp_ip/port",udp_port,std::string("9090"));
   nodeHandle_.param("udp_ip/send_group",rad_group_,std::string("FV1"));
   nodeHandle_.param("udp_ip/recv_group",dsh_group_,std::string("LV"));
@@ -177,11 +165,11 @@ void* ZMQ_CLASS::subscribeZMQ()
 {
   while(sub_socket_.connected() && !controlDone_)
   {
-    zmq::message_t update;
+    zmq::message_t recv_msg(DATASIZE);
 
-    sub_socket_.recv(&update, 0);
+    sub_socket_.recv(&recv_msg, 0);
+    sub_recv_ = static_cast<ZmqData *>(recv_msg.data());
 
-    recv_sub_ = static_cast<char*>(update.data());
     std::this_thread::sleep_for(std::chrono::milliseconds(30));
   }
 }
@@ -190,78 +178,69 @@ void* ZMQ_CLASS::publishZMQ()
 {
   while(pub_socket_.connected() && !controlDone_)
   {
-    zmq::message_t publish;
+    zmq::message_t send_msg(DATASIZE);
     std::this_thread::sleep_for(std::chrono::milliseconds(30));
   }
 }
 
-void* ZMQ_CLASS::requestZMQ()  // client: send -> recv
+void* ZMQ_CLASS::requestZMQ(ZmqData *send_data)  // client: send -> recv
 { 
-  while(req_socket_.connected() && !controlDone_)
+  if(req_socket_.connected() && !controlDone_)
   {
-    zmq::message_t request(50), reply(50);
-//    char tmp_msg[100] = {0,};
+    zmq::message_t recv_msg(DATASIZE), send_msg(DATASIZE);
 
     //send
-    snprintf((char *) request.data(), 50, "%s", send_req_.c_str());
-    req_socket_.send(request);
+    memcpy(send_msg.data(), send_data, DATASIZE);
+    req_socket_.send(send_msg);
 
     //recv
-    req_socket_.recv(&reply, 0);
-    zmq_data_ = static_cast<ZmqData*>(reply.data());
-
-//    memcpy(tmp_msg, reply.data(), 50);
-//    std::string str(tmp_msg);
-//    recv_req_ = tmp_msg;
- 
-    std::this_thread::sleep_for(std::chrono::milliseconds(30));
+    req_socket_.recv(&recv_msg, 0);
+    req_recv_ = static_cast<ZmqData *>(recv_msg.data()); 
   }
 }
 
-void* ZMQ_CLASS::replyZMQ()  //server: recv -> send
+void* ZMQ_CLASS::replyZMQ(ZmqData* send_data)  //server: recv -> send
 {
   while(rep_socket_.connected() && !controlDone_)
   {
-    zmq::message_t request(50), reply(50);
-    char tmp_msg[100] = {0,};
+    zmq::message_t recv_msg(DATASIZE), send_msg(DATASIZE);
+    ZmqData* recv_data = new ZmqData;
 
     //recv
-    int rep_res = rep_socket_.recv(&request, 0);
-    memcpy(tmp_msg, request.data(), 50);
-    recv_rep_ = tmp_msg;
-    
+    rep_socket_.recv(&recv_msg, 0);
+    recv_data = static_cast<ZmqData *>(recv_msg.data());
+    rep_recv_ = recv_data;
+
     //send
-    memcpy(reply.data(), zmq_data_, 50);
-    rep_socket_.send(reply);
+    memcpy(send_msg.data(), send_data, 50);
+    rep_socket_.send(send_msg);
     
     std::this_thread::sleep_for(std::chrono::milliseconds(30));
   }
 
 }
 
-void* ZMQ_CLASS::radioZMQ()
+void* ZMQ_CLASS::radioZMQ(ZmqData *send_data)
 {
-  while(rad_socket_.connected() && !controlDone_)
+  if(rad_socket_.connected() && !controlDone_)
   {
-    zmq::message_t request(50);
-    request.set_group(rad_group_.c_str());
+    zmq::message_t pub_msg(DATASIZE);
+    pub_msg.set_group(rad_group_.c_str());
  
-    snprintf((char *) request.data(), 50, "%s", send_rad_.c_str());
-
-    rad_socket_.send(request, 0);
-    std::this_thread::sleep_for(std::chrono::milliseconds(30));
+    //pub
+    memcpy(pub_msg.data(), send_data, DATASIZE);
+    rad_socket_.send(pub_msg, 0);
   }
 }
 
 void* ZMQ_CLASS::dishZMQ()
 {
-  while(dsh_socket_.connected() && !controlDone_)
+  if(dsh_socket_.connected() && !controlDone_)
   {
-    zmq::message_t reply(50);
+    zmq::message_t sub_msg(DATASIZE);
 
-    bool rc = dsh_socket_.recv(&reply, 0);
-
-    recv_dsh_ = static_cast<char*>(reply.data());
-    std::this_thread::sleep_for(std::chrono::milliseconds(30));
+    //sub
+    dsh_socket_.recv(&sub_msg, 0);
+    dsh_recv_ = static_cast<ZmqData *>(sub_msg.data());
   }
 }

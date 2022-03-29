@@ -1,13 +1,13 @@
 #include "zmq_class.h"
 
-namespace CenterResiliencyCoordinator{
+namespace CentralResiliencyCoordinator{
 
-class CenterRC{
+class CentralRC{
   public:
-    CenterRC();
-    ~CenterRC();
+    CentralRC();
+    ~CentralRC();
 
-    void Communicate();
+    void communicate();
   private:
     ZMQ_CLASS ZMQ_SOCKET_;
 
@@ -16,11 +16,12 @@ class CenterRC{
     void estimateVelocity(uint8_t index);
     void modeCheck(uint8_t lv_mode, uint8_t fv1_mode, uint8_t fv2_mode);
     void printStatus();
+    void updateData(ZmqData* zmq_data);
 
     bool time_flag_;
 
     uint8_t index_;
-    uint8_t sys_mode_;
+    uint8_t crc_mode_;
 
     ZmqData *lv_data_, *fv1_data_, *fv2_data_;
 

@@ -269,9 +269,6 @@ void ScaleTruckController::spin() {
   
   const auto wait_image = std::chrono::milliseconds(20);
 
-  static int zipcode, recv_sub, send_req, recv_req, send_rad, recv_dsh;
-  std::istringstream iss;
-
   float TargetVel, TargetDist;
 
   while(!controlDone_ && ros::ok()) {
@@ -283,7 +280,6 @@ void ScaleTruckController::spin() {
     lanedetect_thread.join();
     objectdetect_thread.join();
 
-    ZMQ_SOCKET_.send_req_ = boost::str(boost::format("%s %f %f") % ZMQ_SOCKET_.zipcode_.c_str() % TargetVel_ % TargetDist_);
     
     TargetDist = TargetDist_;
     if(distance_ <= LVstopDist_ || TargetVel_ >= 2.0) {
@@ -291,16 +287,7 @@ void ScaleTruckController::spin() {
     }
     else {
       TargetVel = RefVel_;   
-    }
-    
-    ZMQ_SOCKET_.send_rad_ = boost::str(boost::format("%s %f %f") % ZMQ_SOCKET_.zipcode_.c_str() % TargetVel % TargetDist);
-     
-    iss = std::istringstream(ZMQ_SOCKET_.recv_sub_);
-    iss >> zipcode >> recv_sub;
-    iss = std::istringstream(ZMQ_SOCKET_.recv_req_);
-    iss >> zipcode >> recv_sub;
-    iss = std::istringstream(ZMQ_SOCKET_.recv_dsh_);
-    iss >> zipcode >> TargetVel_ >> TargetDist_;
+    }    
 
     if(enableConsoleOutput_)
       displayConsole();

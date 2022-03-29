@@ -18,6 +18,8 @@
 
 #include <ros/ros.h>
 
+#define DATASIZE 50
+
 typedef struct LaneCoef{
 	float a = 0.0f;
 	float b = 0.0f;
@@ -25,8 +27,9 @@ typedef struct LaneCoef{
 }LaneCoef;
 
 typedef struct ZmqData{
-	//Control center = 10, CRC = 11, LRC = 22, LV = 0, FV1 = 1, FV2 = 2
-	uint8_t src_num = 255;
+	//Control center = 20, CRC = 30, LRC = 10, 11, 12, LV = 0, FV1 = 1, FV2 = 2
+	uint8_t src_index = 255;
+	uint8_t tar_index = 255;
 	
 	//sensor failure
 	bool alpha = false;
@@ -38,6 +41,7 @@ typedef struct ZmqData{
 	float tar_vel = 0.0f;
 	float tar_dist = 0.0f;
 	float est_vel = 0.0f;  //estimated velocity
+	float est_dist = 0.0f;
 
 	//TM = 0, RCM = 1, GDM = 2
 	uint8_t lrc_mode = 0;
@@ -51,6 +55,9 @@ public:
   explicit ZMQ_CLASS(ros::NodeHandle nh);
   ~ZMQ_CLASS();
   
+  void* requestZMQ(ZmqData *send_data);
+  void* replyZMQ(ZmqData *send_data);
+  void* radioZMQ(ZmqData *send_data);
   std::string getIPAddress();
 
   std::string zipcode_;
@@ -58,24 +65,17 @@ public:
   std::string udp_ip_, tcpsub_ip_, tcppub_ip_, tcpreq_ip_, tcprep_ip_;
 
   bool controlDone_;
-  std::string send_req_, recv_req_, send_rep_, recv_rep_, recv_sub_, send_pub_, send_rad_, recv_dsh_;
-  ZmqData* zmq_data_;
-  
+  ZmqData *sub_recv_, *pub_send_, *rad_send_, *dsh_recv_, *req_send_, *req_recv_, *rep_send_, *rep_recv_;
+
 private:
   ros::NodeHandle nodeHandle_;
   void init();
   bool readParameters();
   void* subscribeZMQ();
   void* publishZMQ();
-  void* requestZMQ();
-  void* replyZMQ();
-  void* radioZMQ();
   void* dishZMQ();
-  void* clientZMQ();
-  void* serverZMQ();
   
   std::string interface_name_;
-  std::thread subThread_, pubThread_, reqThread_, repThread_, radThread_, dshThread_;
   zmq::context_t context_;
   zmq::socket_t sub_socket_, pub_socket_, req_socket_, rep_socket_, rad_socket_, dsh_socket_;
   bool sub_flag_, pub_flag_, rad_flag_, dsh_flag_, req_flag_, rep_flag_;
