@@ -122,6 +122,7 @@ void CentralRC::printStatus(){
   printf("CRC and each MODEs of LV, FV1, FV2:\t%d || %d, %d, %d\n", crc_mode_, lv_data_->lrc_mode, fv1_data_->lrc_mode, fv2_data_->lrc_mode);
   printf("Predict Velocitys of LV, FV1, FV2:\t%.3f, %.3f, %.3f\n", lv_data_->est_vel, fv1_data_->est_vel, fv2_data_->est_vel);
   printf("Sampling_time_:\t%.3f\n", sampling_time_);
+  printf("LV current distance:\t%.3f\n", lv_data_->cur_dist);
 }
 
 void CentralRC::updateData(ZmqData* zmq_data){

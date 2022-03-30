@@ -23,9 +23,7 @@ ZMQ_CLASS::~ZMQ_CLASS()
   rad_socket_.close();
   dsh_socket_.close();
 
-  delete req_send_;
   delete req_recv_;
-  delete rep_send_;
   delete rep_recv0_;
   delete rep_recv1_;
   delete rep_recv2_;
@@ -38,9 +36,7 @@ void ZMQ_CLASS::init()
   controlDone_ = false;
 
   /* Initialize zmq data */
-  req_send_ = new ZmqData;
   req_recv_ = new ZmqData;
-  rep_send_ = new ZmqData;
   rep_recv0_ = new ZmqData;
   rep_recv1_ = new ZmqData;
   rep_recv2_ = new ZmqData;
@@ -171,34 +167,33 @@ bool ZMQ_CLASS::readParameters()
 
 void* ZMQ_CLASS::requestZMQ(ZmqData* send_data)  // client: send -> recv
 { 
-  while(req_socket_.connected() && !controlDone_)
+  if(req_socket_.connected() && !controlDone_)
   {
-    zmq::message_t req_msg(DATASIZE), rep_msg(DATASIZE);
+    zmq::message_t recv_msg(DATASIZE), send_msg(DATASIZE);
 
     //send
-    memcpy(req_msg.data(), send_data, DATASIZE);
-    req_socket_.send(req_msg);
+    memcpy(send_msg.data(), send_data, DATASIZE);
+    req_socket_.send(send_msg);
 
     //recv
-    req_socket_.recv(&rep_msg, 0);
-    req_recv_ = static_cast<ZmqData *>(rep_msg.data());
- 
-    std::this_thread::sleep_for(std::chrono::milliseconds(30));
+    req_socket_.recv(&recv_msg, 0);
+    memcpy(req_recv_, recv_msg.data(), DATASIZE);
+//    req_recv_ = static_cast<ZmqData *>(rep_msg.data());
   }
 }
 
 void* ZMQ_CLASS::replyZMQ(ZmqData* send_data)  //server: recv -> send
 {
   zmq::message_t recv_msg(DATASIZE), send_msg(DATASIZE);
-  ZmqData* recv_data = new ZmqData;
+
   if(send_data->tar_index == 10){  //LV LRC
     if(rep_socket0_.connected() && !controlDone_)
     {
       //recv
       rep_socket0_.recv(&recv_msg, 0);
-      recv_data = static_cast<ZmqData *>(recv_msg.data()); 
-      rep_recv0_ = recv_data; 
-      
+      memcpy(rep_recv0_, recv_msg.data(), DATASIZE);
+//      rep_recv0_ = static_cast<ZmqData *>(recv_msg.data()); 
+
       //send
       memcpy(send_msg.data(), send_data, DATASIZE);
       rep_socket0_.send(send_msg);  
@@ -209,8 +204,8 @@ void* ZMQ_CLASS::replyZMQ(ZmqData* send_data)  //server: recv -> send
     {
       //recv
       rep_socket1_.recv(&recv_msg, 0);
-      recv_data = static_cast<ZmqData *>(recv_msg.data()); 
-      rep_recv1_ = recv_data;
+      memcpy(rep_recv1_, recv_msg.data(), DATASIZE);
+//      rep_recv1_ = static_cast<ZmqData *>(recv_msg.data()); 
   
       //send
       memcpy(send_msg.data(), send_data, DATASIZE);
@@ -222,16 +217,14 @@ void* ZMQ_CLASS::replyZMQ(ZmqData* send_data)  //server: recv -> send
     {
       //recv
       rep_socket2_.recv(&recv_msg, 0);
-      recv_data = static_cast<ZmqData *>(recv_msg.data()); 
-      rep_recv2_ = recv_data;
+      memcpy(rep_recv2_, recv_msg.data(), DATASIZE);
+//      rep_recv2_ = static_cast<ZmqData *>(recv_msg.data()); 
   
       //send
       memcpy(send_msg.data(), send_data, DATASIZE);
       rep_socket2_.send(send_msg);  
     }
   }
-
-  delete recv_data;
 }
 
 void* ZMQ_CLASS::radioZMQ(ZmqData *send_data)
