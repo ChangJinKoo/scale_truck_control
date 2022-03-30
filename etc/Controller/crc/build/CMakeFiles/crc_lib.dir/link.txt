@@ -1,2 +1,0 @@
-/usr/bin/ar qc libcrc_lib.a CMakeFiles/crc_lib.dir/zmq_class.cpp.o CMakeFiles/crc_lib.dir/crc.cpp.o
-/usr/bin/ranlib libcrc_lib.a
