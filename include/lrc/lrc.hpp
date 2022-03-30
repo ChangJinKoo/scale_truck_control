@@ -27,7 +27,7 @@ class LocalRC{
     LocalRC(ros::NodeHandle nh);
     ~LocalRC();
 
-    void spin();
+    void communicate();
 
   private:
     ZMQ_CLASS ZMQ_SOCKET_;
@@ -49,6 +49,7 @@ class LocalRC{
     void OcrCallback(const scale_truck_control::ocr2lrc &msg);
     void rosPub();
     void radio(ZmqData* zmq_data);
+    void dish();
     void request(ZmqData* zmq_data);
     void velSensorCheck();
     void updateMode(uint8_t crc_mode);
@@ -75,6 +76,7 @@ class LocalRC{
     float sat_vel_ = 0;
     double time_ = 0;
 
+    std::thread lrcThread_;
     std::mutex data_mutex_;
 };
 

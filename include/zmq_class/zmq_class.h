@@ -58,6 +58,7 @@ public:
   void* requestZMQ(ZmqData *send_data);
   void* replyZMQ(ZmqData *send_data);
   void* radioZMQ(ZmqData *send_data);
+  void* dishZMQ();
   std::string getIPAddress();
 
   std::string zipcode_;
@@ -73,7 +74,6 @@ private:
   bool readParameters();
   void* subscribeZMQ();
   void* publishZMQ();
-  void* dishZMQ();
   
   std::string interface_name_;
   zmq::context_t context_;

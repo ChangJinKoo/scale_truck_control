@@ -10,7 +10,6 @@ LocalRC::LocalRC(ros::NodeHandle nh)
   : nodeHandle_(nh), ZMQ_SOCKET_(nh){
   
   init();  
-
 }
 
 LocalRC::~LocalRC(){
@@ -22,13 +21,6 @@ LocalRC::~LocalRC(){
 void LocalRC::init(){
   is_node_running_ = true;
 
-  index_ = 10;
-  lrc_mode_ = 0;
-
-  lrc_data_ = new ZmqData;
-  lrc_data_->src_index = index_;
-  lrc_data_->tar_index = 30;  //CRC
-
   std::string XavSubTopicName;
   int XavSubQueueSize;
   std::string OcrSubTopicName;
@@ -38,6 +30,7 @@ void LocalRC::init(){
   std::string OcrPubTopicName;
   int OcrPubQueueSize;
 
+  nodeHandle_.param("LrcParams/index", index_, 10);
   nodeHandle_.param("LrcParams/lrc_log_path", log_path_, std::string("/home/jetson/catkin_ws/logfiles/"));
   nodeHandle_.param("LrcParams/epsilon", epsilon_, 1.0f);
   nodeHandle_.param("LrcParams/lu_ob_A", a_, 0.6817f);
@@ -73,6 +66,12 @@ void LocalRC::init(){
   XavPublisher_ = nodeHandle_.advertise<scale_truck_control::lrc2xav>(XavPubTopicName, XavPubQueueSize);
   OcrPublisher_ = nodeHandle_.advertise<scale_truck_control::lrc2ocr>(OcrPubTopicName, OcrPubQueueSize);
 
+  lrc_mode_ = 0;
+  lrc_data_ = new ZmqData;
+  lrc_data_->src_index = index_;
+  lrc_data_->tar_index = 30;  //CRC
+
+  lrcThread_ = std::thread(&LocalRC::communicate, this);
 }
 
 bool LocalRC::isNodeRunning(){
@@ -84,8 +83,10 @@ void LocalRC::XavCallback(const scale_truck_control::xav2lrc &msg){
   const std::lock_guard<std::mutex> lock(data_mutex_);
   angle_degree_ = msg.steer_angle;
   cur_dist_ = msg.cur_dist;
-  tar_dist_ = msg.tar_dist;
-  tar_vel_ = msg.tar_vel;
+  if(index_ == 10){  //only LV LRC
+    tar_dist_ = msg.tar_dist;
+    tar_vel_ = msg.tar_vel;
+  }
   beta_ = msg.beta;
   gamma_ = msg.gamma;
 }
@@ -123,6 +124,11 @@ void LocalRC::radio(ZmqData* zmq_data)
   ZMQ_SOCKET_.radioZMQ(zmq_data);
 }
 
+void LocalRC::dish()
+{
+  ZMQ_SOCKET_.dishZMQ();
+}
+
 void LocalRC::request(ZmqData* zmq_data){
   const std::lock_guard<std::mutex> lock(data_mutex_);
   zmq_data->cur_vel = cur_vel_;
@@ -136,10 +142,8 @@ void LocalRC::request(ZmqData* zmq_data){
 }
 
 void LocalRC::velSensorCheck(){
-  {
-    const std::lock_guard<std::mutex> lock(data_mutex_);
-    hat_vel_ = a_ * hat_vel_ + b_ * sat_vel_ + l_ * (cur_vel_ - hat_vel_);
-  }
+  const std::lock_guard<std::mutex> lock(data_mutex_);
+  hat_vel_ = a_ * hat_vel_ + b_ * sat_vel_ + l_ * (cur_vel_ - hat_vel_);
   if(fabs(cur_vel_ - hat_vel_) > epsilon_){
     alpha_ = true;
   }
@@ -151,7 +155,8 @@ void LocalRC::velSensorCheck(){
 }
 
 void LocalRC::updateMode(uint8_t crc_mode){
-  if(!index_){  //LV
+  const std::lock_guard<std::mutex> lock(data_mutex_);
+  if(index_ == 10){  //LV
     if(beta_){  //Camera sensor failure
       lrc_mode_ = 2;  //GDM
     }
@@ -177,8 +182,14 @@ void LocalRC::updateMode(uint8_t crc_mode){
 
 void LocalRC::updateData(ZmqData* zmq_data){
   const std::lock_guard<std::mutex> lock(data_mutex_);
-  est_vel_ = zmq_data->est_vel;
-  crc_mode_ = zmq_data->crc_mode;
+  if(zmq_data->src_index == 30){  //from CRC
+    est_vel_ = zmq_data->est_vel;
+    crc_mode_ = zmq_data->crc_mode;
+  }
+  else if(zmq_data->src_index == 10){  //from LV LRC
+    tar_vel_ = zmq_data->tar_vel;
+    tar_dist_ = zmq_data->tar_dist;
+  }
 }
 
 
@@ -218,11 +229,14 @@ void LocalRC::recordData(struct timeval *startTime){
 
 void LocalRC::printStatus(){
   static int cnt = 0;
+//  static int CNT = 0;
   if (cnt > 100 && EnableConsoleOutput_){
     printf("\nEstimated Velocity:\t%.3f", fabs(cur_vel_ - hat_vel_));
     printf("\nPredict Velocity:\t%.3f", est_vel_);
     printf("\nTarget Velocity:\t%.3f", tar_vel_);
     printf("\nCurrent Velocity:\t%.3f", cur_vel_);
+    printf("\nTarget Distance:\t%.3f", tar_dist_);
+    printf("\nCurrent Distance:\t%.3f", cur_dist_);
     printf("\nSaturated Velocity:\t%.3f", sat_vel_);
     printf("\nEstimated Value:\t%.3f", fabs(cur_vel_ - hat_vel_));
     printf("\nalpha, beta, gamma:\t%d, %d, %d", alpha_, beta_, gamma_); 
@@ -231,18 +245,30 @@ void LocalRC::printStatus(){
     cnt = 0;
   }
   cnt++;
+//  CNT++;
+//  if (CNT > 1000) lrc_mode_ = 1;
+//  if (CNT > 2000){
+//	  lrc_mode_ = 0;
+//	  CNT = 0;
+//  }
 }
 
-void LocalRC::spin(){
+void LocalRC::communicate(){
   struct timeval startTime;
   gettimeofday(&startTime, NULL);
   while(ros::ok()){
     velSensorCheck();
     updateMode(crc_mode_);
     rosPub();
-    radio(lrc_data_);
     request(lrc_data_);
     updateData(ZMQ_SOCKET_.rep_recv_);
+    if (index_ == 10){
+      radio(lrc_data_);
+    }
+    else if (index_ == 11 || index_ == 12){
+      dish();
+      updateData(ZMQ_SOCKET_.dsh_recv_);
+    }
     recordData(&startTime);
     printStatus();
 

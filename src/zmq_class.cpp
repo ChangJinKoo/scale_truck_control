@@ -23,8 +23,8 @@ ZMQ_CLASS::~ZMQ_CLASS()
   rad_socket_.close();
   dsh_socket_.close();
 
-  delete rad_send_;
   delete req_recv_;
+  delete dsh_recv_;
 
   context_.close();
 }
@@ -34,8 +34,8 @@ void ZMQ_CLASS::init()
   controlDone_ = false;
 
   /* Initialize zmq data */
-  rad_send_ = new ZmqData;
   req_recv_ = new ZmqData;
+  dsh_recv_ = new ZmqData;
 
 //  /* Initialize Subscribe Socket */
 //  if(sub_flag_)
@@ -115,8 +115,8 @@ bool ZMQ_CLASS::readParameters()
   std::string udp_ip, udp_port;
   nodeHandle_.param("tcp_ip/interface_name",interface_name_,std::string("ens33"));
 
-  nodeHandle_.param("tcp_ip/server_ip_addr",tcp_ip_server,std::string("tcp://*"));
-  nodeHandle_.param("tcp_ip/client_ip_addr",tcp_ip_client,std::string("tcp://192.168.0.18"));
+  nodeHandle_.param("tcp_ip/ip_addr_server",tcp_ip_server,std::string("tcp://*"));
+  nodeHandle_.param("tcp_ip/ip_addr_client",tcp_ip_client,std::string("tcp://192.168.0.18"));
 //  nodeHandle_.param("tcp_ip/sub_port",tcpsub_port,std::string("5555"));
 //  nodeHandle_.param("tcp_ip/pub_port",tcpsub_port,std::string("5555"));
   nodeHandle_.param("tcp_ip/req_port",tcpreq_port,std::string("4444"));
@@ -126,12 +126,12 @@ bool ZMQ_CLASS::readParameters()
 
   nodeHandle_.param("udp_ip/ip_addr",udp_ip,std::string("udp://239.255.255.250"));
   nodeHandle_.param("udp_ip/port",udp_port,std::string("9090"));
-  nodeHandle_.param("udp_ip/send_group",rad_group_,std::string("FV1"));
+  nodeHandle_.param("udp_ip/send_group",rad_group_,std::string("FV"));
   nodeHandle_.param("udp_ip/recv_group",dsh_group_,std::string("LV"));
   
-  nodeHandle_.param("socket/rad_flag",rad_flag_,false);
+  nodeHandle_.param("socket/rad_flag",rad_flag_,true);
   nodeHandle_.param("socket/dsh_flag",dsh_flag_,false);
-  nodeHandle_.param("socket/req_flag",req_flag_,false);
+  nodeHandle_.param("socket/req_flag",req_flag_,true);
   nodeHandle_.param("socket/rep_flag",rep_flag_,false);
   nodeHandle_.param("socket/sub_flag",sub_flag_,false);
   nodeHandle_.param("socket/pub_flag",pub_flag_,false);
@@ -195,27 +195,25 @@ void* ZMQ_CLASS::requestZMQ(ZmqData *send_data)  // client: send -> recv
 
     //recv
     req_socket_.recv(&recv_msg, 0);
-    req_recv_ = static_cast<ZmqData *>(recv_msg.data()); 
+    memcpy(req_recv_, recv_msg.data(), DATASIZE);
+//    req_recv_ = static_cast<ZmqData *>(recv_msg.data()); 
   }
 }
 
-void* ZMQ_CLASS::replyZMQ(ZmqData* send_data)  //server: recv -> send
+void* ZMQ_CLASS::replyZMQ(ZmqData *send_data)  //server: recv -> send
 {
-  while(rep_socket_.connected() && !controlDone_)
+  if(rep_socket_.connected() && !controlDone_)
   {
     zmq::message_t recv_msg(DATASIZE), send_msg(DATASIZE);
-    ZmqData* recv_data = new ZmqData;
 
     //recv
     rep_socket_.recv(&recv_msg, 0);
-    recv_data = static_cast<ZmqData *>(recv_msg.data());
-    rep_recv_ = recv_data;
+    rep_recv_ = static_cast<ZmqData *>(recv_msg.data());
 
     //send
     memcpy(send_msg.data(), send_data, 50);
     rep_socket_.send(send_msg);
     
-    std::this_thread::sleep_for(std::chrono::milliseconds(30));
   }
 
 }
@@ -224,12 +222,12 @@ void* ZMQ_CLASS::radioZMQ(ZmqData *send_data)
 {
   if(rad_socket_.connected() && !controlDone_)
   {
-    zmq::message_t pub_msg(DATASIZE);
-    pub_msg.set_group(rad_group_.c_str());
+    zmq::message_t send_msg(DATASIZE);
+    send_msg.set_group(rad_group_.c_str());
  
     //pub
-    memcpy(pub_msg.data(), send_data, DATASIZE);
-    rad_socket_.send(pub_msg, 0);
+    memcpy(send_msg.data(), send_data, DATASIZE);
+    rad_socket_.send(send_msg, 0);
   }
 }
 
@@ -237,10 +235,11 @@ void* ZMQ_CLASS::dishZMQ()
 {
   if(dsh_socket_.connected() && !controlDone_)
   {
-    zmq::message_t sub_msg(DATASIZE);
+    zmq::message_t recv_msg(DATASIZE);
 
     //sub
-    dsh_socket_.recv(&sub_msg, 0);
-    dsh_recv_ = static_cast<ZmqData *>(sub_msg.data());
+    dsh_socket_.recv(&recv_msg, 0);
+    memcpy(dsh_recv_, recv_msg.data(), DATASIZE);
+//    dsh_recv_ = static_cast<ZmqData *>(sub_msg.data());
   }
 }
