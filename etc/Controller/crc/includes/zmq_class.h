@@ -63,6 +63,7 @@ public:
 
 
   bool controlDone_;
+  bool rad_flag_, dsh_flag_, req_flag_, rep_flag0_, rep_flag1_, rep_flag2_;
   ZmqData *rad_send_, *dsh_recv_, *req_send_, *req_recv_, *rep_send_, *rep_recv0_, *rep_recv1_, *rep_recv2_;
   
 private:
@@ -75,5 +76,4 @@ private:
   std::string interface_name_;
   zmq::socket_t rad_socket_, dsh_socket_, req_socket_, rep_socket0_, rep_socket1_, rep_socket2_;
   zmq::context_t context_;
-  bool rad_flag_, dsh_flag_, req_flag_, rep_flag0_, rep_flag1_, rep_flag2_;
 };

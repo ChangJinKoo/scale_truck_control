@@ -8,6 +8,8 @@ class CentralRC{
     ~CentralRC();
 
     void communicate();
+    bool is_node_running_;
+
   private:
     ZMQ_CLASS ZMQ_SOCKET_;
 
@@ -19,7 +21,6 @@ class CentralRC{
     void updateData(ZmqData* zmq_data);
 
     bool time_flag_;
-
     uint8_t index_;
     uint8_t crc_mode_;
 
@@ -32,6 +33,7 @@ class CentralRC{
     struct timeval start_time_, end_time_;
 
     std::thread repThread0_, repThread1_, repThread2_;
+    std::mutex data_mutex_;
 };
 
 }
