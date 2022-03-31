@@ -14,6 +14,7 @@ LocalRC::LocalRC(ros::NodeHandle nh)
 
 LocalRC::~LocalRC(){
   is_node_running_ = false; 
+  udpThread_.join();
 
   delete lrc_data_;
 }
@@ -75,7 +76,7 @@ void LocalRC::init(){
   if (index_ == 10){
     udpThread_ = std::thread(&LocalRC::radio, this, lrc_data_);
   }
-  else if (index_ == 11 || index == 12){
+  else if (index_ == 11 || index_ == 12){
     udpThread_ = std::thread(&LocalRC::dish, this);
   }
 }
@@ -123,16 +124,21 @@ void LocalRC::rosPub(){
 
 void LocalRC::radio(ZmqData* zmq_data)
 {
-  const std::lock_guard<std::mutex> lock(data_mutex_);
-  zmq_data->tar_vel = tar_vel_;
-  zmq_data->tar_dist = tar_dist_;
-
-  ZMQ_SOCKET_.radioZMQ(zmq_data);
+  while(isNodeRunning()){
+    {
+      const std::lock_guard<std::mutex> lock(data_mutex_);
+      zmq_data->tar_vel = tar_vel_;
+      zmq_data->tar_dist = tar_dist_;
+    }
+    ZMQ_SOCKET_.radioZMQ(zmq_data);
+  }
 }
 
 void LocalRC::dish()
 {
-  ZMQ_SOCKET_.dishZMQ();
+  while(isNodeRunning()){
+    ZMQ_SOCKET_.dishZMQ();
+  }
 }
 
 void LocalRC::request(ZmqData* zmq_data){
@@ -291,29 +297,25 @@ void LocalRC::communicate(){
     gettimeofday(&endTime, NULL);
     printf("updateData(rep_recv_) time: %.3f ms\n", ((endTime.tv_sec - tmpTime.tv_sec)*1000.0) + ((endTime.tv_usec - tmpTime.tv_usec)/1000.0));
 
-    if (index_ == 10){
-      tmpTime = endTime;
-      udpThread_ = std::thread(&LocalRC::radio, this, lrc_data_);
-      //radio(lrc_data_);
-      udpThread_.join();
-      gettimeofday(&endTime, NULL);
-      printf("radio() time: %.3f ms\n", ((endTime.tv_sec - tmpTime.tv_sec)*1000.0) + ((endTime.tv_usec - tmpTime.tv_usec)/1000.0));
-
-    }
-    else if (index_ == 11 || index_ == 12){
-      tmpTime = endTime;
-      udpThread_ = std::thread(&LocalRC::dish, this);
-      //dish();
-      udpThread_.join();
-      gettimeofday(&endTime, NULL);
-      printf("dish() time: %.3f ms\n", ((endTime.tv_sec - tmpTime.tv_sec)*1000.0) + ((endTime.tv_usec - tmpTime.tv_usec)/1000.0));
-
-      tmpTime = endTime;
-      updateData(ZMQ_SOCKET_.dsh_recv_);
-      gettimeofday(&endTime, NULL);
-      printf("updateData(dsh_recv_) time: %.3f ms\n", ((endTime.tv_sec - tmpTime.tv_sec)*1000.0) + ((endTime.tv_usec - tmpTime.tv_usec)/1000.0));
-
-    }
+//    if (index_ == 10){
+//      tmpTime = endTime;
+//      radio(lrc_data_);
+//      gettimeofday(&endTime, NULL);
+//      printf("radio() time: %.3f ms\n", ((endTime.tv_sec - tmpTime.tv_sec)*1000.0) + ((endTime.tv_usec - tmpTime.tv_usec)/1000.0));
+//
+//    }
+//    else if (index_ == 11 || index_ == 12){
+//      tmpTime = endTime;
+//      dish();
+//      gettimeofday(&endTime, NULL);
+//      printf("dish() time: %.3f ms\n", ((endTime.tv_sec - tmpTime.tv_sec)*1000.0) + ((endTime.tv_usec - tmpTime.tv_usec)/1000.0));
+//
+//      tmpTime = endTime;
+//      updateData(ZMQ_SOCKET_.dsh_recv_);
+//      gettimeofday(&endTime, NULL);
+//      printf("updateData(dsh_recv_) time: %.3f ms\n", ((endTime.tv_sec - tmpTime.tv_sec)*1000.0) + ((endTime.tv_usec - tmpTime.tv_usec)/1000.0));
+//
+//    }
     tmpTime = endTime;
     recordData(&startTime);
     gettimeofday(&endTime, NULL);
