@@ -77,6 +77,7 @@ class LocalRC{
     double time_ = 0;
 
     std::thread lrcThread_;
+    std::thread udpThread_;
     std::mutex data_mutex_;
 };
 

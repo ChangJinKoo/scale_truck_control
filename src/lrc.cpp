@@ -72,6 +72,12 @@ void LocalRC::init(){
   lrc_data_->tar_index = 30;  //CRC
 
   lrcThread_ = std::thread(&LocalRC::communicate, this);
+  if (index_ == 10){
+    udpThread_ = std::thread(&LocalRC::radio, this, lrc_data_);
+  }
+  else if (index_ == 11 || index == 12){
+    udpThread_ = std::thread(&LocalRC::dish, this);
+  }
 }
 
 bool LocalRC::isNodeRunning(){
@@ -287,14 +293,18 @@ void LocalRC::communicate(){
 
     if (index_ == 10){
       tmpTime = endTime;
-      radio(lrc_data_);
+      udpThread_ = std::thread(&LocalRC::radio, this, lrc_data_);
+      //radio(lrc_data_);
+      udpThread_.join();
       gettimeofday(&endTime, NULL);
       printf("radio() time: %.3f ms\n", ((endTime.tv_sec - tmpTime.tv_sec)*1000.0) + ((endTime.tv_usec - tmpTime.tv_usec)/1000.0));
 
     }
     else if (index_ == 11 || index_ == 12){
       tmpTime = endTime;
-      dish();
+      udpThread_ = std::thread(&LocalRC::dish, this);
+      //dish();
+      udpThread_.join();
       gettimeofday(&endTime, NULL);
       printf("dish() time: %.3f ms\n", ((endTime.tv_sec - tmpTime.tv_sec)*1000.0) + ((endTime.tv_usec - tmpTime.tv_usec)/1000.0));
 

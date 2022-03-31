@@ -14,11 +14,11 @@ udp_ip:
 
 socket:
   lrc_index: 12
-  rad_flag: true
+  rad_flag: false 
   dsh_flag: true
   req_flag: true
   rep_flag: false
-  sub_flag: true
+  sub_flag: false
   pub_flag: false
 
 params:
