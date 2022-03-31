@@ -78,6 +78,7 @@ class LocalRC{
 
     std::thread lrcThread_;
     std::thread udpThread_;
+    std::thread tcpThread_;
     std::mutex data_mutex_;
 };
 

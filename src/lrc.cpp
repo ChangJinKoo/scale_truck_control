@@ -73,6 +73,7 @@ void LocalRC::init(){
   lrc_data_->tar_index = 30;  //CRC
 
   lrcThread_ = std::thread(&LocalRC::communicate, this);
+  tcpThread_ = std::thread(&LocalRC::request, this, lrc_data_);
   if (index_ == 10){
     udpThread_ = std::thread(&LocalRC::radio, this, lrc_data_);
   }
@@ -105,19 +106,19 @@ void LocalRC::OcrCallback(const scale_truck_control::ocr2lrc &msg){
 }
 
 void LocalRC::rosPub(){
-  const std::lock_guard<std::mutex> lock(data_mutex_);
   scale_truck_control::lrc2xav xav;
   scale_truck_control::lrc2ocr ocr;
-  
-  xav.cur_vel = cur_vel_;
-  ocr.index = index_;
-  ocr.steer_angle = angle_degree_;
-  ocr.cur_dist = cur_dist_;
-  ocr.tar_dist = tar_dist_;
-  ocr.tar_vel = tar_vel_;
-  ocr.pred_vel = est_vel_;
-  ocr.alpha = alpha_;
-
+  { 
+    const std::lock_guard<std::mutex> lock(data_mutex_);
+    xav.cur_vel = cur_vel_;
+    ocr.index = index_;
+    ocr.steer_angle = angle_degree_;
+    ocr.cur_dist = cur_dist_;
+    ocr.tar_dist = tar_dist_;
+    ocr.tar_vel = tar_vel_;
+    ocr.pred_vel = est_vel_;
+    ocr.alpha = alpha_;
+  }
   XavPublisher_.publish(xav);
   OcrPublisher_.publish(ocr);
 }
@@ -131,6 +132,7 @@ void LocalRC::radio(ZmqData* zmq_data)
       zmq_data->tar_dist = tar_dist_;
     }
     ZMQ_SOCKET_.radioZMQ(zmq_data);
+    std::this_thread::sleep_for(std::chrono::milliseconds(2));
   }
 }
 
@@ -138,19 +140,26 @@ void LocalRC::dish()
 {
   while(isNodeRunning()){
     ZMQ_SOCKET_.dishZMQ();
+    updateData(ZMQ_SOCKET_.dsh_recv_);
+    std::this_thread::sleep_for(std::chrono::milliseconds(2));
   }
 }
 
 void LocalRC::request(ZmqData* zmq_data){
-  const std::lock_guard<std::mutex> lock(data_mutex_);
-  zmq_data->cur_vel = cur_vel_;
-  zmq_data->cur_dist = cur_dist_;
-  zmq_data->alpha = alpha_;
-  zmq_data->beta = beta_;
-  zmq_data->gamma = gamma_;
-  zmq_data->lrc_mode = lrc_mode_;
-
-  ZMQ_SOCKET_.requestZMQ(zmq_data);
+  while(isNodeRunning()){
+    {
+      const std::lock_guard<std::mutex> lock(data_mutex_);
+      zmq_data->cur_vel = cur_vel_;
+      zmq_data->cur_dist = cur_dist_;
+      zmq_data->alpha = alpha_;
+      zmq_data->beta = beta_;
+      zmq_data->gamma = gamma_;
+      zmq_data->lrc_mode = lrc_mode_;
+    }
+    ZMQ_SOCKET_.requestZMQ(zmq_data);
+    updateData(ZMQ_SOCKET_.req_recv_);
+    std::this_thread::sleep_for(std::chrono::milliseconds(2));
+  }
 }
 
 void LocalRC::velSensorCheck(){
@@ -287,15 +296,15 @@ void LocalRC::communicate(){
     gettimeofday(&endTime, NULL);
     printf("rosPub() time: %.3f ms\n", ((endTime.tv_sec - tmpTime.tv_sec)*1000.0) + ((endTime.tv_usec - tmpTime.tv_usec)/1000.0));
 
-    tmpTime = endTime;
-    request(lrc_data_);
-    gettimeofday(&endTime, NULL);
-    printf("request() time: %.3f ms\n", ((endTime.tv_sec - tmpTime.tv_sec)*1000.0) + ((endTime.tv_usec - tmpTime.tv_usec)/1000.0));
+//    tmpTime = endTime;
+//    request(lrc_data_);
+//    gettimeofday(&endTime, NULL);
+//    printf("request() time: %.3f ms\n", ((endTime.tv_sec - tmpTime.tv_sec)*1000.0) + ((endTime.tv_usec - tmpTime.tv_usec)/1000.0));
 
-    tmpTime = endTime;
-    updateData(ZMQ_SOCKET_.rep_recv_);
-    gettimeofday(&endTime, NULL);
-    printf("updateData(rep_recv_) time: %.3f ms\n", ((endTime.tv_sec - tmpTime.tv_sec)*1000.0) + ((endTime.tv_usec - tmpTime.tv_usec)/1000.0));
+//    tmpTime = endTime;
+//    updateData(ZMQ_SOCKET_.rep_recv_);
+//    gettimeofday(&endTime, NULL);
+//    printf("updateData(rep_recv_) time: %.3f ms\n", ((endTime.tv_sec - tmpTime.tv_sec)*1000.0) + ((endTime.tv_usec - tmpTime.tv_usec)/1000.0));
 
 //    if (index_ == 10){
 //      tmpTime = endTime;
@@ -327,6 +336,8 @@ void LocalRC::communicate(){
     printf("printStatus() time: %.3f ms\n", ((endTime.tv_sec - tmpTime.tv_sec)*1000.0) + ((endTime.tv_usec - tmpTime.tv_usec)/1000.0));
     cnt++;
     printf("cycle cnt: %d\n", cnt);
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(2));
 
     if(!isNodeRunning()){
       ros::requestShutdown();
