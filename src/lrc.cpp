@@ -178,7 +178,7 @@ void LocalRC::velSensorCheck(){
 void LocalRC::updateMode(uint8_t crc_mode){
   const std::lock_guard<std::mutex> lock(data_mutex_);
   if(index_ == 10){  //LV
-    if(beta_){  //Camera sensor failure
+    if(beta_ || crc_mode == 2){  //Camera sensor failure
       lrc_mode_ = 2;  //GDM
     }
     else if((alpha_ || gamma_) && (crc_mode == 0 || crc_mode == 1)){
@@ -189,7 +189,7 @@ void LocalRC::updateMode(uint8_t crc_mode){
     }
   }
   else{  //FV1, FV2
-    if(beta_ && gamma_){
+    if((beta_ && gamma_) || crc_mode == 2){
       lrc_mode_ = 2;  
     }
     else if((alpha_ || beta_ || gamma_) && (crc_mode == 0 || crc_mode == 1)){
@@ -253,6 +253,8 @@ void LocalRC::printStatus(){
   static int CNT = 0;
 //  if (cnt > 100 && EnableConsoleOutput_){
   if (EnableConsoleOutput_){
+    printf("\033[2J");
+    printf("\033[1;1H");
     printf("\nEstimated Velocity:\t%.3f", fabs(cur_vel_ - hat_vel_));
     printf("\nPredict Velocity:\t%.3f", est_vel_);
     printf("\nTarget Velocity:\t%.3f", tar_vel_);
@@ -325,10 +327,10 @@ void LocalRC::communicate(){
 //      printf("updateData(dsh_recv_) time: %.3f ms\n", ((endTime.tv_sec - tmpTime.tv_sec)*1000.0) + ((endTime.tv_usec - tmpTime.tv_usec)/1000.0));
 //
 //    }
-    tmpTime = endTime;
-    recordData(&startTime);
-    gettimeofday(&endTime, NULL);
-    printf("recordData() time: %.3f ms\n", ((endTime.tv_sec - tmpTime.tv_sec)*1000.0) + ((endTime.tv_usec - tmpTime.tv_usec)/1000.0));
+//    tmpTime = endTime;
+//    recordData(&startTime);
+//    gettimeofday(&endTime, NULL);
+//    printf("recordData() time: %.3f ms\n", ((endTime.tv_sec - tmpTime.tv_sec)*1000.0) + ((endTime.tv_usec - tmpTime.tv_usec)/1000.0));
 
     tmpTime = endTime;
     printStatus();
