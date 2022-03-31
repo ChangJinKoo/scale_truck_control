@@ -1,24 +1,28 @@
 tcp_ip:
-  sub_port: "5555"
-  pub_port: "5555"
-  req_port: "4444"
-  rep_port: "4444"
+  ip_addr_server: "tcp://*"
+  ip_addr_client: "tcp://192.168.0.18"
+  interface_name: "wlan0"
+  req_port: "5555"
+  rep_port: "5555"
   zipcode: "00001"
 
 udp_ip:
-  port: "8080"
-  send_group: "FV2"
-  recv_group: "FV1"
+  ip_addr: "udp://239.255.255.250"
+  port: "9090"
+  send_group: "FV"
+  recv_group: "FV"
 
 socket:
-  rad_flag: true
+  lrc_index: 11
+  rad_flag: false
   dsh_flag: true
   req_flag: true
   rep_flag: false
-  sub_flag: true
+  sub_flag: false
   pub_flag: false
 
 params:
+  index: 1
   target_vel: 0.00
   safety_vel: 0.45
   fv_max_vel: 1.20

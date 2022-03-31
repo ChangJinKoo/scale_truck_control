@@ -30,7 +30,7 @@ void LocalRC::init(){
   std::string OcrPubTopicName;
   int OcrPubQueueSize;
 
-  nodeHandle_.param("LrcParams/index", index_, 10);
+  nodeHandle_.param("socket/lrc_index", index_, 10);
   nodeHandle_.param("LrcParams/lrc_log_path", log_path_, std::string("/home/jetson/catkin_ws/logfiles/"));
   nodeHandle_.param("LrcParams/epsilon", epsilon_, 1.0f);
   nodeHandle_.param("LrcParams/lu_ob_A", a_, 0.6817f);
@@ -229,8 +229,9 @@ void LocalRC::recordData(struct timeval *startTime){
 
 void LocalRC::printStatus(){
   static int cnt = 0;
-//  static int CNT = 0;
-  if (cnt > 100 && EnableConsoleOutput_){
+  static int CNT = 0;
+//  if (cnt > 100 && EnableConsoleOutput_){
+  if (EnableConsoleOutput_){
     printf("\nEstimated Velocity:\t%.3f", fabs(cur_vel_ - hat_vel_));
     printf("\nPredict Velocity:\t%.3f", est_vel_);
     printf("\nTarget Velocity:\t%.3f", tar_vel_);
@@ -245,32 +246,75 @@ void LocalRC::printStatus(){
     cnt = 0;
   }
   cnt++;
-//  CNT++;
-//  if (CNT > 1000) lrc_mode_ = 1;
-//  if (CNT > 2000){
-//	  lrc_mode_ = 0;
-//	  CNT = 0;
-//  }
+  CNT++;
+  if (CNT > 1000) lrc_mode_ = 1;
+  if (CNT > 2000){
+	  lrc_mode_ = 0;
+	  CNT = 0;
+  }
 }
 
 void LocalRC::communicate(){
-  struct timeval startTime;
+  struct timeval startTime, endTime, tmpTime;
   gettimeofday(&startTime, NULL);
+  static int cnt = 0;
   while(ros::ok()){
+    if(cnt != 0) tmpTime = endTime;
     velSensorCheck();
+    gettimeofday(&endTime, NULL);
+    if(cnt == 0) printf("velSensorCheck() time: %.3f ms\n", ((endTime.tv_sec - startTime.tv_sec)*1000.0) + ((endTime.tv_usec - startTime.tv_usec)/1000.0));
+    else printf("velSensorCheck() time: %.3f ms\n", ((endTime.tv_sec - tmpTime.tv_sec)*1000.0) + ((endTime.tv_usec - tmpTime.tv_usec)/1000.0));
+
+    tmpTime = endTime;
     updateMode(crc_mode_);
+    gettimeofday(&endTime, NULL);
+    printf("updateMode() time: %.3f ms\n", ((endTime.tv_sec - tmpTime.tv_sec)*1000.0) + ((endTime.tv_usec - tmpTime.tv_usec)/1000.0));
+
+    tmpTime = endTime;
     rosPub();
+    gettimeofday(&endTime, NULL);
+    printf("rosPub() time: %.3f ms\n", ((endTime.tv_sec - tmpTime.tv_sec)*1000.0) + ((endTime.tv_usec - tmpTime.tv_usec)/1000.0));
+
+    tmpTime = endTime;
     request(lrc_data_);
+    gettimeofday(&endTime, NULL);
+    printf("request() time: %.3f ms\n", ((endTime.tv_sec - tmpTime.tv_sec)*1000.0) + ((endTime.tv_usec - tmpTime.tv_usec)/1000.0));
+
+    tmpTime = endTime;
     updateData(ZMQ_SOCKET_.rep_recv_);
+    gettimeofday(&endTime, NULL);
+    printf("updateData(rep_recv_) time: %.3f ms\n", ((endTime.tv_sec - tmpTime.tv_sec)*1000.0) + ((endTime.tv_usec - tmpTime.tv_usec)/1000.0));
+
     if (index_ == 10){
+      tmpTime = endTime;
       radio(lrc_data_);
+      gettimeofday(&endTime, NULL);
+      printf("radio() time: %.3f ms\n", ((endTime.tv_sec - tmpTime.tv_sec)*1000.0) + ((endTime.tv_usec - tmpTime.tv_usec)/1000.0));
+
     }
     else if (index_ == 11 || index_ == 12){
+      tmpTime = endTime;
       dish();
+      gettimeofday(&endTime, NULL);
+      printf("dish() time: %.3f ms\n", ((endTime.tv_sec - tmpTime.tv_sec)*1000.0) + ((endTime.tv_usec - tmpTime.tv_usec)/1000.0));
+
+      tmpTime = endTime;
       updateData(ZMQ_SOCKET_.dsh_recv_);
+      gettimeofday(&endTime, NULL);
+      printf("updateData(dsh_recv_) time: %.3f ms\n", ((endTime.tv_sec - tmpTime.tv_sec)*1000.0) + ((endTime.tv_usec - tmpTime.tv_usec)/1000.0));
+
     }
+    tmpTime = endTime;
     recordData(&startTime);
+    gettimeofday(&endTime, NULL);
+    printf("recordData() time: %.3f ms\n", ((endTime.tv_sec - tmpTime.tv_sec)*1000.0) + ((endTime.tv_usec - tmpTime.tv_usec)/1000.0));
+
+    tmpTime = endTime;
     printStatus();
+    gettimeofday(&endTime, NULL);
+    printf("printStatus() time: %.3f ms\n", ((endTime.tv_sec - tmpTime.tv_sec)*1000.0) + ((endTime.tv_usec - tmpTime.tv_usec)/1000.0));
+    cnt++;
+    printf("cycle cnt: %d\n", cnt);
 
     if(!isNodeRunning()){
       ros::requestShutdown();
