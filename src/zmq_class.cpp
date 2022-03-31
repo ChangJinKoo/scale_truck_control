@@ -117,8 +117,6 @@ bool ZMQ_CLASS::readParameters()
 
   nodeHandle_.param("tcp_ip/ip_addr_server",tcp_ip_server,std::string("tcp://*"));
   nodeHandle_.param("tcp_ip/ip_addr_client",tcp_ip_client,std::string("tcp://192.168.0.18"));
-//  nodeHandle_.param("tcp_ip/sub_port",tcpsub_port,std::string("5555"));
-//  nodeHandle_.param("tcp_ip/pub_port",tcpsub_port,std::string("5555"));
   nodeHandle_.param("tcp_ip/req_port",tcpreq_port,std::string("4444"));
   nodeHandle_.param("tcp_ip/rep_port",tcpreq_port,std::string("4444"));
 

@@ -13,7 +13,6 @@ LrcSubPub:
     queue_size: 1
 
 LrcParams:
-  index: 10
   lrc_log_path: /home/jetson/catkin_ws/logfiles/
   epsilon: 0.7
   lu_ob_A: 0.6817
