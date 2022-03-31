@@ -60,6 +60,7 @@ void LocalRC::init(){
   /************************/
   XavSubscriber_ = nodeHandle_.subscribe(XavSubTopicName, XavSubQueueSize, &LocalRC::XavCallback, this);
   OcrSubscriber_ = nodeHandle_.subscribe(OcrSubTopicName, OcrSubQueueSize, &LocalRC::OcrCallback, this);
+//  OcrSubscriber_ = nodeHandle_.subscribe("/vel_msg", OcrSubQueueSize, &LocalRC::OcrCallback, this);
 
   /************************/
   /* ROS Topic Publisher */ 
@@ -99,6 +100,7 @@ void LocalRC::XavCallback(const scale_truck_control::xav2lrc &msg){
   gamma_ = msg.gamma;
 }
 
+//void LocalRC::OcrCallback(const scale_truck_control::lrc2xav &msg){
 void LocalRC::OcrCallback(const scale_truck_control::ocr2lrc &msg){
   const std::lock_guard<std::mutex> lock(data_mutex_);
   cur_vel_ = msg.cur_vel;

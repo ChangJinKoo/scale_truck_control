@@ -47,6 +47,7 @@ class LocalRC{
     bool isNodeRunning();
     void XavCallback(const scale_truck_control::xav2lrc &msg);
     void OcrCallback(const scale_truck_control::ocr2lrc &msg);
+//    void OcrCallback(const scale_truck_control::lrc2xav &msg);
     void rosPub();
     void radio(ZmqData* zmq_data);
     void dish();
