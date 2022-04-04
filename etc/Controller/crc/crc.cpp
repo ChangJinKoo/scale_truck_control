@@ -52,16 +52,20 @@ void CentralRC::init(){
 void CentralRC::reply(ZmqData* zmq_data){
   while(is_node_running_){
     if(zmq_data->tar_index == 10){  //LV
+      gettimeofday(&start_time1_, NULL);
       {
-        const std::lock_guard<std::mutex> lock(data_mutex_);
+        std::scoped_lock lock(data_mutex_);
         zmq_data->est_vel = lv_est_vel_;
         zmq_data->crc_mode = crc_mode_;
       }
       ZMQ_SOCKET_.replyZMQ(zmq_data);
+      gettimeofday(&end_time1_, NULL);
+      diff_time1_ = ((end_time1_.tv_sec - start_time1_.tv_sec)*1000.0) + ((end_time1_.tv_usec - start_time1_.tv_usec)/1000.0);  //milliseconds
+
     }
     else if(zmq_data->tar_index == 11){  //FV1
       {	    
-        const std::lock_guard<std::mutex> lock(data_mutex_);
+        std::scoped_lock lock(data_mutex_);
         zmq_data->est_vel = fv1_est_vel_;
         zmq_data->crc_mode = crc_mode_;
       }
@@ -69,7 +73,7 @@ void CentralRC::reply(ZmqData* zmq_data){
     }
     else if(zmq_data->tar_index == 12){  //FV2
       {
-        const std::lock_guard<std::mutex> lock(data_mutex_);
+        std::scoped_lock lock(data_mutex_);
         zmq_data->est_vel = fv2_est_vel_;
         zmq_data->crc_mode = crc_mode_;
       }
@@ -80,8 +84,8 @@ void CentralRC::reply(ZmqData* zmq_data){
 }
 
 void CentralRC::estimateVelocity(uint8_t index){
-  assert(index < 3);
-  const std::lock_guard<std::mutex> lock(data_mutex_);
+  assert(index < 13 || index > 9);
+  std::scoped_lock lock(data_mutex_);
 
   if (index == 10){  //LV
     if (!lv_data_->alpha){
@@ -131,7 +135,7 @@ void CentralRC::estimateVelocity(uint8_t index){
 }
 
 void CentralRC::modeCheck(uint8_t lv_mode, uint8_t fv1_mode, uint8_t fv2_mode){
-  const std::lock_guard<std::mutex> lock(data_mutex_);
+  std::scoped_lock lock(data_mutex_);
   if ((lv_mode == 0) && (fv1_mode == 0) && (fv2_mode == 0)){
     crc_mode_ = 0;
   }
@@ -149,8 +153,13 @@ void CentralRC::printStatus(){
   printf("CRC and each MODEs of LV, FV1, FV2:\t%d || %d, %d, %d\n", crc_mode_, lv_data_->lrc_mode, fv1_data_->lrc_mode, fv2_data_->lrc_mode);
   printf("Predict Velocitys of LV, FV1, FV2:\t%.3f, %.3f, %.3f\n", lv_data_->est_vel, fv1_data_->est_vel, fv2_data_->est_vel);
   printf("Sampling_time_:\t%.10f\n", sampling_time_);
+  printf("TCP communication time:\t%.3f\n", diff_time1_);
+  printf("LV velocity:\t%.3f\n", lv_data_->cur_vel);
+  printf("FV1 velocity:\t%.3f\n", fv1_data_->cur_vel);
+  printf("FV2 velocity:\t%.3f\n", fv2_data_->cur_vel);
   printf("LV current distance:\t%.3f\n", lv_data_->cur_dist);
   printf("FV1 current distance:\t%.3f\n", fv1_data_->cur_dist);
+  printf("FV2 current distance:\t%.3f\n", fv2_data_->cur_dist);
 }
 
 void CentralRC::updateData(ZmqData* zmq_data){
@@ -194,9 +203,9 @@ void CentralRC::communicate(){
     sampling_time_ = (end_time_.tv_sec - start_time_.tv_sec) + ((end_time_.tv_usec - start_time_.tv_usec)/1000000.0);  //seconds
   }
 
-  estimateVelocity(0);
-  estimateVelocity(1);
-  estimateVelocity(2);
+  estimateVelocity(10);
+  estimateVelocity(11);
+  estimateVelocity(12);
   
   updateData(ZMQ_SOCKET_.rep_recv0_);
   updateData(ZMQ_SOCKET_.rep_recv1_);

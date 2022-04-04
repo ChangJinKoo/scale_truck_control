@@ -135,7 +135,7 @@ bool ZMQ_CLASS::readParameters()
   req_flag_ = false;
   rep_flag0_ = true;
   rep_flag1_ = true;
-  rep_flag2_ = false;
+  rep_flag2_ = true;
   rad_flag_ = false;
   dsh_flag_ = false;
 
