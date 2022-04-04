@@ -64,6 +64,8 @@ class ScaleTruckController {
     ros::Subscriber XavSubscriber_;
 	
     double CycleTime_ = 0.0;
+    int index_;
+
     //image
     LaneDetect::LaneDetector laneDetector_;
     bool viewImage_;
@@ -91,6 +93,7 @@ class ScaleTruckController {
 
     //ZMQ
     ZMQ_CLASS ZMQ_SOCKET_;
+    ZmqData* zmq_data_;
 
     //Thread
     std::thread controlThread_;
@@ -98,13 +101,14 @@ class ScaleTruckController {
     std::thread objectDetectThread_;
     std::thread tcpThread_;
 
-    static std::mutex image_mutex_;
-    static std::mutex object_mutex_;
-    static std::mutex droi_mutex_;
-    static std::mutex node_mutex_;
-    static std::mutex data_mutex_;
+    std::mutex image_mutex_;
+    std::mutex object_mutex_;
+    std::mutex droi_mutex_;
+    std::mutex vel_mutex_;
+    std::mutex dist_mutex_;
+    std::mutex rep_mutex_;
 
-    static std::condition_variable cv_;
+    std::condition_variable cv_;
 
     obstacle_detector::Obstacles Obstacle_;
     boost::shared_mutex mutexObjectCallback_;
@@ -123,7 +127,7 @@ class ScaleTruckController {
     bool getImageStatus(void);	
     void* lanedetectInThread();
     void* objectdetectInThread();
-    void reply();
+    void reply(ZmqData* zmq_data);
     void displayConsole();
     void spin();
 };

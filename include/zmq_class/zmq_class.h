@@ -66,7 +66,7 @@ public:
   std::string udp_ip_, tcpsub_ip_, tcppub_ip_, tcpreq_ip_, tcprep_ip_;
 
   bool controlDone_;
-  ZmqData *sub_recv_, *pub_send_, *rad_send_, *dsh_recv_, *req_send_, *req_recv_, *rep_send_, *rep_recv_;
+  ZmqData *rad_send_, *dsh_recv_, *req_send_, *req_recv_, *rep_send_, *rep_recv_;
 
 private:
   ros::NodeHandle nodeHandle_;
