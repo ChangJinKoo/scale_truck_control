@@ -12,15 +12,12 @@ ScaleTruckController::ScaleTruckController(ros::NodeHandle nh)
 }
 
 ScaleTruckController::~ScaleTruckController() {
-  {
-    boost::unique_lock<boost::shared_mutex> lockNodeStatus(mutexNodeStatus_);
-    isNodeRunning_ = false;
-  }
+  isNodeRunning_ = false;
 
   scale_truck_control::xav2lrc msg;
   msg.steer_angle = 0;
   msg.cur_dist = distance_;
-  msg.tar_vel = ResultVel_;	//Xavier to LRC and LRC to OpenCR
+  msg.tar_vel = ResultVel_;  //Xavier to LRC and LRC to OpenCR
   msg.tar_dist = TargetDist_;
   msg.beta = Beta_;
   msg.gamma = Gamma_;
@@ -106,12 +103,11 @@ void ScaleTruckController::init() {
   XavPublisher_ = nodeHandle_.advertise<scale_truck_control::xav2lrc>(XavPubTopicName, XavPubQueueSize);
   LanecoefPublisher_ = nodeHandle_.advertise<scale_truck_control::lane_coef>(LanecoefTopicName, LanecoefQueueSize);
 
-
-
   /**********************************/
   /* Control & Communication Thread */
   /**********************************/
   controlThread_ = std::thread(&ScaleTruckController::spin, this);
+  tcpThread_ = std::thread(&ScaleTruckController::reply, this);
 
   /**********************/
   /* Safety Start Setup */
@@ -121,13 +117,8 @@ void ScaleTruckController::init() {
 }
 
 bool ScaleTruckController::getImageStatus(void){
-  boost::shared_lock<boost::shared_mutex> lock(mutexImageStatus_);
+  std::scoped_lock lock(image_mutex_);
   return imageStatus_;
-}
-
-bool ScaleTruckController::isNodeRunning(void){
-  boost::shared_lock<boost::shared_mutex> lock(mutexNodeStatus_);
-  return isNodeRunning_;
 }
 
 void* ScaleTruckController::lanedetectInThread() {
@@ -135,22 +126,34 @@ void* ScaleTruckController::lanedetectInThread() {
   Mat dst;
   std::vector<Mat>channels;
   int count = 0;
-  if((!camImageTmp_.empty()) && (cnt != 0) && (TargetVel_ != 0))
-  {
-    bitwise_xor(camImageCopy_,camImageTmp_, dst);
-    split(dst, channels);
-    for(int ch = 0; ch<dst.channels();ch++) {
-      count += countNonZero(channels[ch]);
-    }
-    if(count == 0 && Beta_)
-      cnt -= 1;
-    else 
-      cnt = 10;
-  }
   float AngleDegree;
-  camImageTmp_ = camImageCopy_.clone();
-  laneDetector_.get_steer_coef(CurVel_);
-  AngleDegree = laneDetector_.display_img(camImageTmp_, waitKeyDelay_, viewImage_);
+  {
+    std::scoped_lock lock(image_mutex_);
+    if((!camImageTmp_.empty()) && (cnt != 0) && (TargetVel_ > 0.001f))
+    {
+      bitwise_xor(camImageCopy_,camImageTmp_, dst);
+      split(dst, channels);
+      for(int ch = 0; ch<dst.channels();ch++) {
+        count += countNonZero(channels[ch]);
+      }
+      if(count == 0 && Beta_)
+        cnt -= 1;
+      else 
+        cnt = 10;
+    }
+    camImageTmp_ = camImageCopy_.clone();
+  }
+  {
+    std::scoped_lock lock(data_mutex_);
+    laneDetector_.get_steer_coef(CurVel_);
+  }
+  {
+    std::unique_lock<std::mutex> lock(droi_mutex_);
+    cv_.wait(lock, [this] {return droi_ready_; });
+
+    AngleDegree = laneDetector_.display_img(camImageTmp_, waitKeyDelay_, viewImage_);
+    droi_ready_ = false;
+  }
   if(cnt == 0){
     AngleDegree_ = -distAngle_;
   }
@@ -161,9 +164,11 @@ void* ScaleTruckController::lanedetectInThread() {
 void* ScaleTruckController::objectdetectInThread() {
   float dist, angle; 
   float dist_tmp, angle_tmp;
-  ObjSegments_ = Obstacle_.segments.size();
-  ObjCircles_ = Obstacle_.circles.size();
-   
+  {
+    std::scoped_lock lock(object_mutex_);
+    ObjSegments_ = Obstacle_.segments.size();
+    ObjCircles_ = Obstacle_.circles.size();
+  }
   dist_tmp = 10.f; 
   /**************/
   /* Lidar Data */
@@ -186,47 +191,56 @@ void* ScaleTruckController::objectdetectInThread() {
   /*****************************/
   /* Dynamic ROI Distance Data */
   /*****************************/
-  if(dist_tmp < 1.24 && dist_tmp > 0.30) // 1.26 ~ 0.28
   {
-    laneDetector_.distance_ = (int)((1.24 - dist_tmp)*490.0);
-  } else {
-    laneDetector_.distance_ = 0;
-  }
-  
-  if(ZMQ_SOCKET_.zipcode_.compare(std::string("00000"))){	
+    std::scoped_lock lock(droi_mutex_);
+    if(dist_tmp < 1.24 && dist_tmp > 0.30) // 1.26 ~ 0.28
+    {
+      laneDetector_.distance_ = (int)((1.24 - dist_tmp)*490.0);
+    }
+    else {
+      laneDetector_.distance_ = 0;
+    }
+    droi_ready_ = true;
+    cv_.notify_one();
+  }  
+  if(ZMQ_SOCKET_.zipcode_.compare(std::string("00000"))){  
       /***************/
       /* LV velocity */
       /***************/
-	  if(distance_ <= LVstopDist_) {
-		// Emergency Brake
-	    ResultVel_ = 0.0f;
-	  }
-	  else if (distance_ <= SafetyDist_){
-	    float TmpVel_ = (ResultVel_-SafetyVel_)*((distance_-LVstopDist_)/(SafetyDist_-LVstopDist_))+SafetyVel_;
-		if (TargetVel_ < TmpVel_){
-			ResultVel_ = TargetVel_;
-		}
-		else{
-			ResultVel_ = TmpVel_;
-		}
-	  }
-	  else{
-		ResultVel_ = TargetVel_;
-	  }
+    if(distance_ <= LVstopDist_) {
+    // Emergency Brake
+      ResultVel_ = 0.0f;
+    }
+    else if (distance_ <= SafetyDist_){
+      float TmpVel_ = (ResultVel_-SafetyVel_)*((distance_-LVstopDist_)/(SafetyDist_-LVstopDist_))+SafetyVel_;
+      if (TargetVel_ < TmpVel_){
+        ResultVel_ = TargetVel_;
+      }
+      else{
+        ResultVel_ = TmpVel_;
+      }
+    }
+    else{
+      ResultVel_ = TargetVel_;
+    }
   }
   else{
       /***************/
       /* FV velocity */
       /***************/
-	  if ((distance_ <= FVstopDist_) || (TargetVel_ <= 0.1f)){
-		// Emergency Brake
-		ResultVel_ = 0.0f;
-	  } else {
-		ResultVel_ = TargetVel_;
-	  }
+    if ((distance_ <= FVstopDist_) || (TargetVel_ <= 0.1f)){
+    // Emergency Brake
+      ResultVel_ = 0.0f;
+    }
+    else {
+      ResultVel_ = TargetVel_;
+    }
   }
 }
 
+void ScaleTruckController::reply(){
+
+}
 void ScaleTruckController::displayConsole() {
   static std::string ipAddr = ZMQ_SOCKET_.getIPAddress();
 
@@ -257,7 +271,7 @@ void ScaleTruckController::spin() {
   const auto wait_duration = std::chrono::milliseconds(2000);
   while(!getImageStatus()) {
     printf("Waiting for image.\n");
-    if(!isNodeRunning()) {
+    if(!isNodeRunning_) {
       return;
     }
     std::this_thread::sleep_for(wait_duration);
@@ -295,7 +309,7 @@ void ScaleTruckController::spin() {
 
     msg.steer_angle = AngleDegree_;
     msg.cur_dist = distance_;
-    msg.tar_vel = ResultVel_;	//Xavier to LRC and LRC to OpenCR
+    msg.tar_vel = ResultVel_;  //Xavier to LRC and LRC to OpenCR
     msg.tar_dist = TargetDist_;
     msg.beta = Beta_;
     msg.gamma = Gamma_;
@@ -304,7 +318,7 @@ void ScaleTruckController::spin() {
     LanecoefPublisher_.publish(lane);
     XavPublisher_.publish(msg);
 
-    if(!isNodeRunning()) {
+    if(!isNodeRunning_) {
       controlDone_ = true;
       ZMQ_SOCKET_.controlDone_ = true;
       ros::requestShutdown();
@@ -318,17 +332,15 @@ void ScaleTruckController::spin() {
 
     printf("cnt: %d\n", cnt);
     if (cnt > 3000){
-	    diff_time = 0.0;
-	    cnt = 0;
+      diff_time = 0.0;
+      cnt = 0;
     }
   }
 }
 
 void ScaleTruckController::objectCallback(const obstacle_detector::Obstacles& msg) {
-  {
-    boost::unique_lock<boost::shared_mutex> lockObjectCallback(mutexObjectCallback_);
-    Obstacle_ = msg;
-  }
+  std::scoped_lock lock(object_mutex_);
+  Obstacle_ = msg;
 }
 
 void ScaleTruckController::imageCallback(const sensor_msgs::ImageConstPtr &msg) {
@@ -340,23 +352,16 @@ void ScaleTruckController::imageCallback(const sensor_msgs::ImageConstPtr &msg) 
   }
 
   if(cam_image && !Beta_) {
-    {
-      boost::unique_lock<boost::shared_mutex> lockImageCallback(mutexImageCallback_);
-      imageHeader_ = msg->header;
-      camImageCopy_ = cam_image->image.clone();
-    }
-    {
-      boost::unique_lock<boost::shared_mutex> lockImageStatus(mutexImageStatus_);
-      imageStatus_ = true;
-    }
+    std::scoped_lock lock(image_mutex_);
+    imageHeader_ = msg->header;
+    camImageCopy_ = cam_image->image.clone();
+    imageStatus_ = true; 
   }
 }
 
 void ScaleTruckController::XavSubCallback(const scale_truck_control::lrc2xav &msg){
-  {
-    boost::unique_lock<boost::shared_mutex> lockVelCallback(mutexVelCallback_);
-    CurVel_ = msg.cur_vel;
-  }	
+  std::scoped_lock lock(data_mutex_);
+  CurVel_ = msg.cur_vel;
 }
 
 } /* namespace scale_truck_control */ 

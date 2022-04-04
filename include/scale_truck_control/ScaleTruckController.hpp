@@ -12,11 +12,13 @@
 #include <iostream>
 #include <pthread.h>
 #include <thread>
+#include <mutex>
 #include <chrono>
 #include <boost/thread/thread.hpp>
 #include <vector>
 #include <sys/time.h>
 #include <string>
+#include <condition_variable>
 
 //ROS
 #include <geometry_msgs/Twist.h>
@@ -44,7 +46,6 @@ class ScaleTruckController {
 
     ~ScaleTruckController();
 
-    void spin();
   private:
     bool readParameters();
 
@@ -93,38 +94,38 @@ class ScaleTruckController {
 
     //Thread
     std::thread controlThread_;
-    std::mutex mutex_;
+    std::thread laneDetectThread_;
+    std::thread objectDetectThread_;
+    std::thread tcpThread_;
+
+    static std::mutex image_mutex_;
+    static std::mutex object_mutex_;
+    static std::mutex droi_mutex_;
+    static std::mutex node_mutex_;
+    static std::mutex data_mutex_;
+
+    static std::condition_variable cv_;
 
     obstacle_detector::Obstacles Obstacle_;
     boost::shared_mutex mutexObjectCallback_;
 
+    bool imageStatus_ = false;
     std_msgs::Header imageHeader_;
     cv::Mat camImageCopy_, camImageTmp_;
-    boost::shared_mutex mutexImageCallback_;
+    bool droi_ready_ = false;
+
+    bool isNodeRunning_ = true;
+    bool controlDone_ = false;
 
     float CurVel_;
     float RefVel_;
-    boost::shared_mutex mutexVelCallback_;
-
-    bool imageStatus_ = false;
-    boost::shared_mutex mutexImageStatus_;
-
-    bool isNodeRunning_ = true;
-    boost::shared_mutex mutexNodeStatus_;
-	
-    //bool cam_failure_ = false;
-    boost::shared_mutex mutexCamStatus_;
-
-    bool controlDone_ = false;
      
-    bool isNodeRunning(void);
-    bool getImageStatus(void);
-	
+    bool getImageStatus(void);	
     void* lanedetectInThread();
     void* objectdetectInThread();
-    void* UDPsendInThread();
-    void* UDPrecvInThread();
+    void reply();
     void displayConsole();
+    void spin();
 };
 
 } /* namespace scale_truck_control */
