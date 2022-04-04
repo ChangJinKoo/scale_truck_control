@@ -98,6 +98,7 @@ void ScaleTruckController::init() {
   imageSubscriber_ = nodeHandle_.subscribe(imageTopicName, imageQueueSize, &ScaleTruckController::imageCallback, this);
   objectSubscriber_ = nodeHandle_.subscribe(objectTopicName, objectQueueSize, &ScaleTruckController::objectCallback, this);
   XavSubscriber_ = nodeHandle_.subscribe(XavSubTopicName, XavSubQueueSize, &ScaleTruckController::XavSubCallback, this);
+//  XavSubscriber_ = nodeHandle_.subscribe("/vel_msg", XavSubQueueSize, &ScaleTruckController::XavSubCallback, this);
   
   /***********************/
   /* Ros Topic Publisher */
