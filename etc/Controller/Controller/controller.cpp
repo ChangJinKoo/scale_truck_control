@@ -4,18 +4,13 @@
 
 Controller::Controller(QWidget *parent)
     : QMainWindow(parent)
-    , ui(new Ui::Controller), UDPsend()
+    , ui(new Ui::Controller), ZMQ_SOCKET_()
 {
     ui->setupUi(this);
     qthread = new qTh(this);
-    qRegisterMetaType<UDPsock::UDP_DATA>("UDPsock::UDP_DATA");
-    connect(qthread, SIGNAL(setValue(UDPsock::UDP_DATA)),this,SLOT(UDPrecvDATA(UDPsock::UDP_DATA)));
+    qRegisterMetaType<ZmqData>("ZmqData");
+    connect(qthread, SIGNAL(setValue(ZmqData)),this,SLOT(updateData(ZmqData)));
     qthread->start();
-
-    /* Setup Multicast UDP send&recv */
-    UDPsend.GROUP_ = "239.255.255.250";
-    UDPsend.PORT_ = 9307;
-    UDPsend.sendInit();
 
     int DefaultVel = 0; // cm/s
     MinVel = 0; // cm/s
@@ -24,8 +19,12 @@ Controller::Controller(QWidget *parent)
     MinDist = 10; // cm
     MaxDist = 200; // cm
 
-    FV1_cf = 0;
-    FV2_cf = 0;
+    FV1_alpha = 0;
+    FV1_beta = 0;
+    FV1_gamma = 0;
+    FV2_alpha = 0;
+    FV2_beta = 0;
+    FV2_gamma = 0;
 
     /* Setup Velocity Slider */
     ui->MVelSlider->setMaximum(MaxVel);
@@ -74,95 +73,107 @@ Controller::Controller(QWidget *parent)
     ui->FV1Box->setCurrentIndex(2);
     ui->FV2Box->setCurrentIndex(3);
 
-    UDPsendDATA(DefaultVel, DefaultDist, 0);
-    UDPsendDATA(DefaultVel, DefaultDist, 1);
-    UDPsendDATA(DefaultVel, DefaultDist, 2);
+    sendData(DefaultVel, DefaultDist, 0);
+    sendData(DefaultVel, DefaultDist, 1);
+    sendData(DefaultVel, DefaultDist, 2);
+
+    std::cout << "2" << std::endl;
 }
 
-void Controller::UDPsendDATA(int value_vel, int value_dist, int to)
+void Controller::sendData(int value_vel, int value_dist, int to)
 {
-    UDPsock::UDP_DATA udpData;
-    udpData.index = 307;
-    udpData.to = to;
-    udpData.cf = 0;
+    ZmqData zmq_data;
+    zmq_data.src_index = 20;
+    zmq_data.tar_index = to;
+    zmq_data.alpha = 0;
+    zmq_data.beta = 0;
+    zmq_data.gamma = 0;
+
     if(to > 0){
-        if(to == 1)
-            udpData.cf = FV1_cf;
-        if(to == 2)
-            udpData.cf = FV2_cf;
+        if(to == 1){
+            zmq_data.alpha = FV1_alpha;
+            zmq_data.beta = FV1_beta;
+            zmq_data.gamma = FV1_gamma;
+        }
+        if(to == 2){
+            zmq_data.alpha = FV2_alpha;
+            zmq_data.beta = FV2_beta;
+            zmq_data.gamma = FV2_gamma;
+        }
     }
 
     if(value_vel >= 10) {
-      udpData.target_vel = value_vel/100.0;
-      udpData.sync = 1;
+      zmq_data.tar_vel = value_vel/100.0;
     }
     else {
-      udpData.target_vel = 0;
-      udpData.sync = 0;
+      zmq_data.tar_vel = 0;
     }
-    udpData.current_vel = 0;
-    udpData.target_dist = value_dist/100.0;
-    udpData.current_dist = 0;
-    UDPsend.sendData(udpData);
+    zmq_data.tar_dist = value_dist/100.0;
+
+    ZMQ_SOCKET_.requestZMQ(&zmq_data);
 }
 
-void Controller::UDPrecvDATA(UDPsock::UDP_DATA value)
+void Controller::updateData(ZmqData zmq_data)
 {
-    UDPsock::UDP_DATA tmp;
+    ZmqData tmp;
     int vel, dist;
     float deci = 100;
-    tmp = value;
-    vel = tmp.current_vel*deci;
-    dist = tmp.current_dist*deci;
-    if(tmp.index == 0)
-    {
-        ui->LVCurVel->setText(QString::number(vel/deci));
-        if(vel > MaxVel) {
-            vel = MaxVel;
-        }
-        ui->LVVelBar->setValue(vel);
-        ui->LVCurDist->setText(QString::number(dist/deci));
-        if(dist > MaxDist) {
-            dist = MaxDist;
-        }
-        ui->LVDistBar->setValue(dist);
-        cv::Mat frame;
-        display_Map(value).copyTo(frame);
-        ui->LV_MAP->setPixmap(QPixmap::fromImage(QImage(frame.data, frame.cols, frame.rows, frame.step, QImage::Format_RGB888)));
-    } else if (value.index == 1)
-    {
+    tmp = zmq_data;
+    vel = tmp.cur_vel*deci;
+    dist = tmp.cur_dist*deci;
+    if(tmp.tar_index == 20){
+      if(tmp.src_index == 0)
+      {
+          ui->LVCurVel->setText(QString::number(vel/deci));
+          if(vel > MaxVel) {
+              vel = MaxVel;
+          }
+          ui->LVVelBar->setValue(vel);
+          ui->LVCurDist->setText(QString::number(dist/deci));
+          if(dist > MaxDist) {
+              dist = MaxDist;
+          }
+          ui->LVDistBar->setValue(dist);
+          cv::Mat frame;
+          display_Map(tmp).copyTo(frame);
+          ui->LV_MAP->setPixmap(QPixmap::fromImage(QImage(frame.data, frame.cols, frame.rows, frame.step, QImage::Format_RGB888)));
+      }
+      else if (tmp.src_index == 1)
+      {
         ui->FV1CurVel->setText(QString::number(vel/deci));
         if(vel > MaxVel) {
-            vel = MaxVel;
-        }
+          vel = MaxVel;
+      }
         ui->FV1VelBar->setValue(vel);
         ui->FV1CurDist->setText(QString::number(dist/deci));
         if(dist > MaxDist) {
-            dist = MaxDist;
+          dist = MaxDist;
         }
         ui->FV1DistBar->setValue(dist);
         cv::Mat frame;
-        display_Map(value).copyTo(frame);
+        display_Map(tmp).copyTo(frame);
         ui->FV1_MAP->setPixmap(QPixmap::fromImage(QImage(frame.data, frame.cols, frame.rows, frame.step, QImage::Format_RGB888)));
-    } else if (value.index == 2)
-    {
+      }
+      else if (tmp.src_index == 2)
+      {
         ui->FV2CurVel->setText(QString::number(vel/deci));
         if(vel > MaxVel) {
-            vel = MaxVel;
+          vel = MaxVel;
         }
         ui->FV2VelBar->setValue(vel);
         ui->FV2CurDist->setText(QString::number(dist/deci));
         if(dist > MaxDist) {
-            dist = MaxDist;
+          dist = MaxDist;
         }
         ui->FV2DistBar->setValue(dist);
         cv::Mat frame;
-        display_Map(value).copyTo(frame);
+        display_Map(tmp).copyTo(frame);
         ui->FV2_MAP->setPixmap(QPixmap::fromImage(QImage(frame.data, frame.cols, frame.rows, frame.step, QImage::Format_RGB888)));
+      }
     }
 }
 
-cv::Mat Controller::display_Map(UDPsock::UDP_DATA value)
+cv::Mat Controller::display_Map(ZmqData value)
 {
     int width = 350;
     int height = 350;
@@ -206,15 +217,15 @@ cv::Mat Controller::display_Map(UDPsock::UDP_DATA value)
     cv::polylines(map_frame, &left_points_point, &left_points_number, 1, false, cv::Scalar::all(255), 2);
     cv::polylines(map_frame, &center_points_point, &center_points_number, 1, false, cv::Scalar(200,255,200), 2);
 
-    float r = value.current_dist*100; // cm
-    float theta = value.current_angle*M_PI/180; // rad
+    float r = value.cur_dist*100; // cm
+    float theta = value.cur_angle*M_PI/180; // rad
     if(r < 250) {
       int X = r*sin(theta)+centerX;
       int Y = -r*cos(theta)+centerY;
       cv::circle(map_frame,cv::Point(X,Y), 5, cv::Scalar(50,50,255), -1);
     }
 
-    cv::line(map_frame, cv::Point(width/2 - check_dist,124 + value.roi_dist*100/490),cv::Point(width/2 + check_dist,124+value.roi_dist*100/490), cv::Scalar(255,100,100),3);
+    //cv::line(map_frame, cv::Point(width/2 - check_dist,124 + value.roi_dist*100/490),cv::Point(width/2 + check_dist,124+value.roi_dist*100/490), cv::Scalar(255,100,100),3);
 
     cv::Mat swap_frame;
     cv::cvtColor(map_frame, swap_frame, cv::COLOR_BGR2RGB);
@@ -248,7 +259,7 @@ void Controller::on_LVVelSlider_valueChanged(int value)
     int value_vel, value_dist;
     value_vel = value;
     value_dist = ui->LVDistSlider->value();
-    UDPsendDATA(value_vel, value_dist, 0);
+    sendData(value_vel, value_dist, 0);
 
     ui->LVTarVel->setText(QString::number(value/100.0)); // m/s
 }
@@ -258,7 +269,7 @@ void Controller::on_LVDistSlider_valueChanged(int value)
     int value_vel, value_dist;
     value_vel = ui->LVVelSlider->value();
     value_dist = value;
-    UDPsendDATA(value_vel, value_dist, 0);
+    sendData(value_vel, value_dist, 0);
 
     ui->LVTarDist->setText(QString::number(value/100.0)); // m
 }
@@ -268,7 +279,7 @@ void Controller::on_FV1VelSlider_valueChanged(int value)
     int value_vel, value_dist;
     value_vel = value;
     value_dist = ui->FV1DistSlider->value();
-    UDPsendDATA(value_vel, value_dist, 1);
+    sendData(value_vel, value_dist, 1);
 
     ui->FV1TarVel->setText(QString::number(value/100.0)); // m/s
 }
@@ -278,7 +289,7 @@ void Controller::on_FV1DistSlider_valueChanged(int value)
     int value_vel, value_dist;
     value_vel = ui->FV1VelSlider->value();
     value_dist = value;
-    UDPsendDATA(value_vel, value_dist, 1);
+    sendData(value_vel, value_dist, 1);
 
     ui->FV1TarDist->setText(QString::number(value/100.0)); // m
 }
@@ -288,7 +299,7 @@ void Controller::on_FV2VelSlider_valueChanged(int value)
     int value_vel, value_dist;
     value_vel = value;
     value_dist = ui->FV2DistSlider->value();
-    UDPsendDATA(value_vel, value_dist, 2);
+    sendData(value_vel, value_dist, 2);
 
     ui->FV2TarVel->setText(QString::number(value/100.0)); // m/s
 }
@@ -298,7 +309,7 @@ void Controller::on_FV2DistSlider_valueChanged(int value)
     int value_vel, value_dist;
     value_vel = ui->FV2VelSlider->value();
     value_dist = value;
-    UDPsendDATA(value_vel, value_dist, 2);
+    sendData(value_vel, value_dist, 2);
 
     ui->FV2TarDist->setText(QString::number(value/100.0)); // m
 }
@@ -312,9 +323,9 @@ void Controller::on_pushButton_clicked()
     ui->LVVelSlider->setValue(0);
     ui->FV1VelSlider->setValue(0);
     ui->FV2VelSlider->setValue(0);
-    UDPsendDATA(0, LV_dist, 0);
-    UDPsendDATA(0, FV1_dist, 1);
-    UDPsendDATA(0, FV2_dist, 2);
+    sendData(0, LV_dist, 0);
+    sendData(0, FV1_dist, 1);
+    sendData(0, FV2_dist, 2);
 }
 
 void Controller::on_LVBox_activated(int index)
@@ -403,25 +414,61 @@ void Controller::on_Send_clicked()
     ui->LVDistSlider->setValue(dist);
     ui->FV1DistSlider->setValue(dist);
     ui->FV2DistSlider->setValue(dist);
-    UDPsendDATA(ui->LVVelSlider->value(), ui->LVDistSlider->value(), 0);
-    //UDPsendDATA(ui->FV1VelSlider->value(), ui->FV1DistSlider->value(), 1);
-    //UDPsendDATA(ui->FV2VelSlider->value(), ui->FV2DistSlider->value(), 2);
+    sendData(ui->LVVelSlider->value(), ui->LVDistSlider->value(), 0);
+    //sendData(ui->FV1VelSlider->value(), ui->FV1DistSlider->value(), 1);
+    //sendData(ui->FV2VelSlider->value(), ui->FV2DistSlider->value(), 2);
 }
 
-
-void Controller::on_FV1_cf_toggled(bool checked)
+void Controller::on_FV1_alpha_toggled(bool checked)
 {
     int value_vel = ui->FV1VelSlider->value();
     int value_dist = ui->FV1DistSlider->value();
-    FV1_cf = checked;
-    UDPsendDATA(value_vel, value_dist, 1);
+    FV1_alpha = checked;
+    sendData(value_vel, value_dist, 1);
 }
 
 
-void Controller::on_FV2_cf_toggled(bool checked)
+void Controller::on_FV1_beta_toggled(bool checked)
+{
+    int value_vel = ui->FV1VelSlider->value();
+    int value_dist = ui->FV1DistSlider->value();
+    FV1_beta = checked;
+    sendData(value_vel, value_dist, 1);
+}
+
+
+void Controller::on_FV1_gamma_toggled(bool checked)
+{
+    int value_vel = ui->FV1VelSlider->value();
+    int value_dist = ui->FV1DistSlider->value();
+    FV1_gamma = checked;
+    sendData(value_vel, value_dist, 1);
+}
+
+
+void Controller::on_FV2_alpha_toggled(bool checked)
 {
     int value_vel = ui->FV2VelSlider->value();
     int value_dist = ui->FV2DistSlider->value();
-    FV2_cf = checked;
-    UDPsendDATA(value_vel, value_dist, 2);
+    FV2_alpha = checked;
+    sendData(value_vel, value_dist, 2);
 }
+
+
+void Controller::on_FV2_beta_toggled(bool checked)
+{
+    int value_vel = ui->FV2VelSlider->value();
+    int value_dist = ui->FV2DistSlider->value();
+    FV2_beta = checked;
+    sendData(value_vel, value_dist, 2);
+}
+
+
+void Controller::on_FV2_gamma_toggled(bool checked)
+{
+    int value_vel = ui->FV2VelSlider->value();
+    int value_dist = ui->FV2DistSlider->value();
+    FV2_gamma = checked;
+    sendData(value_vel, value_dist, 2);
+}
+

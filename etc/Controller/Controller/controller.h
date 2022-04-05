@@ -2,7 +2,6 @@
 #define CONTROLLER_H
 
 #include <QMainWindow>
-#include <sock_udp.hpp>
 #include <qTh.h>
 
 #include <opencv2/opencv.hpp>
@@ -19,14 +18,18 @@ class Controller : public QMainWindow
 public:
     Controller(QWidget *parent = nullptr);
     ~Controller();
-    void UDPsendDATA(int value_vel, int value_dist, int to);
+    void sendData(int value_vel, int value_dist, int to);
 
     int MinVel;
     int MaxVel;
     int MinDist;
     int MaxDist;
-    int FV1_cf;
-    int FV2_cf;
+    int FV1_alpha;
+    int FV1_beta;
+    int FV1_gamma;
+    int FV2_alpha;
+    int FV2_beta;
+    int FV2_gamma;
 
 private slots:
     void on_MVelSlider_valueChanged(int value);
@@ -47,8 +50,9 @@ private slots:
 
     void on_pushButton_clicked();
 
-    void UDPrecvDATA(UDPsock::UDP_DATA value);
-    cv::Mat display_Map(UDPsock::UDP_DATA value);
+    void updateData(ZmqData zmq_data);
+
+    cv::Mat display_Map(ZmqData zmq_data);
 
     void on_LVBox_activated(int index);
 
@@ -58,13 +62,21 @@ private slots:
 
     void on_Send_clicked();
 
-    void on_FV1_cf_toggled(bool checked);
+    void on_FV1_alpha_toggled(bool checked);
 
-    void on_FV2_cf_toggled(bool checked);
+    void on_FV1_beta_toggled(bool checked);
+
+    void on_FV1_gamma_toggled(bool checked);
+
+    void on_FV2_alpha_toggled(bool checked);
+
+    void on_FV2_beta_toggled(bool checked);
+
+    void on_FV2_gamma_toggled(bool checked);
 
 private:
     Ui::Controller *ui;
-    UDPsock::UDPsocket UDPsend;
+    ZMQ_CLASS ZMQ_SOCKET_;
     qTh* qthread;
 };
 #endif // CONTROLLER_H

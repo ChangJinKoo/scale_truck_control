@@ -16,6 +16,7 @@
 #include <QtWidgets/QComboBox>
 #include <QtWidgets/QGridLayout>
 #include <QtWidgets/QGroupBox>
+#include <QtWidgets/QHBoxLayout>
 #include <QtWidgets/QHeaderView>
 #include <QtWidgets/QLabel>
 #include <QtWidgets/QLineEdit>
@@ -36,25 +37,28 @@ public:
     QGridLayout *gridLayout_2;
     QGroupBox *FV1GBOX;
     QGridLayout *gridLayout_4;
-    QLabel *label_10;
-    QLabel *label_16;
-    QLabel *FV1CurDist;
-    QProgressBar *FV1DistBar;
     QLabel *label_24;
-    QLabel *label_9;
-    QSlider *FV1VelSlider;
     QLabel *label_3;
+    QLabel *label_33;
     QLabel *label_28;
+    QLabel *FV1CurDist;
+    QSlider *FV1DistSlider;
+    QLabel *label_16;
+    QProgressBar *FV1DistBar;
+    QLabel *label_23;
+    QLabel *label_8;
+    QLabel *label_10;
+    QLabel *label_9;
+    QLabel *FV1CurVel;
+    QSlider *FV1VelSlider;
+    QLabel *FV1TarDist;
+    QComboBox *FV1Box;
     QProgressBar *FV1VelBar;
     QLabel *FV1TarVel;
-    QComboBox *FV1Box;
-    QLabel *FV1CurVel;
-    QLabel *FV1TarDist;
-    QLabel *label_8;
-    QSlider *FV1DistSlider;
-    QLabel *label_33;
-    QLabel *label_23;
-    QPushButton *FV1_cf;
+    QHBoxLayout *FV1SensorFailure;
+    QPushButton *FV1_alpha;
+    QPushButton *FV1_beta;
+    QPushButton *FV1_gamma;
     QGroupBox *LVGBOX;
     QGridLayout *gridLayout_3;
     QLabel *LVTarVel;
@@ -75,42 +79,45 @@ public:
     QLabel *label_12;
     QLabel *label_22;
     QLabel *label_2;
-    QLabel *LV_MAP;
-    QGroupBox *FV2GBOX;
-    QGridLayout *gridLayout_5;
-    QSlider *FV2DistSlider;
-    QLabel *label_29;
-    QLabel *label_7;
-    QLabel *FV2TarVel;
-    QLabel *label_6;
-    QLabel *label_26;
-    QLabel *FV2CurVel;
-    QProgressBar *FV2VelBar;
-    QLabel *label_4;
-    QLabel *FV2CurDist;
-    QLabel *label_17;
-    QSlider *FV2VelSlider;
-    QComboBox *FV2Box;
-    QLabel *label_25;
-    QProgressBar *FV2DistBar;
-    QLabel *FV2TarDist;
-    QLabel *label_5;
-    QLabel *label_32;
-    QPushButton *FV2_cf;
-    QLabel *FV1_MAP;
-    QLabel *FV2_MAP;
     QGroupBox *MGBOX;
     QGridLayout *gridLayout;
-    QLabel *label_14;
-    QSlider *MDistSlider;
-    QLabel *label_40;
-    QSlider *MVelSlider;
-    QLabel *label_39;
-    QLabel *label;
     QLineEdit *MTarVel;
+    QLabel *label_39;
     QPushButton *pushButton;
+    QSlider *MVelSlider;
+    QSlider *MDistSlider;
+    QLabel *label;
     QLineEdit *MTarDist;
+    QLabel *label_40;
     QPushButton *Send;
+    QLabel *label_14;
+    QLabel *LV_MAP;
+    QLabel *FV1_MAP;
+    QLabel *FV2_MAP;
+    QGroupBox *FV2GBOX;
+    QGridLayout *gridLayout_5;
+    QLabel *FV2TarDist;
+    QLabel *label_17;
+    QLabel *label_5;
+    QLabel *label_29;
+    QSlider *FV2DistSlider;
+    QLabel *label_7;
+    QLabel *label_4;
+    QProgressBar *FV2DistBar;
+    QLabel *FV2TarVel;
+    QLabel *label_26;
+    QLabel *FV2CurVel;
+    QComboBox *FV2Box;
+    QSlider *FV2VelSlider;
+    QLabel *FV2CurDist;
+    QLabel *label_25;
+    QLabel *label_32;
+    QProgressBar *FV2VelBar;
+    QLabel *label_6;
+    QHBoxLayout *FV2SensorFailure;
+    QPushButton *FV2_alpha;
+    QPushButton *FV2_beta;
+    QPushButton *FV2_gamma;
     QMenuBar *menubar;
     QStatusBar *statusbar;
 
@@ -128,15 +135,25 @@ public:
         FV1GBOX->setObjectName(QStringLiteral("FV1GBOX"));
         gridLayout_4 = new QGridLayout(FV1GBOX);
         gridLayout_4->setObjectName(QStringLiteral("gridLayout_4"));
-        label_10 = new QLabel(FV1GBOX);
-        label_10->setObjectName(QStringLiteral("label_10"));
+        label_24 = new QLabel(FV1GBOX);
+        label_24->setObjectName(QStringLiteral("label_24"));
 
-        gridLayout_4->addWidget(label_10, 6, 0, 1, 1);
+        gridLayout_4->addWidget(label_24, 7, 3, 1, 1);
 
-        label_16 = new QLabel(FV1GBOX);
-        label_16->setObjectName(QStringLiteral("label_16"));
+        label_3 = new QLabel(FV1GBOX);
+        label_3->setObjectName(QStringLiteral("label_3"));
 
-        gridLayout_4->addWidget(label_16, 0, 0, 1, 1);
+        gridLayout_4->addWidget(label_3, 2, 0, 1, 1);
+
+        label_33 = new QLabel(FV1GBOX);
+        label_33->setObjectName(QStringLiteral("label_33"));
+
+        gridLayout_4->addWidget(label_33, 6, 3, 1, 1);
+
+        label_28 = new QLabel(FV1GBOX);
+        label_28->setObjectName(QStringLiteral("label_28"));
+
+        gridLayout_4->addWidget(label_28, 2, 3, 1, 1);
 
         FV1CurDist = new QLabel(FV1GBOX);
         FV1CurDist->setObjectName(QStringLiteral("FV1CurDist"));
@@ -147,64 +164,45 @@ public:
         FV1CurDist->setAlignment(Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter);
         FV1CurDist->setMargin(5);
 
-        gridLayout_4->addWidget(FV1CurDist, 6, 2, 1, 1);
+        gridLayout_4->addWidget(FV1CurDist, 7, 2, 1, 1);
+
+        FV1DistSlider = new QSlider(FV1GBOX);
+        FV1DistSlider->setObjectName(QStringLiteral("FV1DistSlider"));
+        FV1DistSlider->setOrientation(Qt::Horizontal);
+
+        gridLayout_4->addWidget(FV1DistSlider, 6, 1, 1, 1);
+
+        label_16 = new QLabel(FV1GBOX);
+        label_16->setObjectName(QStringLiteral("label_16"));
+
+        gridLayout_4->addWidget(label_16, 1, 0, 1, 1);
 
         FV1DistBar = new QProgressBar(FV1GBOX);
         FV1DistBar->setObjectName(QStringLiteral("FV1DistBar"));
         FV1DistBar->setValue(24);
         FV1DistBar->setTextVisible(false);
 
-        gridLayout_4->addWidget(FV1DistBar, 6, 1, 1, 1);
+        gridLayout_4->addWidget(FV1DistBar, 7, 1, 1, 1);
 
-        label_24 = new QLabel(FV1GBOX);
-        label_24->setObjectName(QStringLiteral("label_24"));
+        label_23 = new QLabel(FV1GBOX);
+        label_23->setObjectName(QStringLiteral("label_23"));
 
-        gridLayout_4->addWidget(label_24, 6, 3, 1, 1);
+        gridLayout_4->addWidget(label_23, 3, 3, 1, 1);
+
+        label_8 = new QLabel(FV1GBOX);
+        label_8->setObjectName(QStringLiteral("label_8"));
+
+        gridLayout_4->addWidget(label_8, 3, 0, 1, 1);
+
+        label_10 = new QLabel(FV1GBOX);
+        label_10->setObjectName(QStringLiteral("label_10"));
+
+        gridLayout_4->addWidget(label_10, 7, 0, 1, 1);
 
         label_9 = new QLabel(FV1GBOX);
         label_9->setObjectName(QStringLiteral("label_9"));
 
-        gridLayout_4->addWidget(label_9, 5, 0, 1, 1);
-
-        FV1VelSlider = new QSlider(FV1GBOX);
-        FV1VelSlider->setObjectName(QStringLiteral("FV1VelSlider"));
-        FV1VelSlider->setEnabled(false);
-        FV1VelSlider->setOrientation(Qt::Horizontal);
-
-        gridLayout_4->addWidget(FV1VelSlider, 1, 1, 1, 1);
-
-        label_3 = new QLabel(FV1GBOX);
-        label_3->setObjectName(QStringLiteral("label_3"));
-
-        gridLayout_4->addWidget(label_3, 1, 0, 1, 1);
-
-        label_28 = new QLabel(FV1GBOX);
-        label_28->setObjectName(QStringLiteral("label_28"));
-
-        gridLayout_4->addWidget(label_28, 1, 3, 1, 1);
-
-        FV1VelBar = new QProgressBar(FV1GBOX);
-        FV1VelBar->setObjectName(QStringLiteral("FV1VelBar"));
-        FV1VelBar->setValue(24);
-        FV1VelBar->setTextVisible(false);
-
-        gridLayout_4->addWidget(FV1VelBar, 2, 1, 1, 1);
-
-        FV1TarVel = new QLabel(FV1GBOX);
-        FV1TarVel->setObjectName(QStringLiteral("FV1TarVel"));
-        FV1TarVel->setMinimumSize(QSize(60, 0));
-        FV1TarVel->setSizeIncrement(QSize(0, 0));
-        FV1TarVel->setMidLineWidth(0);
-        FV1TarVel->setScaledContents(false);
-        FV1TarVel->setAlignment(Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter);
-        FV1TarVel->setMargin(5);
-
-        gridLayout_4->addWidget(FV1TarVel, 1, 2, 1, 1);
-
-        FV1Box = new QComboBox(FV1GBOX);
-        FV1Box->setObjectName(QStringLiteral("FV1Box"));
-
-        gridLayout_4->addWidget(FV1Box, 0, 1, 1, 1);
+        gridLayout_4->addWidget(label_9, 6, 0, 1, 1);
 
         FV1CurVel = new QLabel(FV1GBOX);
         FV1CurVel->setObjectName(QStringLiteral("FV1CurVel"));
@@ -215,7 +213,14 @@ public:
         FV1CurVel->setAlignment(Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter);
         FV1CurVel->setMargin(5);
 
-        gridLayout_4->addWidget(FV1CurVel, 2, 2, 1, 1);
+        gridLayout_4->addWidget(FV1CurVel, 3, 2, 1, 1);
+
+        FV1VelSlider = new QSlider(FV1GBOX);
+        FV1VelSlider->setObjectName(QStringLiteral("FV1VelSlider"));
+        FV1VelSlider->setEnabled(false);
+        FV1VelSlider->setOrientation(Qt::Horizontal);
+
+        gridLayout_4->addWidget(FV1VelSlider, 2, 1, 1, 1);
 
         FV1TarDist = new QLabel(FV1GBOX);
         FV1TarDist->setObjectName(QStringLiteral("FV1TarDist"));
@@ -226,37 +231,56 @@ public:
         FV1TarDist->setAlignment(Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter);
         FV1TarDist->setMargin(5);
 
-        gridLayout_4->addWidget(FV1TarDist, 5, 2, 1, 1);
+        gridLayout_4->addWidget(FV1TarDist, 6, 2, 1, 1);
 
-        label_8 = new QLabel(FV1GBOX);
-        label_8->setObjectName(QStringLiteral("label_8"));
+        FV1Box = new QComboBox(FV1GBOX);
+        FV1Box->setObjectName(QStringLiteral("FV1Box"));
 
-        gridLayout_4->addWidget(label_8, 2, 0, 1, 1);
+        gridLayout_4->addWidget(FV1Box, 1, 1, 1, 1);
 
-        FV1DistSlider = new QSlider(FV1GBOX);
-        FV1DistSlider->setObjectName(QStringLiteral("FV1DistSlider"));
-        FV1DistSlider->setOrientation(Qt::Horizontal);
+        FV1VelBar = new QProgressBar(FV1GBOX);
+        FV1VelBar->setObjectName(QStringLiteral("FV1VelBar"));
+        FV1VelBar->setValue(24);
+        FV1VelBar->setTextVisible(false);
 
-        gridLayout_4->addWidget(FV1DistSlider, 5, 1, 1, 1);
+        gridLayout_4->addWidget(FV1VelBar, 3, 1, 1, 1);
 
-        label_33 = new QLabel(FV1GBOX);
-        label_33->setObjectName(QStringLiteral("label_33"));
+        FV1TarVel = new QLabel(FV1GBOX);
+        FV1TarVel->setObjectName(QStringLiteral("FV1TarVel"));
+        FV1TarVel->setMinimumSize(QSize(60, 0));
+        FV1TarVel->setSizeIncrement(QSize(0, 0));
+        FV1TarVel->setMidLineWidth(0);
+        FV1TarVel->setScaledContents(false);
+        FV1TarVel->setAlignment(Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter);
+        FV1TarVel->setMargin(5);
 
-        gridLayout_4->addWidget(label_33, 5, 3, 1, 1);
+        gridLayout_4->addWidget(FV1TarVel, 2, 2, 1, 1);
 
-        label_23 = new QLabel(FV1GBOX);
-        label_23->setObjectName(QStringLiteral("label_23"));
+        FV1SensorFailure = new QHBoxLayout();
+        FV1SensorFailure->setObjectName(QStringLiteral("FV1SensorFailure"));
+        FV1_alpha = new QPushButton(FV1GBOX);
+        FV1_alpha->setObjectName(QStringLiteral("FV1_alpha"));
 
-        gridLayout_4->addWidget(label_23, 2, 3, 1, 1);
+        FV1SensorFailure->addWidget(FV1_alpha);
 
-        FV1_cf = new QPushButton(FV1GBOX);
-        FV1_cf->setObjectName(QStringLiteral("FV1_cf"));
-        FV1_cf->setCheckable(true);
+        FV1_beta = new QPushButton(FV1GBOX);
+        FV1_beta->setObjectName(QStringLiteral("FV1_beta"));
+        FV1_beta->setMinimumSize(QSize(92, 25));
+        FV1_beta->setMaximumSize(QSize(92, 25));
+        FV1_beta->setCheckable(true);
 
-        gridLayout_4->addWidget(FV1_cf, 0, 2, 1, 2);
+        FV1SensorFailure->addWidget(FV1_beta);
+
+        FV1_gamma = new QPushButton(FV1GBOX);
+        FV1_gamma->setObjectName(QStringLiteral("FV1_gamma"));
+
+        FV1SensorFailure->addWidget(FV1_gamma);
 
 
-        gridLayout_2->addWidget(FV1GBOX, 1, 1, 1, 1);
+        gridLayout_4->addLayout(FV1SensorFailure, 8, 0, 1, 4);
+
+
+        gridLayout_2->addWidget(FV1GBOX, 2, 1, 1, 1);
 
         LVGBOX = new QGroupBox(centralwidget);
         LVGBOX->setObjectName(QStringLiteral("LVGBOX"));
@@ -383,33 +407,149 @@ public:
         gridLayout_3->addWidget(label_2, 1, 0, 1, 1);
 
 
-        gridLayout_2->addWidget(LVGBOX, 1, 0, 1, 1);
+        gridLayout_2->addWidget(LVGBOX, 2, 0, 1, 1);
+
+        MGBOX = new QGroupBox(centralwidget);
+        MGBOX->setObjectName(QStringLiteral("MGBOX"));
+        gridLayout = new QGridLayout(MGBOX);
+        gridLayout->setObjectName(QStringLiteral("gridLayout"));
+        MTarVel = new QLineEdit(MGBOX);
+        MTarVel->setObjectName(QStringLiteral("MTarVel"));
+        QSizePolicy sizePolicy(QSizePolicy::Minimum, QSizePolicy::Fixed);
+        sizePolicy.setHorizontalStretch(0);
+        sizePolicy.setVerticalStretch(0);
+        sizePolicy.setHeightForWidth(MTarVel->sizePolicy().hasHeightForWidth());
+        MTarVel->setSizePolicy(sizePolicy);
+        MTarVel->setMaximumSize(QSize(50, 50));
+        MTarVel->setMaxLength(32767);
+        MTarVel->setAlignment(Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter);
+
+        gridLayout->addWidget(MTarVel, 1, 2, 1, 1);
+
+        label_39 = new QLabel(MGBOX);
+        label_39->setObjectName(QStringLiteral("label_39"));
+
+        gridLayout->addWidget(label_39, 1, 4, 1, 1);
+
+        pushButton = new QPushButton(MGBOX);
+        pushButton->setObjectName(QStringLiteral("pushButton"));
+
+        gridLayout->addWidget(pushButton, 0, 1, 1, 1);
+
+        MVelSlider = new QSlider(MGBOX);
+        MVelSlider->setObjectName(QStringLiteral("MVelSlider"));
+        MVelSlider->setOrientation(Qt::Horizontal);
+
+        gridLayout->addWidget(MVelSlider, 1, 1, 1, 1);
+
+        MDistSlider = new QSlider(MGBOX);
+        MDistSlider->setObjectName(QStringLiteral("MDistSlider"));
+        MDistSlider->setOrientation(Qt::Horizontal);
+
+        gridLayout->addWidget(MDistSlider, 2, 1, 1, 1);
+
+        label = new QLabel(MGBOX);
+        label->setObjectName(QStringLiteral("label"));
+
+        gridLayout->addWidget(label, 1, 0, 1, 1);
+
+        MTarDist = new QLineEdit(MGBOX);
+        MTarDist->setObjectName(QStringLiteral("MTarDist"));
+        sizePolicy.setHeightForWidth(MTarDist->sizePolicy().hasHeightForWidth());
+        MTarDist->setSizePolicy(sizePolicy);
+        MTarDist->setMaximumSize(QSize(50, 50));
+        MTarDist->setAlignment(Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter);
+
+        gridLayout->addWidget(MTarDist, 2, 2, 1, 1);
+
+        label_40 = new QLabel(MGBOX);
+        label_40->setObjectName(QStringLiteral("label_40"));
+
+        gridLayout->addWidget(label_40, 2, 4, 1, 1);
+
+        Send = new QPushButton(MGBOX);
+        Send->setObjectName(QStringLiteral("Send"));
+
+        gridLayout->addWidget(Send, 0, 2, 1, 1);
+
+        label_14 = new QLabel(MGBOX);
+        label_14->setObjectName(QStringLiteral("label_14"));
+
+        gridLayout->addWidget(label_14, 2, 0, 1, 1);
+
+
+        gridLayout_2->addWidget(MGBOX, 0, 0, 1, 4);
 
         LV_MAP = new QLabel(centralwidget);
         LV_MAP->setObjectName(QStringLiteral("LV_MAP"));
         LV_MAP->setAlignment(Qt::AlignCenter);
 
-        gridLayout_2->addWidget(LV_MAP, 2, 0, 1, 1);
+        gridLayout_2->addWidget(LV_MAP, 4, 0, 1, 1);
+
+        FV1_MAP = new QLabel(centralwidget);
+        FV1_MAP->setObjectName(QStringLiteral("FV1_MAP"));
+        FV1_MAP->setAlignment(Qt::AlignCenter);
+
+        gridLayout_2->addWidget(FV1_MAP, 4, 1, 1, 1);
+
+        FV2_MAP = new QLabel(centralwidget);
+        FV2_MAP->setObjectName(QStringLiteral("FV2_MAP"));
+        FV2_MAP->setAlignment(Qt::AlignCenter);
+
+        gridLayout_2->addWidget(FV2_MAP, 4, 3, 1, 1);
 
         FV2GBOX = new QGroupBox(centralwidget);
         FV2GBOX->setObjectName(QStringLiteral("FV2GBOX"));
         gridLayout_5 = new QGridLayout(FV2GBOX);
         gridLayout_5->setObjectName(QStringLiteral("gridLayout_5"));
-        FV2DistSlider = new QSlider(FV2GBOX);
-        FV2DistSlider->setObjectName(QStringLiteral("FV2DistSlider"));
-        FV2DistSlider->setOrientation(Qt::Horizontal);
+        FV2TarDist = new QLabel(FV2GBOX);
+        FV2TarDist->setObjectName(QStringLiteral("FV2TarDist"));
+        FV2TarDist->setMinimumSize(QSize(60, 0));
+        FV2TarDist->setSizeIncrement(QSize(0, 0));
+        FV2TarDist->setMidLineWidth(0);
+        FV2TarDist->setScaledContents(false);
+        FV2TarDist->setAlignment(Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter);
+        FV2TarDist->setMargin(5);
 
-        gridLayout_5->addWidget(FV2DistSlider, 3, 1, 1, 1);
+        gridLayout_5->addWidget(FV2TarDist, 3, 2, 1, 1);
+
+        label_17 = new QLabel(FV2GBOX);
+        label_17->setObjectName(QStringLiteral("label_17"));
+
+        gridLayout_5->addWidget(label_17, 0, 0, 1, 1);
+
+        label_5 = new QLabel(FV2GBOX);
+        label_5->setObjectName(QStringLiteral("label_5"));
+
+        gridLayout_5->addWidget(label_5, 2, 0, 1, 1);
 
         label_29 = new QLabel(FV2GBOX);
         label_29->setObjectName(QStringLiteral("label_29"));
 
         gridLayout_5->addWidget(label_29, 1, 3, 1, 1);
 
+        FV2DistSlider = new QSlider(FV2GBOX);
+        FV2DistSlider->setObjectName(QStringLiteral("FV2DistSlider"));
+        FV2DistSlider->setOrientation(Qt::Horizontal);
+
+        gridLayout_5->addWidget(FV2DistSlider, 3, 1, 1, 1);
+
         label_7 = new QLabel(FV2GBOX);
         label_7->setObjectName(QStringLiteral("label_7"));
 
         gridLayout_5->addWidget(label_7, 4, 0, 1, 1);
+
+        label_4 = new QLabel(FV2GBOX);
+        label_4->setObjectName(QStringLiteral("label_4"));
+
+        gridLayout_5->addWidget(label_4, 1, 0, 1, 1);
+
+        FV2DistBar = new QProgressBar(FV2GBOX);
+        FV2DistBar->setObjectName(QStringLiteral("FV2DistBar"));
+        FV2DistBar->setValue(24);
+        FV2DistBar->setTextVisible(false);
+
+        gridLayout_5->addWidget(FV2DistBar, 4, 1, 1, 1);
 
         FV2TarVel = new QLabel(FV2GBOX);
         FV2TarVel->setObjectName(QStringLiteral("FV2TarVel"));
@@ -421,11 +561,6 @@ public:
         FV2TarVel->setMargin(5);
 
         gridLayout_5->addWidget(FV2TarVel, 1, 2, 1, 1);
-
-        label_6 = new QLabel(FV2GBOX);
-        label_6->setObjectName(QStringLiteral("label_6"));
-
-        gridLayout_5->addWidget(label_6, 3, 0, 1, 1);
 
         label_26 = new QLabel(FV2GBOX);
         label_26->setObjectName(QStringLiteral("label_26"));
@@ -443,17 +578,17 @@ public:
 
         gridLayout_5->addWidget(FV2CurVel, 2, 2, 1, 1);
 
-        FV2VelBar = new QProgressBar(FV2GBOX);
-        FV2VelBar->setObjectName(QStringLiteral("FV2VelBar"));
-        FV2VelBar->setValue(24);
-        FV2VelBar->setTextVisible(false);
+        FV2Box = new QComboBox(FV2GBOX);
+        FV2Box->setObjectName(QStringLiteral("FV2Box"));
 
-        gridLayout_5->addWidget(FV2VelBar, 2, 1, 1, 1);
+        gridLayout_5->addWidget(FV2Box, 0, 1, 1, 1);
 
-        label_4 = new QLabel(FV2GBOX);
-        label_4->setObjectName(QStringLiteral("label_4"));
+        FV2VelSlider = new QSlider(FV2GBOX);
+        FV2VelSlider->setObjectName(QStringLiteral("FV2VelSlider"));
+        FV2VelSlider->setEnabled(false);
+        FV2VelSlider->setOrientation(Qt::Horizontal);
 
-        gridLayout_5->addWidget(label_4, 1, 0, 1, 1);
+        gridLayout_5->addWidget(FV2VelSlider, 1, 1, 1, 1);
 
         FV2CurDist = new QLabel(FV2GBOX);
         FV2CurDist->setObjectName(QStringLiteral("FV2CurDist"));
@@ -466,148 +601,52 @@ public:
 
         gridLayout_5->addWidget(FV2CurDist, 4, 2, 1, 1);
 
-        label_17 = new QLabel(FV2GBOX);
-        label_17->setObjectName(QStringLiteral("label_17"));
-
-        gridLayout_5->addWidget(label_17, 0, 0, 1, 1);
-
-        FV2VelSlider = new QSlider(FV2GBOX);
-        FV2VelSlider->setObjectName(QStringLiteral("FV2VelSlider"));
-        FV2VelSlider->setEnabled(false);
-        FV2VelSlider->setOrientation(Qt::Horizontal);
-
-        gridLayout_5->addWidget(FV2VelSlider, 1, 1, 1, 1);
-
-        FV2Box = new QComboBox(FV2GBOX);
-        FV2Box->setObjectName(QStringLiteral("FV2Box"));
-
-        gridLayout_5->addWidget(FV2Box, 0, 1, 1, 1);
-
         label_25 = new QLabel(FV2GBOX);
         label_25->setObjectName(QStringLiteral("label_25"));
 
         gridLayout_5->addWidget(label_25, 2, 3, 1, 1);
-
-        FV2DistBar = new QProgressBar(FV2GBOX);
-        FV2DistBar->setObjectName(QStringLiteral("FV2DistBar"));
-        FV2DistBar->setValue(24);
-        FV2DistBar->setTextVisible(false);
-
-        gridLayout_5->addWidget(FV2DistBar, 4, 1, 1, 1);
-
-        FV2TarDist = new QLabel(FV2GBOX);
-        FV2TarDist->setObjectName(QStringLiteral("FV2TarDist"));
-        FV2TarDist->setMinimumSize(QSize(60, 0));
-        FV2TarDist->setSizeIncrement(QSize(0, 0));
-        FV2TarDist->setMidLineWidth(0);
-        FV2TarDist->setScaledContents(false);
-        FV2TarDist->setAlignment(Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter);
-        FV2TarDist->setMargin(5);
-
-        gridLayout_5->addWidget(FV2TarDist, 3, 2, 1, 1);
-
-        label_5 = new QLabel(FV2GBOX);
-        label_5->setObjectName(QStringLiteral("label_5"));
-
-        gridLayout_5->addWidget(label_5, 2, 0, 1, 1);
 
         label_32 = new QLabel(FV2GBOX);
         label_32->setObjectName(QStringLiteral("label_32"));
 
         gridLayout_5->addWidget(label_32, 3, 3, 1, 1);
 
-        FV2_cf = new QPushButton(FV2GBOX);
-        FV2_cf->setObjectName(QStringLiteral("FV2_cf"));
-        FV2_cf->setCheckable(true);
-        FV2_cf->setChecked(false);
+        FV2VelBar = new QProgressBar(FV2GBOX);
+        FV2VelBar->setObjectName(QStringLiteral("FV2VelBar"));
+        FV2VelBar->setValue(24);
+        FV2VelBar->setTextVisible(false);
 
-        gridLayout_5->addWidget(FV2_cf, 0, 2, 1, 2);
+        gridLayout_5->addWidget(FV2VelBar, 2, 1, 1, 1);
 
+        label_6 = new QLabel(FV2GBOX);
+        label_6->setObjectName(QStringLiteral("label_6"));
 
-        gridLayout_2->addWidget(FV2GBOX, 1, 2, 1, 1);
+        gridLayout_5->addWidget(label_6, 3, 0, 1, 1);
 
-        FV1_MAP = new QLabel(centralwidget);
-        FV1_MAP->setObjectName(QStringLiteral("FV1_MAP"));
-        FV1_MAP->setAlignment(Qt::AlignCenter);
+        FV2SensorFailure = new QHBoxLayout();
+        FV2SensorFailure->setObjectName(QStringLiteral("FV2SensorFailure"));
+        FV2_alpha = new QPushButton(FV2GBOX);
+        FV2_alpha->setObjectName(QStringLiteral("FV2_alpha"));
 
-        gridLayout_2->addWidget(FV1_MAP, 2, 1, 1, 1);
+        FV2SensorFailure->addWidget(FV2_alpha);
 
-        FV2_MAP = new QLabel(centralwidget);
-        FV2_MAP->setObjectName(QStringLiteral("FV2_MAP"));
-        FV2_MAP->setAlignment(Qt::AlignCenter);
+        FV2_beta = new QPushButton(FV2GBOX);
+        FV2_beta->setObjectName(QStringLiteral("FV2_beta"));
+        FV2_beta->setCheckable(true);
+        FV2_beta->setChecked(false);
 
-        gridLayout_2->addWidget(FV2_MAP, 2, 2, 1, 1);
+        FV2SensorFailure->addWidget(FV2_beta);
 
-        MGBOX = new QGroupBox(centralwidget);
-        MGBOX->setObjectName(QStringLiteral("MGBOX"));
-        gridLayout = new QGridLayout(MGBOX);
-        gridLayout->setObjectName(QStringLiteral("gridLayout"));
-        label_14 = new QLabel(MGBOX);
-        label_14->setObjectName(QStringLiteral("label_14"));
+        FV2_gamma = new QPushButton(FV2GBOX);
+        FV2_gamma->setObjectName(QStringLiteral("FV2_gamma"));
 
-        gridLayout->addWidget(label_14, 2, 0, 1, 1);
-
-        MDistSlider = new QSlider(MGBOX);
-        MDistSlider->setObjectName(QStringLiteral("MDistSlider"));
-        MDistSlider->setOrientation(Qt::Horizontal);
-
-        gridLayout->addWidget(MDistSlider, 2, 1, 1, 1);
-
-        label_40 = new QLabel(MGBOX);
-        label_40->setObjectName(QStringLiteral("label_40"));
-
-        gridLayout->addWidget(label_40, 2, 4, 1, 1);
-
-        MVelSlider = new QSlider(MGBOX);
-        MVelSlider->setObjectName(QStringLiteral("MVelSlider"));
-        MVelSlider->setOrientation(Qt::Horizontal);
-
-        gridLayout->addWidget(MVelSlider, 1, 1, 1, 1);
-
-        label_39 = new QLabel(MGBOX);
-        label_39->setObjectName(QStringLiteral("label_39"));
-
-        gridLayout->addWidget(label_39, 1, 4, 1, 1);
-
-        label = new QLabel(MGBOX);
-        label->setObjectName(QStringLiteral("label"));
-
-        gridLayout->addWidget(label, 1, 0, 1, 1);
-
-        MTarVel = new QLineEdit(MGBOX);
-        MTarVel->setObjectName(QStringLiteral("MTarVel"));
-        QSizePolicy sizePolicy(QSizePolicy::Minimum, QSizePolicy::Fixed);
-        sizePolicy.setHorizontalStretch(0);
-        sizePolicy.setVerticalStretch(0);
-        sizePolicy.setHeightForWidth(MTarVel->sizePolicy().hasHeightForWidth());
-        MTarVel->setSizePolicy(sizePolicy);
-        MTarVel->setMaximumSize(QSize(50, 50));
-        MTarVel->setMaxLength(32767);
-        MTarVel->setAlignment(Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter);
-
-        gridLayout->addWidget(MTarVel, 1, 2, 1, 1);
-
-        pushButton = new QPushButton(MGBOX);
-        pushButton->setObjectName(QStringLiteral("pushButton"));
-
-        gridLayout->addWidget(pushButton, 0, 1, 1, 1);
-
-        MTarDist = new QLineEdit(MGBOX);
-        MTarDist->setObjectName(QStringLiteral("MTarDist"));
-        sizePolicy.setHeightForWidth(MTarDist->sizePolicy().hasHeightForWidth());
-        MTarDist->setSizePolicy(sizePolicy);
-        MTarDist->setMaximumSize(QSize(50, 50));
-        MTarDist->setAlignment(Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter);
-
-        gridLayout->addWidget(MTarDist, 2, 2, 1, 1);
-
-        Send = new QPushButton(MGBOX);
-        Send->setObjectName(QStringLiteral("Send"));
-
-        gridLayout->addWidget(Send, 0, 2, 1, 1);
+        FV2SensorFailure->addWidget(FV2_gamma);
 
 
-        gridLayout_2->addWidget(MGBOX, 0, 0, 1, 3);
+        gridLayout_5->addLayout(FV2SensorFailure, 5, 0, 1, 4);
+
+
+        gridLayout_2->addWidget(FV2GBOX, 2, 3, 1, 1);
 
         Controller->setCentralWidget(centralwidget);
         menubar = new QMenuBar(Controller);
@@ -632,14 +671,18 @@ public:
     {
         Controller->setWindowTitle(QApplication::translate("Controller", "Controller", Q_NULLPTR));
         FV1GBOX->setTitle(QApplication::translate("Controller", "FV1", Q_NULLPTR));
-        label_10->setText(QApplication::translate("Controller", "Current Distance", Q_NULLPTR));
-        label_16->setText(QApplication::translate("Controller", "Mode", Q_NULLPTR));
-        FV1CurDist->setText(QApplication::translate("Controller", "0", Q_NULLPTR));
         label_24->setText(QApplication::translate("Controller", "m", Q_NULLPTR));
-        label_9->setText(QApplication::translate("Controller", "Target Distance", Q_NULLPTR));
         label_3->setText(QApplication::translate("Controller", "Target Velocity", Q_NULLPTR));
+        label_33->setText(QApplication::translate("Controller", "m", Q_NULLPTR));
         label_28->setText(QApplication::translate("Controller", "m/s", Q_NULLPTR));
-        FV1TarVel->setText(QApplication::translate("Controller", "0", Q_NULLPTR));
+        FV1CurDist->setText(QApplication::translate("Controller", "0", Q_NULLPTR));
+        label_16->setText(QApplication::translate("Controller", "Mode", Q_NULLPTR));
+        label_23->setText(QApplication::translate("Controller", "m/s", Q_NULLPTR));
+        label_8->setText(QApplication::translate("Controller", "Current Velocity", Q_NULLPTR));
+        label_10->setText(QApplication::translate("Controller", "Current Distance", Q_NULLPTR));
+        label_9->setText(QApplication::translate("Controller", "Target Distance", Q_NULLPTR));
+        FV1CurVel->setText(QApplication::translate("Controller", "0", Q_NULLPTR));
+        FV1TarDist->setText(QApplication::translate("Controller", "0", Q_NULLPTR));
         FV1Box->clear();
         FV1Box->insertItems(0, QStringList()
          << QApplication::translate("Controller", "None", Q_NULLPTR)
@@ -647,12 +690,10 @@ public:
          << QApplication::translate("Controller", "FV1", Q_NULLPTR)
          << QApplication::translate("Controller", "FV2", Q_NULLPTR)
         );
-        FV1CurVel->setText(QApplication::translate("Controller", "0", Q_NULLPTR));
-        FV1TarDist->setText(QApplication::translate("Controller", "0", Q_NULLPTR));
-        label_8->setText(QApplication::translate("Controller", "Current Velocity", Q_NULLPTR));
-        label_33->setText(QApplication::translate("Controller", "m", Q_NULLPTR));
-        label_23->setText(QApplication::translate("Controller", "m/s", Q_NULLPTR));
-        FV1_cf->setText(QApplication::translate("Controller", "Camera Failure", Q_NULLPTR));
+        FV1TarVel->setText(QApplication::translate("Controller", "0", Q_NULLPTR));
+        FV1_alpha->setText(QApplication::translate("Controller", "Vel Failure", Q_NULLPTR));
+        FV1_beta->setText(QApplication::translate("Controller", "Cam Failure", Q_NULLPTR));
+        FV1_gamma->setText(QApplication::translate("Controller", "Lidar Failure", Q_NULLPTR));
         LVGBOX->setTitle(QApplication::translate("Controller", "LV", Q_NULLPTR));
         LVTarVel->setText(QApplication::translate("Controller", "0", Q_NULLPTR));
         label_11->setText(QApplication::translate("Controller", "Current Distance", Q_NULLPTR));
@@ -674,17 +715,28 @@ public:
         label_12->setText(QApplication::translate("Controller", "Current Velocity", Q_NULLPTR));
         label_22->setText(QApplication::translate("Controller", "m", Q_NULLPTR));
         label_2->setText(QApplication::translate("Controller", "Target Velocity", Q_NULLPTR));
+        MGBOX->setTitle(QApplication::translate("Controller", "Master", Q_NULLPTR));
+        MTarVel->setText(QApplication::translate("Controller", "0", Q_NULLPTR));
+        label_39->setText(QApplication::translate("Controller", "m/s", Q_NULLPTR));
+        pushButton->setText(QApplication::translate("Controller", "Emercency Stop", Q_NULLPTR));
+        label->setText(QApplication::translate("Controller", "Target Velocity", Q_NULLPTR));
+        MTarDist->setText(QApplication::translate("Controller", "0", Q_NULLPTR));
+        label_40->setText(QApplication::translate("Controller", "m", Q_NULLPTR));
+        Send->setText(QApplication::translate("Controller", "send", Q_NULLPTR));
+        label_14->setText(QApplication::translate("Controller", "Target Distance", Q_NULLPTR));
         LV_MAP->setText(QApplication::translate("Controller", "LV", Q_NULLPTR));
+        FV1_MAP->setText(QApplication::translate("Controller", "FV1", Q_NULLPTR));
+        FV2_MAP->setText(QApplication::translate("Controller", "FV2", Q_NULLPTR));
         FV2GBOX->setTitle(QApplication::translate("Controller", "FV2", Q_NULLPTR));
+        FV2TarDist->setText(QApplication::translate("Controller", "0", Q_NULLPTR));
+        label_17->setText(QApplication::translate("Controller", "Mode", Q_NULLPTR));
+        label_5->setText(QApplication::translate("Controller", "Current Velocity", Q_NULLPTR));
         label_29->setText(QApplication::translate("Controller", "m/s", Q_NULLPTR));
         label_7->setText(QApplication::translate("Controller", "Current Distance", Q_NULLPTR));
+        label_4->setText(QApplication::translate("Controller", "Target Velocity", Q_NULLPTR));
         FV2TarVel->setText(QApplication::translate("Controller", "0", Q_NULLPTR));
-        label_6->setText(QApplication::translate("Controller", "Target Distance", Q_NULLPTR));
         label_26->setText(QApplication::translate("Controller", "m", Q_NULLPTR));
         FV2CurVel->setText(QApplication::translate("Controller", "0", Q_NULLPTR));
-        label_4->setText(QApplication::translate("Controller", "Target Velocity", Q_NULLPTR));
-        FV2CurDist->setText(QApplication::translate("Controller", "0", Q_NULLPTR));
-        label_17->setText(QApplication::translate("Controller", "Mode", Q_NULLPTR));
         FV2Box->clear();
         FV2Box->insertItems(0, QStringList()
          << QApplication::translate("Controller", "None", Q_NULLPTR)
@@ -692,22 +744,13 @@ public:
          << QApplication::translate("Controller", "FV1", Q_NULLPTR)
          << QApplication::translate("Controller", "FV2", Q_NULLPTR)
         );
+        FV2CurDist->setText(QApplication::translate("Controller", "0", Q_NULLPTR));
         label_25->setText(QApplication::translate("Controller", "m/s", Q_NULLPTR));
-        FV2TarDist->setText(QApplication::translate("Controller", "0", Q_NULLPTR));
-        label_5->setText(QApplication::translate("Controller", "Current Velocity", Q_NULLPTR));
         label_32->setText(QApplication::translate("Controller", "m", Q_NULLPTR));
-        FV2_cf->setText(QApplication::translate("Controller", "Camera Failure", Q_NULLPTR));
-        FV1_MAP->setText(QApplication::translate("Controller", "FV1", Q_NULLPTR));
-        FV2_MAP->setText(QApplication::translate("Controller", "FV2", Q_NULLPTR));
-        MGBOX->setTitle(QApplication::translate("Controller", "Master", Q_NULLPTR));
-        label_14->setText(QApplication::translate("Controller", "Target Distance", Q_NULLPTR));
-        label_40->setText(QApplication::translate("Controller", "m", Q_NULLPTR));
-        label_39->setText(QApplication::translate("Controller", "m/s", Q_NULLPTR));
-        label->setText(QApplication::translate("Controller", "Target Velocity", Q_NULLPTR));
-        MTarVel->setText(QApplication::translate("Controller", "0", Q_NULLPTR));
-        pushButton->setText(QApplication::translate("Controller", "Emercency Stop", Q_NULLPTR));
-        MTarDist->setText(QApplication::translate("Controller", "0", Q_NULLPTR));
-        Send->setText(QApplication::translate("Controller", "send", Q_NULLPTR));
+        label_6->setText(QApplication::translate("Controller", "Target Distance", Q_NULLPTR));
+        FV2_alpha->setText(QApplication::translate("Controller", "Vel Failure", Q_NULLPTR));
+        FV2_beta->setText(QApplication::translate("Controller", "Cam Failure", Q_NULLPTR));
+        FV2_gamma->setText(QApplication::translate("Controller", "Lidar Failure", Q_NULLPTR));
     } // retranslateUi
 
 };

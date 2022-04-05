@@ -17,7 +17,7 @@
 
 #include <zmq.hpp>
 
-#define DATASIZE 50
+#define DATASIZE 80
 
 typedef struct LaneCoef{
 	float a = 0.0f;
@@ -37,6 +37,7 @@ typedef struct ZmqData{
 
 	float cur_vel = 0.0f;
 	float cur_dist = 0.0f;
+	float cur_angle = 0.0f;
 	float tar_vel = 0.0f;
 	float tar_dist = 0.0f;
 	float est_vel = 0.0f;  //estimated velocity
@@ -46,7 +47,7 @@ typedef struct ZmqData{
 	uint8_t lrc_mode = 0;
 	uint8_t crc_mode = 0;
 
-	LaneCoef lc;
+	LaneCoef coef[3];
 }ZmqData;
 
 class ZMQ_CLASS{

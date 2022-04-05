@@ -2,7 +2,7 @@
 #define QTH_H
 
 #include <QThread>
-#include <sock_udp.hpp>
+#include <zmq_class.h>
 
 class qTh : public QThread
 {
@@ -12,9 +12,8 @@ public:
     int recvInit();
 private:
     void run();
-    UDPsock::UDPsocket UDPrecv;
 signals:
-    void setValue(UDPsock::UDP_DATA tmp);
+    void setValue(ZmqData tmp);
 };
 
 

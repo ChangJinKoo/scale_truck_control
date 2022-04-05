@@ -58,7 +58,6 @@ class ScaleTruckController {
 
     ros::NodeHandle nodeHandle_;
     ros::Publisher XavPublisher_;
-    ros::Publisher LanecoefPublisher_;
     ros::Subscriber imageSubscriber_;
     ros::Subscriber objectSubscriber_;
     ros::Subscriber XavSubscriber_;
@@ -107,6 +106,7 @@ class ScaleTruckController {
     std::mutex vel_mutex_;
     std::mutex dist_mutex_;
     std::mutex rep_mutex_;
+    std::mutex coef_mutex_;
 
     std::condition_variable cv_;
 

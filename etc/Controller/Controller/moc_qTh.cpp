@@ -6,7 +6,7 @@
 ** WARNING! All changes made in this file will be lost!
 *****************************************************************************/
 
-#include "../Controller/qTh.h"
+#include "qTh.h"
 #include <QtCore/qbytearray.h>
 #include <QtCore/qmetatype.h>
 #if !defined(Q_MOC_OUTPUT_REVISION)
@@ -22,7 +22,7 @@ QT_WARNING_PUSH
 QT_WARNING_DISABLE_DEPRECATED
 struct qt_meta_stringdata_qTh_t {
     QByteArrayData data[5];
-    char stringdata0[36];
+    char stringdata0[26];
 };
 #define QT_MOC_LITERAL(idx, ofs, len) \
     Q_STATIC_BYTE_ARRAY_DATA_HEADER_INITIALIZER_WITH_OFFSET(len, \
@@ -34,11 +34,11 @@ static const qt_meta_stringdata_qTh_t qt_meta_stringdata_qTh = {
 QT_MOC_LITERAL(0, 0, 3), // "qTh"
 QT_MOC_LITERAL(1, 4, 8), // "setValue"
 QT_MOC_LITERAL(2, 13, 0), // ""
-QT_MOC_LITERAL(3, 14, 17), // "UDPsock::UDP_DATA"
-QT_MOC_LITERAL(4, 32, 3) // "tmp"
+QT_MOC_LITERAL(3, 14, 7), // "ZmqData"
+QT_MOC_LITERAL(4, 22, 3) // "tmp"
 
     },
-    "qTh\0setValue\0\0UDPsock::UDP_DATA\0tmp"
+    "qTh\0setValue\0\0ZmqData\0tmp"
 };
 #undef QT_MOC_LITERAL
 
@@ -70,13 +70,13 @@ void qTh::qt_static_metacall(QObject *_o, QMetaObject::Call _c, int _id, void **
         qTh *_t = static_cast<qTh *>(_o);
         Q_UNUSED(_t)
         switch (_id) {
-        case 0: _t->setValue((*reinterpret_cast< UDPsock::UDP_DATA(*)>(_a[1]))); break;
+        case 0: _t->setValue((*reinterpret_cast< ZmqData(*)>(_a[1]))); break;
         default: ;
         }
     } else if (_c == QMetaObject::IndexOfMethod) {
         int *result = reinterpret_cast<int *>(_a[0]);
         {
-            typedef void (qTh::*_t)(UDPsock::UDP_DATA );
+            typedef void (qTh::*_t)(ZmqData );
             if (*reinterpret_cast<_t *>(_a[1]) == static_cast<_t>(&qTh::setValue)) {
                 *result = 0;
                 return;
@@ -122,7 +122,7 @@ int qTh::qt_metacall(QMetaObject::Call _c, int _id, void **_a)
 }
 
 // SIGNAL 0
-void qTh::setValue(UDPsock::UDP_DATA _t1)
+void qTh::setValue(ZmqData _t1)
 {
     void *_a[] = { nullptr, const_cast<void*>(reinterpret_cast<const void*>(&_t1)) };
     QMetaObject::activate(this, &staticMetaObject, 0, _a);

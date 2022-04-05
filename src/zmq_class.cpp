@@ -105,7 +105,7 @@ bool ZMQ_CLASS::readParameters()
   nodeHandle_.param("tcp_ip/ip_addr_server",tcp_ip_server,std::string("tcp://*"));
   nodeHandle_.param("tcp_ip/ip_addr_client",tcp_ip_client,std::string("tcp://192.168.0.18"));
   nodeHandle_.param("tcp_ip/req_port",tcpreq_port,std::string("4444"));
-  nodeHandle_.param("tcp_ip/rep_port",tcpreq_port,std::string("4444"));
+  nodeHandle_.param("tcp_ip/rep_port",tcpreq_port,std::string("7777"));
 
   nodeHandle_.param("tcp_ip/zipcode",zipcode_,std::string("00000"));
 
@@ -117,7 +117,7 @@ bool ZMQ_CLASS::readParameters()
   nodeHandle_.param("socket/rad_flag",rad_flag_,true);
   nodeHandle_.param("socket/dsh_flag",dsh_flag_,false);
   nodeHandle_.param("socket/req_flag",req_flag_,true);
-  nodeHandle_.param("socket/rep_flag",rep_flag_,false);
+  nodeHandle_.param("socket/rep_flag",rep_flag_,true);
   nodeHandle_.param("socket/sub_flag",sub_flag_,false);
   nodeHandle_.param("socket/pub_flag",pub_flag_,false);
 

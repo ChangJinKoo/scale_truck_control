@@ -160,6 +160,7 @@ void CentralRC::printStatus(){
   printf("LV current distance:\t%.3f\n", lv_data_->cur_dist);
   printf("FV1 current distance:\t%.3f\n", fv1_data_->cur_dist);
   printf("FV2 current distance:\t%.3f\n", fv2_data_->cur_dist);
+  printf("Size:\t%zu\n", sizeof(*lv_data_));
 }
 
 void CentralRC::updateData(ZmqData* zmq_data){

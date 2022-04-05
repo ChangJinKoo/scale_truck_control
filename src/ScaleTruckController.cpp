@@ -102,7 +102,6 @@ void ScaleTruckController::init() {
   /* Ros Topic Publisher */
   /***********************/
   XavPublisher_ = nodeHandle_.advertise<scale_truck_control::xav2lrc>(XavPubTopicName, XavPubQueueSize);
-  LanecoefPublisher_ = nodeHandle_.advertise<scale_truck_control::lane_coef>(LanecoefTopicName, LanecoefQueueSize);
 
   /**********************/
   /* Safety Start Setup */
@@ -159,7 +158,7 @@ void* ScaleTruckController::lanedetectInThread() {
     laneDetector_.get_steer_coef(CurVel_);
   }
   {
-    std::unique_lock<std::mutex> lock(droi_mutex_);
+    std::unique_lock<std::mutex> lock(droi_mutex_, coef_mutex_);
     cv_.wait(lock, [this] {return droi_ready_; });
 
     AngleDegree = laneDetector_.display_img(camImageTmp_, waitKeyDelay_, viewImage_);
@@ -169,8 +168,10 @@ void* ScaleTruckController::lanedetectInThread() {
     std::scoped_lock lock(dist_mutex_);
     AngleDegree_ = -distAngle_;
   }
-  else
+  else{
+    std::scoped_lock lock(dist_mutex_);
     AngleDegree_ = AngleDegree;
+  }
 }
 
 void* ScaleTruckController::objectdetectInThread() {
@@ -255,6 +256,19 @@ void ScaleTruckController::reply(ZmqData* zmq_data){
         std::scoped_lock lock(vel_mutex_, dist_mutex_);
 	zmq_data->cur_vel = CurVel_;
 	zmq_data->cur_dist = distance_;
+	zmq_data->cur_angle = AngleDegree_;
+      }
+      {
+        std::scoped_lock lock(coef_mutex_);
+        udpData.coef[0].a = laneDetector_.lane_coef_.left.a;
+        udpData.coef[0].b = laneDetector_.lane_coef_.left.b;
+        udpData.coef[0].c = laneDetector_.lane_coef_.left.c;
+        udpData.coef[1].a = laneDetector_.lane_coef_.right.a;
+        udpData.coef[1].b = laneDetector_.lane_coef_.right.b;
+        udpData.coef[1].c = laneDetector_.lane_coef_.right.c;
+        udpData.coef[2].a = laneDetector_.lane_coef_.center.a;
+        udpData.coef[2].b = laneDetector_.lane_coef_.center.b;
+        udpData.coef[2].c = laneDetector_.lane_coef_.center.c;
       }
       ZMQ_SOCKET_.replyZMQ(zmq_data);
     }
@@ -329,10 +343,10 @@ void ScaleTruckController::spin() {
     if(enableConsoleOutput_)
       displayConsole();
 
-    msg.steer_angle = AngleDegree_;
     msg.tar_vel = ResultVel_;  //Xavier to LRC and LRC to OpenCR
     {
       std::scoped_lock lock(dist_mutex_);
+      msg.steer_angle = AngleDegree_;
       msg.cur_dist = distance_;
     }
     {
@@ -343,7 +357,6 @@ void ScaleTruckController::spin() {
     }
 
     lane = laneDetector_.lane_coef_;
-    LanecoefPublisher_.publish(lane);
     XavPublisher_.publish(msg);
 
     if(!isNodeRunning_) {

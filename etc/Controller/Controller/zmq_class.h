@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
+#include <sys/time.h>
 
 #include <arpa/inet.h>
 #include <ifaddrs.h>
@@ -16,6 +17,8 @@
 
 #include <zmq.hpp>
 
+#define DATASIZE 80
+
 typedef struct LaneCoef{
 	float a = 0.0f;
 	float b = 0.0f;
@@ -23,9 +26,10 @@ typedef struct LaneCoef{
 }LaneCoef;
 
 typedef struct ZmqData{
-	//Control center = 10, CRC = 11, LRC = 22, LV = 0, FV1 = 1, FV2 = 2
-	uint8_t src_num = 255;
-	
+	//Control center = 20, CRC = 30, LRC = 10, 11, 12, LV = 0, FV1 = 1, FV2 = 2
+	uint8_t src_index = 255;
+	uint8_t tar_index = 255;
+
 	//sensor failure
 	bool alpha = false;
 	bool beta = false;
@@ -33,47 +37,40 @@ typedef struct ZmqData{
 
 	float cur_vel = 0.0f;
 	float cur_dist = 0.0f;
+    float cur_angle = 0.0f;
 	float tar_vel = 0.0f;
 	float tar_dist = 0.0f;
 	float est_vel = 0.0f;  //estimated velocity
+	float est_dist = 0.0f;
 
 	//TM = 0, RCM = 1, GDM = 2
 	uint8_t lrc_mode = 0;
 	uint8_t crc_mode = 0;
 
-	LaneCoef lc;
+    LaneCoef coef[3];
 }ZmqData;
 
 class ZMQ_CLASS{
 public:
   ZMQ_CLASS();
   ~ZMQ_CLASS();
-  
+
+  void* requestZMQ(ZmqData *send_data);
   std::string getIPAddress();
 
   std::string zipcode_;
-  std::string rad_group_, dsh_group_;
-  std::string udp_ip_, tcpsub_ip_, tcppub_ip_, tcpreq_ip_, tcprep_ip_;
+  std::string tcpreq_ip0_, tcpreq_ip1_, tcpreq_ip2_;
+
 
   bool controlDone_;
-  std::string send_req_, recv_req_, send_rep_, recv_rep_, recv_sub_, send_pub_, send_rad_, recv_dsh_;
-  ZmqData* zmq_data_;
+  bool req_flag0_, req_flag1_, req_flag2_;
+  ZmqData *req_recv0_, *req_recv1_, *req_recv2_;
   
 private:
   void init();
   bool readParameters();
-  void* subscribeZMQ();
-  void* publishZMQ();
-  void* requestZMQ();
-  void* replyZMQ();
-  void* radioZMQ();
-  void* dishZMQ();
-  void* clientZMQ();
-  void* serverZMQ();
   
   std::string interface_name_;
-  std::thread subThread_, pubThread_, reqThread_, repThread_, radThread_, dshThread_;
+  zmq::socket_t req_socket0_, req_socket1_, req_socket2_;
   zmq::context_t context_;
-  zmq::socket_t sub_socket_, pub_socket_, req_socket_, rep_socket_, rad_socket_, dsh_socket_;
-  bool sub_flag_, pub_flag_, rad_flag_, dsh_flag_, req_flag_, rep_flag_;
 };

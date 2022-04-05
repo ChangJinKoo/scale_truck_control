@@ -12,12 +12,12 @@ SOURCES += \
     main.cpp \
     controller.cpp \
     qTh.cpp \
-    sock_udp.cpp
+    zmq_class.cpp
 
 HEADERS += \
     controller.h \
     qTh.h \
-    sock_udp.hpp
+    zmq_class.h
 
 FORMS += \
     controller.ui
@@ -29,7 +29,8 @@ CONFIG += embed_translations
 
 INCLUDEPATH += /usr/local/include/opencv4
 
-LIBS += `pkg-config --libs opencv4`
+LIBS += `pkg-config --libs opencv4` \
+        -lzmq
 
 # Default rules for deployment.
 qnx: target.path = /tmp/$${TARGET}/bin
