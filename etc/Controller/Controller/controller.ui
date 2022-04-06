@@ -282,22 +282,13 @@
            <property name="text">
             <string>Vel Failure</string>
            </property>
+           <property name="checkable">
+            <bool>true</bool>
+           </property>
           </widget>
          </item>
          <item>
           <widget class="QPushButton" name="FV1_beta">
-           <property name="minimumSize">
-            <size>
-             <width>92</width>
-             <height>25</height>
-            </size>
-           </property>
-           <property name="maximumSize">
-            <size>
-             <width>92</width>
-             <height>25</height>
-            </size>
-           </property>
            <property name="text">
             <string>Cam Failure</string>
            </property>
@@ -310,6 +301,9 @@
           <widget class="QPushButton" name="FV1_gamma">
            <property name="text">
             <string>Lidar Failure</string>
+           </property>
+           <property name="checkable">
+            <bool>true</bool>
            </property>
           </widget>
          </item>
@@ -981,6 +975,9 @@
            <property name="text">
             <string>Vel Failure</string>
            </property>
+           <property name="checkable">
+            <bool>true</bool>
+           </property>
           </widget>
          </item>
          <item>
@@ -1000,6 +997,9 @@
           <widget class="QPushButton" name="FV2_gamma">
            <property name="text">
             <string>Lidar Failure</string>
+           </property>
+           <property name="checkable">
+            <bool>true</bool>
            </property>
           </widget>
          </item>

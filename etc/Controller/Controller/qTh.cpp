@@ -17,6 +17,6 @@ void qTh::run()
     {
         //UDPrecv.recvData(&tmp);
         emit setValue(tmp);
-        msleep(1);
+        msleep(5);
     }
 }

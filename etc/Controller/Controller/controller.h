@@ -52,8 +52,6 @@ private slots:
 
     void updateData(ZmqData zmq_data);
 
-    cv::Mat display_Map(ZmqData zmq_data);
-
     void on_LVBox_activated(int index);
 
     void on_FV1Box_activated(int index);
@@ -77,6 +75,7 @@ private slots:
 private:
     Ui::Controller *ui;
     ZMQ_CLASS ZMQ_SOCKET_;
+    cv::Mat display_Map(ZmqData zmq_data);
     qTh* qthread;
 };
 #endif // CONTROLLER_H

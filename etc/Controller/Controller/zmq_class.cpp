@@ -106,8 +106,8 @@ bool ZMQ_CLASS::readParameters()
   zipcode_ = std::string("00020");
   
   req_flag0_ = true;
-  req_flag1_ = true;
-  req_flag2_ = true;
+  req_flag1_ = false;
+  req_flag2_ = false;
 
   //set reply socket ip
   tcpreq_ip0_ = tcp_ip_client0;
@@ -131,7 +131,6 @@ void* ZMQ_CLASS::requestZMQ(ZmqData* send_data)  // client: send -> recv
     if(req_socket0_.connected() && !controlDone_)
     {
       zmq::message_t recv_msg(DATASIZE), send_msg(DATASIZE);
-      std::cout << "1" << std::endl;
       //send
       memcpy(send_msg.data(), send_data, DATASIZE);
       req_socket0_.send(send_msg);
@@ -140,7 +139,6 @@ void* ZMQ_CLASS::requestZMQ(ZmqData* send_data)  // client: send -> recv
       req_socket0_.recv(&recv_msg, 0);
       memcpy(req_recv0_, recv_msg.data(), DATASIZE);
 //      req_recv0_ = static_cast<ZmqData *>(rep_msg.data());
-      std::cout << "2" << std::endl;
     }
   }
   if(send_data->tar_index == 1){

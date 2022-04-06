@@ -18,7 +18,6 @@ int main(int argc, char *argv[])
         }
     }
     Controller w;
-    std::cout << "1" << std::endl;
     w.show();
     return a.exec();
 }

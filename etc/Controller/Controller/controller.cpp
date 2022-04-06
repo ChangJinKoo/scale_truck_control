@@ -76,8 +76,6 @@ Controller::Controller(QWidget *parent)
     sendData(DefaultVel, DefaultDist, 0);
     sendData(DefaultVel, DefaultDist, 1);
     sendData(DefaultVel, DefaultDist, 2);
-
-    std::cout << "2" << std::endl;
 }
 
 void Controller::sendData(int value_vel, int value_dist, int to)
