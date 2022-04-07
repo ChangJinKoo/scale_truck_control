@@ -90,7 +90,7 @@ bool LocalRC::isNodeRunning(){
 
 void LocalRC::XavCallback(const scale_truck_control::xav2lrc &msg){
   //const std::lock_guard<std::mutex> lock(data_mutex_);
-  std::scoped_lock lock(data_mutex_);
+  std::scoped_lock lock(data_mutex_, time_mutex_);
   angle_degree_ = msg.steer_angle;
   cur_dist_ = msg.cur_dist;
   if(index_ == 10){  //only LV LRC
@@ -115,7 +115,7 @@ void LocalRC::rosPub(){
   scale_truck_control::lrc2ocr ocr;
   { 
     //const std::lock_guard<std::mutex> lock(data_mutex_);
-    std::scoped_lock lock(data_mutex_);
+    std::scoped_lock lock(data_mutex_, time_mutex_);
     xav.cur_vel = cur_vel_;
     ocr.index = index_;
     ocr.steer_angle = angle_degree_;
@@ -158,7 +158,7 @@ void LocalRC::request(ZmqData* zmq_data){
   while(isNodeRunning()){
     {
       //const std::lock_guard<std::mutex> lock(data_mutex_);
-      std::scoped_lock lock(data_mutex_);
+      std::scoped_lock lock(data_mutex_, time_mutex_);
       zmq_data->cur_vel = cur_vel_;
       zmq_data->cur_dist = cur_dist_;
       zmq_data->alpha = alpha_;
@@ -263,7 +263,7 @@ void LocalRC::recordData(struct timeval *startTime){
     gettimeofday(&currentTime, NULL);
     time_ = ((currentTime.tv_sec - startTime->tv_sec)) + ((currentTime.tv_usec - startTime->tv_usec)/1000000.0);
     //sprintf(buf, "%.3e,%.3f,%.3f,%.3f,%.3f,%.3f,%d", time_, est_vel_, tar_vel_, cur_vel_, sat_vel_, fabs(cur_vel_ - hat_vel_), alpha_);
-    sprintf(buf, "%.3e,%.3f", time_, req_time_);
+    sprintf(buf, "%.3e,%.3f,%.3f", time_, req_time_, cur_dist_);
     write_file.open(file, std::ios::out | std::ios::app);
     write_file << buf << endl;
   }
