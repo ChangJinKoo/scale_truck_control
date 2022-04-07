@@ -102,11 +102,10 @@ class ScaleTruckController {
 
     std::mutex image_mutex_;
     std::mutex object_mutex_;
-    std::mutex droi_mutex_;
+    std::mutex lane_mutex_;
     std::mutex vel_mutex_;
     std::mutex dist_mutex_;
     std::mutex rep_mutex_;
-    std::mutex coef_mutex_;
 
     std::condition_variable cv_;
 

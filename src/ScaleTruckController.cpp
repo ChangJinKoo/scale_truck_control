@@ -35,7 +35,7 @@ bool ScaleTruckController::readParameters() {
   nodeHandle_.param("image_view/enable_opencv", viewImage_, true);
   nodeHandle_.param("image_view/wait_key_delay", waitKeyDelay_, 3);
   nodeHandle_.param("image_view/enable_console_output", enableConsoleOutput_, true);
-  
+
   /*******************/
   /* Velocity Option */
   /*******************/
@@ -144,7 +144,6 @@ void* ScaleTruckController::lanedetectInThread() {
         count += countNonZero(channels[ch]);
       }
       {
-        std::scoped_lock lock(rep_mutex_);
         if(count == 0 && Beta_)
           cnt -= 1;
         else 
@@ -158,7 +157,7 @@ void* ScaleTruckController::lanedetectInThread() {
     laneDetector_.get_steer_coef(CurVel_);
   }
   {
-    std::unique_lock<std::mutex> lock(droi_mutex_, coef_mutex_);
+    std::unique_lock<std::mutex> lock(lane_mutex_);
     cv_.wait(lock, [this] {return droi_ready_; });
 
     AngleDegree = laneDetector_.display_img(camImageTmp_, waitKeyDelay_, viewImage_);
@@ -207,7 +206,7 @@ void* ScaleTruckController::objectdetectInThread() {
   /* Dynamic ROI Distance Data */
   /*****************************/
   {
-    std::scoped_lock lock(droi_mutex_);
+    std::scoped_lock lock(lane_mutex_);
     if(dist_tmp < 1.24 && dist_tmp > 0.30) // 1.26 ~ 0.28
     {
       laneDetector_.distance_ = (int)((1.24 - dist_tmp)*490.0);
@@ -259,30 +258,32 @@ void ScaleTruckController::reply(ZmqData* zmq_data){
 	zmq_data->cur_angle = AngleDegree_;
       }
       {
-        std::scoped_lock lock(coef_mutex_);
-        udpData.coef[0].a = laneDetector_.lane_coef_.left.a;
-        udpData.coef[0].b = laneDetector_.lane_coef_.left.b;
-        udpData.coef[0].c = laneDetector_.lane_coef_.left.c;
-        udpData.coef[1].a = laneDetector_.lane_coef_.right.a;
-        udpData.coef[1].b = laneDetector_.lane_coef_.right.b;
-        udpData.coef[1].c = laneDetector_.lane_coef_.right.c;
-        udpData.coef[2].a = laneDetector_.lane_coef_.center.a;
-        udpData.coef[2].b = laneDetector_.lane_coef_.center.b;
-        udpData.coef[2].c = laneDetector_.lane_coef_.center.c;
+        std::scoped_lock lock(lane_mutex_);
+        zmq_data->coef[0].a = laneDetector_.lane_coef_.left.a;
+        zmq_data->coef[0].b = laneDetector_.lane_coef_.left.b;
+        zmq_data->coef[0].c = laneDetector_.lane_coef_.left.c;
+        zmq_data->coef[1].a = laneDetector_.lane_coef_.right.a;
+        zmq_data->coef[1].b = laneDetector_.lane_coef_.right.b;
+        zmq_data->coef[1].c = laneDetector_.lane_coef_.right.c;
+        zmq_data->coef[2].a = laneDetector_.lane_coef_.center.a;
+        zmq_data->coef[2].b = laneDetector_.lane_coef_.center.b;
+        zmq_data->coef[2].c = laneDetector_.lane_coef_.center.c;
       }
       ZMQ_SOCKET_.replyZMQ(zmq_data);
     }
     {
       std::scoped_lock lock(rep_mutex_);
-      if(index_ == 0){  //LV
-        TargetVel_ = ZMQ_SOCKET_.rep_recv_->tar_vel;
-        TargetDist_ = ZMQ_SOCKET_.rep_recv_->tar_dist;
-        Beta_ = ZMQ_SOCKET_.rep_recv_->beta;
-        Gamma_ = ZMQ_SOCKET_.rep_recv_->gamma;
-      }
-      else{ //FVs
-        Beta_ = ZMQ_SOCKET_.rep_recv_->beta;
-        Gamma_ = ZMQ_SOCKET_.rep_recv_->gamma;
+      if(ZMQ_SOCKET_.rep_recv_->src_index == 20){
+        if(index_ == 0){  //LV
+          TargetVel_ = ZMQ_SOCKET_.rep_recv_->tar_vel;
+          TargetDist_ = ZMQ_SOCKET_.rep_recv_->tar_dist;
+          Beta_ = ZMQ_SOCKET_.rep_recv_->beta;
+          Gamma_ = ZMQ_SOCKET_.rep_recv_->gamma;
+        }
+        else{ //FVs
+          Beta_ = ZMQ_SOCKET_.rep_recv_->beta;
+          Gamma_ = ZMQ_SOCKET_.rep_recv_->gamma;
+        }
       }
     }
     std::this_thread::sleep_for(std::chrono::milliseconds(2));
@@ -375,6 +376,9 @@ void ScaleTruckController::spin() {
     if (cnt > 3000){
       diff_time = 0.0;
       cnt = 0;
+    }
+    if (cnt == 300){
+      TargetVel_ = 1.0f;
     }
   }
 }

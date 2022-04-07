@@ -27,7 +27,7 @@ typedef struct LaneCoef{
 }LaneCoef;
 
 typedef struct ZmqData{
-	//Control center = 20, CRC = 30, LRC = 10, 11, 12, LV = 0, FV1 = 1, FV2 = 2
+	//Control center = 15, 20, CRC = 30, LRC = 10, 11, 12, LV = 0, FV1 = 1, FV2 = 2
 	uint8_t src_index = 255;
 	uint8_t tar_index = 255;
 	
@@ -67,6 +67,7 @@ public:
   std::string udp_ip_, tcpsub_ip_, tcppub_ip_, tcpreq_ip_, tcprep_ip_;
 
   bool controlDone_;
+  bool rad_flag_, dsh_flag_, req_flag_, rep_flag_;
   ZmqData *rad_send_, *dsh_recv_, *req_send_, *req_recv_, *rep_send_, *rep_recv_;
 
 private:
@@ -79,5 +80,4 @@ private:
   std::string interface_name_;
   zmq::context_t context_;
   zmq::socket_t sub_socket_, pub_socket_, req_socket_, rep_socket_, rad_socket_, dsh_socket_;
-  bool sub_flag_, pub_flag_, rad_flag_, dsh_flag_, req_flag_, rep_flag_;
 };

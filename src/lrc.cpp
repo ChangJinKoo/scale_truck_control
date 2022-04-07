@@ -31,7 +31,7 @@ void LocalRC::init(){
   std::string OcrPubTopicName;
   int OcrPubQueueSize;
 
-  nodeHandle_.param("socket/lrc_index", index_, 10);
+  nodeHandle_.param("LrcParams/lrc_index", index_, 10);
   nodeHandle_.param("LrcParams/lrc_log_path", log_path_, std::string("/home/jetson/catkin_ws/logfiles/"));
   nodeHandle_.param("LrcParams/epsilon", epsilon_, 1.0f);
   nodeHandle_.param("LrcParams/lu_ob_A", a_, 0.6817f);
@@ -285,6 +285,7 @@ void LocalRC::communicate(){
     updateMode(crc_mode_);
     rosPub();
     printStatus();
+//    recordData();
 
     std::this_thread::sleep_for(std::chrono::milliseconds(2));
 
