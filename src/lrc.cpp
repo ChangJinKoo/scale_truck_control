@@ -117,6 +117,8 @@ void LocalRC::rosPub(){
     //const std::lock_guard<std::mutex> lock(data_mutex_);
     std::scoped_lock lock(data_mutex_, time_mutex_);
     xav.cur_vel = cur_vel_;
+    xav.tar_vel = tar_vel_;
+    xav.tar_dist = tar_dist_;
     ocr.index = index_;
     ocr.steer_angle = angle_degree_;
     ocr.cur_dist = cur_dist_;

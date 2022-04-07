@@ -405,8 +405,15 @@ void ScaleTruckController::imageCallback(const sensor_msgs::ImageConstPtr &msg) 
 }
 
 void ScaleTruckController::XavSubCallback(const scale_truck_control::lrc2xav &msg){
-  std::scoped_lock lock(vel_mutex_);
-  CurVel_ = msg.cur_vel;
+  {
+    std::scoped_lock lock(vel_mutex_);
+    CurVel_ = msg.cur_vel;
+  }
+  if (index_ != 0){  //FVs
+    std::scoped_lock lock(rep_mutex_);
+    TargetVel_ = msg.tar_vel;
+    TargetDist_ = msg.tar_dist;
+  }
 }
 
 } /* namespace scale_truck_control */ 

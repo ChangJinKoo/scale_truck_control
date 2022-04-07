@@ -9,7 +9,7 @@ udp_ip:
   ip_addr: "udp://239.255.255.250"
   port: "9090"
   send_group: "FV"
-  recv_group: "LV"
+  recv_group: "X"
 
 socket:
   rad_flag: true
