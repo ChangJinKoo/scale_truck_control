@@ -64,6 +64,7 @@ class ScaleTruckController {
 	
     double CycleTime_ = 0.0;
     int index_;
+    bool Alpha_ = false;
 
     //image
     LaneDetect::LaneDetector laneDetector_;
@@ -74,7 +75,7 @@ class ScaleTruckController {
     bool Beta_ = false;
 
     float AngleDegree_; // -1 ~ 1  - Twist msg angular.z
-    float TargetVel_; // -1 ~ 1  - Twist msg linear.x
+    float TargetVel_ = 0.0f; // -1 ~ 1  - Twist msg linear.x
     float SafetyVel_;
     float ResultVel_;
     float FVmaxVel_;
@@ -82,8 +83,8 @@ class ScaleTruckController {
     //object
     int ObjSegments_;
     int ObjCircles_;
-    float distance_;
-    float distAngle_;
+    float distance_ = 0.0f;
+    float distAngle_ = 0.0f;
     float LVstopDist_;
     float FVstopDist_;
     float TargetDist_;
@@ -120,8 +121,8 @@ class ScaleTruckController {
     bool isNodeRunning_ = true;
     bool controlDone_ = false;
 
-    float CurVel_;
-    float RefVel_;
+    float CurVel_ = 0.0f;
+    float RefVel_ = 0.0f;
      
     bool getImageStatus(void);	
     void* lanedetectInThread();

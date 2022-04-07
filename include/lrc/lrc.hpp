@@ -67,20 +67,22 @@ class LocalRC{
     bool beta_ = false;
     bool gamma_ = false;
 
-    float angle_degree_;
-    float cur_dist_;
-    float tar_dist_;
+    float angle_degree_ = 0;
+    float cur_dist_ = 0.8f;
+    float tar_dist_ = 0.8f;
     float cur_vel_ = 0;
     float tar_vel_ = 0;
     float est_vel_ = 0;
     float hat_vel_ = 0;
     float sat_vel_ = 0;
     double time_ = 0;
+    double req_time_ = 0;
 
     std::thread lrcThread_;
     std::thread udpThread_;
     std::thread tcpThread_;
     std::mutex data_mutex_;
+    std::mutex time_mutex_;
 };
 
 }

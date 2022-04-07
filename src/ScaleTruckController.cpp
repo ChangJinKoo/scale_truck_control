@@ -19,6 +19,7 @@ ScaleTruckController::~ScaleTruckController() {
   msg.cur_dist = distance_;
   msg.tar_vel = ResultVel_;  //Xavier to LRC and LRC to OpenCR
   msg.tar_dist = TargetDist_;
+  msg.alpha = Alpha_;
   msg.beta = Beta_;
   msg.gamma = Gamma_;
 
@@ -277,13 +278,10 @@ void ScaleTruckController::reply(ZmqData* zmq_data){
         if(index_ == 0){  //LV
           TargetVel_ = ZMQ_SOCKET_.rep_recv_->tar_vel;
           TargetDist_ = ZMQ_SOCKET_.rep_recv_->tar_dist;
-          Beta_ = ZMQ_SOCKET_.rep_recv_->beta;
-          Gamma_ = ZMQ_SOCKET_.rep_recv_->gamma;
-        }
-        else{ //FVs
-          Beta_ = ZMQ_SOCKET_.rep_recv_->beta;
-          Gamma_ = ZMQ_SOCKET_.rep_recv_->gamma;
-        }
+	}
+	Alpha_ = ZMQ_SOCKET_.rep_recv_->alpha;
+        Beta_ = ZMQ_SOCKET_.rep_recv_->beta;
+        Gamma_ = ZMQ_SOCKET_.rep_recv_->gamma;
       }
     }
     std::this_thread::sleep_for(std::chrono::milliseconds(2));
@@ -295,20 +293,21 @@ void ScaleTruckController::displayConsole() {
   printf("\033[2J");
   printf("\033[1;1H");
   printf("%s (%s) - %s\n","-Client", ipAddr.c_str() , ZMQ_SOCKET_.udp_ip_.c_str());
-  printf("\nAngle           : %2.3f degree", AngleDegree_);
-  printf("\nRefer Vel       : %3.3f m/s", RefVel_);
-  printf("\nSend Vel        : %3.3f m/s", ResultVel_);
-  printf("\nTar/Cur Vel     : %3.3f / %3.3f m/s", TargetVel_, CurVel_);
-  printf("\nTar/Cur Dist    : %3.3f / %3.3f m", TargetDist_, distance_);
-  printf("\nK1/K2           : %3.3f / %3.3f", laneDetector_.K1_, laneDetector_.K2_);
+  printf("\nAngle\t\t\t: %2.3f degree", AngleDegree_);
+  printf("\nRefer Vel\t\t: %3.3f m/s", RefVel_);
+  printf("\nSend Vel\t\t: %3.3f m/s", ResultVel_);
+  printf("\nTar/Cur Vel\t\t: %3.3f / %3.3f m/s", TargetVel_, CurVel_);
+  printf("\nTar/Cur Dist\t\t: %3.3f / %3.3f m", TargetDist_, distance_);
+  printf("\nAlpha, Beta, Gamma\t: %d / %d / %d", Alpha_, Beta_, Gamma_);
+  printf("\nK1/K2\t\t\t: %3.3f / %3.3f", laneDetector_.K1_, laneDetector_.K2_);
   if(ObjCircles_ > 0) {
-    printf("\nCirs            : %d", ObjCircles_);
-    printf("\nDistAng         : %2.3f degree", distAngle_);
+    printf("\nCirs\t\t\t: %d", ObjCircles_);
+    printf("\nDistAng\t\t\t: %2.3f degree", distAngle_);
   }
   if(ObjSegments_ > 0) {
-    printf("\nSegs            : %d", ObjSegments_);
+    printf("\nSegs\t\t\t: %d", ObjSegments_);
   }
-  printf("\nCycle Time      : %3.3f ms", CycleTime_);
+  printf("\nCycle Time\t\t: %3.3f ms", CycleTime_);
   printf("\n");
 }
 
@@ -353,6 +352,7 @@ void ScaleTruckController::spin() {
     {
       std::scoped_lock lock(rep_mutex_);
       msg.tar_dist = TargetDist_;
+      msg.alpha = Alpha_;
       msg.beta = Beta_;
       msg.gamma = Gamma_;
     }
@@ -376,9 +376,6 @@ void ScaleTruckController::spin() {
     if (cnt > 3000){
       diff_time = 0.0;
       cnt = 0;
-    }
-    if (cnt == 300){
-      TargetVel_ = 1.0f;
     }
   }
 }
