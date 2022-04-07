@@ -17,7 +17,6 @@ SOURCES += \
 HEADERS += \
     controller.h \
     qTh.h \
-    ui_controller.h \
     zmq_class.h
 
 FORMS += \

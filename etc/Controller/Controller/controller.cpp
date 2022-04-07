@@ -1,6 +1,12 @@
 #include "controller.h"
 #include "ui_controller.h"
+#include "qTh.h"
 
+QMutex Controller::mutex_;
+
+ZmqData Controller::lv_data_;
+ZmqData Controller::fv1_data_;
+ZmqData Controller::fv2_data_;
 
 Controller::Controller(QWidget *parent)
     : QMainWindow(parent)
@@ -16,15 +22,19 @@ Controller::Controller(QWidget *parent)
     MinVel = 0; // cm/s
     MaxVel = 140; // cm/s
     int DefaultDist = 80; // cm
-    MinDist = 10; // cm
-    MaxDist = 200; // cm
+    MinDist = 15; // cm
+    MaxDist = 1000; // cm
 
+    LV_alpha = 0;
     FV1_alpha = 0;
     FV1_beta = 0;
     FV1_gamma = 0;
     FV2_alpha = 0;
     FV2_beta = 0;
     FV2_gamma = 0;
+
+    ui->LV_beta->setEnabled(false);
+    ui->LV_gamma->setEnabled(false);
 
     /* Setup Velocity Slider */
     ui->MVelSlider->setMaximum(MaxVel);
@@ -54,7 +64,7 @@ Controller::Controller(QWidget *parent)
     ui->FV1DistSlider->setValue(DefaultDist);
     ui->FV2DistSlider->setValue(DefaultDist);
 
-    /* Setup Distance Bar */
+    /* Setup Velocity & Distance Bar */
     ui->LVVelBar->setMaximum(MaxVel);
     ui->FV1VelBar->setMaximum(MaxVel);
     ui->FV2VelBar->setMaximum(MaxVel);
@@ -87,17 +97,18 @@ void Controller::sendData(int value_vel, int value_dist, int to)
     zmq_data.beta = 0;
     zmq_data.gamma = 0;
 
-    if(to > 0){
-        if(to == 1){
-            zmq_data.alpha = FV1_alpha;
-            zmq_data.beta = FV1_beta;
-            zmq_data.gamma = FV1_gamma;
-        }
-        if(to == 2){
-            zmq_data.alpha = FV2_alpha;
-            zmq_data.beta = FV2_beta;
-            zmq_data.gamma = FV2_gamma;
-        }
+    if(to == 0){
+        zmq_data.alpha = LV_alpha;
+    }
+    if(to == 1){
+        zmq_data.alpha = FV1_alpha;
+        zmq_data.beta = FV1_beta;
+        zmq_data.gamma = FV1_gamma;
+    }
+    if(to == 2){
+        zmq_data.alpha = FV2_alpha;
+        zmq_data.beta = FV2_beta;
+        zmq_data.gamma = FV2_gamma;
     }
 
     if(value_vel >= 10) {
@@ -109,6 +120,18 @@ void Controller::sendData(int value_vel, int value_dist, int to)
     zmq_data.tar_dist = value_dist/100.0;
 
     ZMQ_SOCKET_.requestZMQ(&zmq_data);
+
+    mutex_.lock();
+    if(to == 0){
+        lv_data_ = *ZMQ_SOCKET_.req_recv0_;
+    }
+    else if (to == 1){
+        fv1_data_ = *ZMQ_SOCKET_.req_recv1_;
+    }
+    else if (to == 2){
+        fv2_data_ = *ZMQ_SOCKET_.req_recv2_;
+    }
+    mutex_.unlock();
 }
 
 void Controller::updateData(ZmqData zmq_data)
@@ -119,6 +142,7 @@ void Controller::updateData(ZmqData zmq_data)
     tmp = zmq_data;
     vel = tmp.cur_vel*deci;
     dist = tmp.cur_dist*deci;
+
     if(tmp.tar_index == 20){
       if(tmp.src_index == 0)
       {
@@ -135,38 +159,59 @@ void Controller::updateData(ZmqData zmq_data)
           cv::Mat frame;
           display_Map(tmp).copyTo(frame);
           ui->LV_MAP->setPixmap(QPixmap::fromImage(QImage(frame.data, frame.cols, frame.rows, frame.step, QImage::Format_RGB888)));
+
+          tmp.src_index = 15;
+          tmp.tar_index = 0;
+          ZMQ_SOCKET_.requestZMQ(&tmp);
+          mutex_.lock();
+          lv_data_ = *ZMQ_SOCKET_.req_recv0_;
+          mutex_.unlock();
       }
       else if (tmp.src_index == 1)
       {
-        ui->FV1CurVel->setText(QString::number(vel/deci));
-        if(vel > MaxVel) {
-          vel = MaxVel;
-      }
-        ui->FV1VelBar->setValue(vel);
-        ui->FV1CurDist->setText(QString::number(dist/deci));
-        if(dist > MaxDist) {
-          dist = MaxDist;
-        }
-        ui->FV1DistBar->setValue(dist);
-        cv::Mat frame;
-        display_Map(tmp).copyTo(frame);
-        ui->FV1_MAP->setPixmap(QPixmap::fromImage(QImage(frame.data, frame.cols, frame.rows, frame.step, QImage::Format_RGB888)));
+          ui->FV1CurVel->setText(QString::number(vel/deci));
+          if(vel > MaxVel) {
+            vel = MaxVel;
+          }
+          ui->FV1VelBar->setValue(vel);
+          ui->FV1CurDist->setText(QString::number(dist/deci));
+          if(dist > MaxDist) {
+            dist = MaxDist;
+          }
+          ui->FV1DistBar->setValue(dist);
+          cv::Mat frame;
+          display_Map(tmp).copyTo(frame);
+          ui->FV1_MAP->setPixmap(QPixmap::fromImage(QImage(frame.data, frame.cols, frame.rows, frame.step, QImage::Format_RGB888)));
+
+          tmp.src_index = 15;
+          tmp.tar_index = 1;
+          ZMQ_SOCKET_.requestZMQ(&tmp);
+          mutex_.lock();
+          fv1_data_ = *ZMQ_SOCKET_.req_recv1_;
+          mutex_.unlock();
       }
       else if (tmp.src_index == 2)
       {
-        ui->FV2CurVel->setText(QString::number(vel/deci));
-        if(vel > MaxVel) {
-          vel = MaxVel;
-        }
-        ui->FV2VelBar->setValue(vel);
-        ui->FV2CurDist->setText(QString::number(dist/deci));
-        if(dist > MaxDist) {
-          dist = MaxDist;
-        }
-        ui->FV2DistBar->setValue(dist);
-        cv::Mat frame;
-        display_Map(tmp).copyTo(frame);
-        ui->FV2_MAP->setPixmap(QPixmap::fromImage(QImage(frame.data, frame.cols, frame.rows, frame.step, QImage::Format_RGB888)));
+          ui->FV2CurVel->setText(QString::number(vel/deci));
+          if(vel > MaxVel) {
+            vel = MaxVel;
+          }
+          ui->FV2VelBar->setValue(vel);
+          ui->FV2CurDist->setText(QString::number(dist/deci));
+          if(dist > MaxDist) {
+            dist = MaxDist;
+          }
+          ui->FV2DistBar->setValue(dist);
+          cv::Mat frame;
+          display_Map(tmp).copyTo(frame);
+          ui->FV2_MAP->setPixmap(QPixmap::fromImage(QImage(frame.data, frame.cols, frame.rows, frame.step, QImage::Format_RGB888)));
+
+          tmp.src_index = 15;
+          tmp.tar_index = 2;
+          ZMQ_SOCKET_.requestZMQ(&tmp);
+          mutex_.lock();
+          fv2_data_ = *ZMQ_SOCKET_.req_recv2_;
+          mutex_.unlock();
       }
     }
 }
@@ -470,3 +515,10 @@ void Controller::on_FV2_gamma_toggled(bool checked)
     sendData(value_vel, value_dist, 2);
 }
 
+void Controller::on_LV_alpha_toggled(bool checked)
+{
+    int value_vel = ui->LVVelSlider->value();
+    int value_dist = ui->LVDistSlider->value();
+    LV_alpha = checked;
+    sendData(value_vel, value_dist, 0);
+}

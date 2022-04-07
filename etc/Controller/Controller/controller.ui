@@ -318,8 +318,8 @@
        <string>LV</string>
       </property>
       <layout class="QGridLayout" name="gridLayout_3">
-       <item row="1" column="2">
-        <widget class="QLabel" name="LVTarVel">
+       <item row="4" column="2">
+        <widget class="QLabel" name="LVCurDist">
          <property name="minimumSize">
           <size>
            <width>60</width>
@@ -349,68 +349,10 @@
          </property>
         </widget>
        </item>
-       <item row="3" column="1">
-        <widget class="QSlider" name="LVDistSlider">
-         <property name="orientation">
-          <enum>Qt::Horizontal</enum>
-         </property>
-        </widget>
-       </item>
-       <item row="4" column="0">
-        <widget class="QLabel" name="label_11">
+       <item row="3" column="0">
+        <widget class="QLabel" name="label_13">
          <property name="text">
-          <string>Current Distance</string>
-         </property>
-        </widget>
-       </item>
-       <item row="3" column="2">
-        <widget class="QLabel" name="LVTarDist">
-         <property name="minimumSize">
-          <size>
-           <width>60</width>
-           <height>0</height>
-          </size>
-         </property>
-         <property name="sizeIncrement">
-          <size>
-           <width>0</width>
-           <height>0</height>
-          </size>
-         </property>
-         <property name="midLineWidth">
-          <number>0</number>
-         </property>
-         <property name="text">
-          <string>0</string>
-         </property>
-         <property name="scaledContents">
-          <bool>false</bool>
-         </property>
-         <property name="alignment">
-          <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-         </property>
-         <property name="margin">
-          <number>5</number>
-         </property>
-        </widget>
-       </item>
-       <item row="4" column="1">
-        <widget class="QProgressBar" name="LVDistBar">
-         <property name="value">
-          <number>24</number>
-         </property>
-         <property name="textVisible">
-          <bool>false</bool>
-         </property>
-        </widget>
-       </item>
-       <item row="2" column="1">
-        <widget class="QProgressBar" name="LVVelBar">
-         <property name="value">
-          <number>24</number>
-         </property>
-         <property name="textVisible">
-          <bool>false</bool>
+          <string>Target Distance</string>
          </property>
         </widget>
        </item>
@@ -421,15 +363,46 @@
          </property>
         </widget>
        </item>
-       <item row="3" column="3">
-        <widget class="QLabel" name="label_34">
+       <item row="2" column="2">
+        <widget class="QLabel" name="LVCurVel">
+         <property name="minimumSize">
+          <size>
+           <width>60</width>
+           <height>0</height>
+          </size>
+         </property>
+         <property name="sizeIncrement">
+          <size>
+           <width>0</width>
+           <height>0</height>
+          </size>
+         </property>
+         <property name="midLineWidth">
+          <number>0</number>
+         </property>
          <property name="text">
-          <string>m</string>
+          <string>0</string>
+         </property>
+         <property name="scaledContents">
+          <bool>false</bool>
+         </property>
+         <property name="alignment">
+          <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+         </property>
+         <property name="margin">
+          <number>5</number>
          </property>
         </widget>
        </item>
-       <item row="2" column="2">
-        <widget class="QLabel" name="LVCurVel">
+       <item row="2" column="0">
+        <widget class="QLabel" name="label_12">
+         <property name="text">
+          <string>Current Velocity</string>
+         </property>
+        </widget>
+       </item>
+       <item row="3" column="2">
+        <widget class="QLabel" name="LVTarDist">
          <property name="minimumSize">
           <size>
            <width>60</width>
@@ -486,8 +459,53 @@
          </item>
         </widget>
        </item>
-       <item row="4" column="2">
-        <widget class="QLabel" name="LVCurDist">
+       <item row="1" column="0">
+        <widget class="QLabel" name="label_2">
+         <property name="text">
+          <string>Target Velocity</string>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="3">
+        <widget class="QLabel" name="label_27">
+         <property name="text">
+          <string>m/s</string>
+         </property>
+        </widget>
+       </item>
+       <item row="4" column="0">
+        <widget class="QLabel" name="label_11">
+         <property name="text">
+          <string>Current Distance</string>
+         </property>
+        </widget>
+       </item>
+       <item row="2" column="3">
+        <widget class="QLabel" name="label_21">
+         <property name="text">
+          <string>m/s</string>
+         </property>
+        </widget>
+       </item>
+       <item row="3" column="1">
+        <widget class="QSlider" name="LVDistSlider">
+         <property name="orientation">
+          <enum>Qt::Horizontal</enum>
+         </property>
+        </widget>
+       </item>
+       <item row="2" column="1">
+        <widget class="QProgressBar" name="LVVelBar">
+         <property name="value">
+          <number>24</number>
+         </property>
+         <property name="textVisible">
+          <bool>false</bool>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="2">
+        <widget class="QLabel" name="LVTarVel">
          <property name="minimumSize">
           <size>
            <width>60</width>
@@ -517,24 +535,20 @@
          </property>
         </widget>
        </item>
-       <item row="1" column="3">
-        <widget class="QLabel" name="label_27">
+       <item row="3" column="3">
+        <widget class="QLabel" name="label_34">
          <property name="text">
-          <string>m/s</string>
+          <string>m</string>
          </property>
         </widget>
        </item>
-       <item row="2" column="3">
-        <widget class="QLabel" name="label_21">
-         <property name="text">
-          <string>m/s</string>
+       <item row="4" column="1">
+        <widget class="QProgressBar" name="LVDistBar">
+         <property name="value">
+          <number>24</number>
          </property>
-        </widget>
-       </item>
-       <item row="3" column="0">
-        <widget class="QLabel" name="label_13">
-         <property name="text">
-          <string>Target Distance</string>
+         <property name="textVisible">
+          <bool>false</bool>
          </property>
         </widget>
        </item>
@@ -545,13 +559,6 @@
          </property>
         </widget>
        </item>
-       <item row="2" column="0">
-        <widget class="QLabel" name="label_12">
-         <property name="text">
-          <string>Current Velocity</string>
-         </property>
-        </widget>
-       </item>
        <item row="4" column="3">
         <widget class="QLabel" name="label_22">
          <property name="text">
@@ -559,12 +566,33 @@
          </property>
         </widget>
        </item>
-       <item row="1" column="0">
-        <widget class="QLabel" name="label_2">
-         <property name="text">
-          <string>Target Velocity</string>
-         </property>
-        </widget>
+       <item row="5" column="0" colspan="4">
+        <layout class="QHBoxLayout" name="LVSensorFailure">
+         <item>
+          <widget class="QPushButton" name="LV_alpha">
+           <property name="text">
+            <string>Vel Failure</string>
+           </property>
+           <property name="checkable">
+            <bool>true</bool>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QPushButton" name="LV_beta">
+           <property name="text">
+            <string>Cam Failure</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QPushButton" name="LV_gamma">
+           <property name="text">
+            <string>Lidar Failure</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
        </item>
       </layout>
      </widget>

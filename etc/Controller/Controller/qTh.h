@@ -2,7 +2,10 @@
 #define QTH_H
 
 #include <QThread>
-#include <zmq_class.h>
+
+#include "zmq_class.h"
+
+class Controller;
 
 class qTh : public QThread
 {
@@ -10,6 +13,7 @@ class qTh : public QThread
 public:
     explicit qTh(QObject* parent = 0);
     int recvInit();
+
 private:
     void run();
 signals:

@@ -2,10 +2,13 @@
 #define CONTROLLER_H
 
 #include <QMainWindow>
-#include <qTh.h>
-
+#include <QMutex>
 #include <opencv2/opencv.hpp>
 #include <vector>
+
+#include "qTh.h"
+
+class qTh;
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class Controller; }
@@ -20,10 +23,17 @@ public:
     ~Controller();
     void sendData(int value_vel, int value_dist, int to);
 
+    static QMutex mutex_;
+
+    static ZmqData lv_data_;
+    static ZmqData fv1_data_;
+    static ZmqData fv2_data_;
+
     int MinVel;
     int MaxVel;
     int MinDist;
     int MaxDist;
+    int LV_alpha;
     int FV1_alpha;
     int FV1_beta;
     int FV1_gamma;
@@ -32,6 +42,8 @@ public:
     int FV2_gamma;
 
 private slots:
+    void updateData(ZmqData zmq_data);
+
     void on_MVelSlider_valueChanged(int value);
 
     void on_MDistSlider_valueChanged(int value);
@@ -49,8 +61,6 @@ private slots:
     void on_FV2DistSlider_valueChanged(int value);
 
     void on_pushButton_clicked();
-
-    void updateData(ZmqData zmq_data);
 
     void on_LVBox_activated(int index);
 
@@ -71,6 +81,8 @@ private slots:
     void on_FV2_beta_toggled(bool checked);
 
     void on_FV2_gamma_toggled(bool checked);
+
+    void on_LV_alpha_toggled(bool checked);
 
 private:
     Ui::Controller *ui;

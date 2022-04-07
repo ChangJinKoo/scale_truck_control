@@ -38,7 +38,7 @@ DISTNAME      = Controller1.0.0
 DISTDIR = /home/avees/scale_truck_control/etc/Controller/build-Controller-Desktop-Debug/.tmp/Controller1.0.0
 LINK          = g++
 LFLAGS        = 
-LIBS          = $(SUBLIBS) `pkg-config --libs opencv4` -lQt5Widgets -lQt5Gui -lQt5Core -lGL -lpthread 
+LIBS          = $(SUBLIBS) `pkg-config --libs opencv4` -lzmq -lQt5Widgets -lQt5Gui -lQt5Core -lGL -lpthread 
 AR            = ar cqs
 RANLIB        = 
 SED           = sed
@@ -53,13 +53,11 @@ OBJECTS_DIR   = ./
 SOURCES       = ../Controller/main.cpp \
 		../Controller/controller.cpp \
 		../Controller/qTh.cpp \
-		../Controller/sock_udp.cpp \
 		../Controller/zmq_class.cpp moc_controller.cpp \
 		moc_qTh.cpp
 OBJECTS       = main.o \
 		controller.o \
 		qTh.o \
-		sock_udp.o \
 		zmq_class.o \
 		moc_controller.o \
 		moc_qTh.o
@@ -139,11 +137,9 @@ DIST          = /usr/lib/x86_64-linux-gnu/qt5/mkspecs/features/spec_pre.prf \
 		/usr/lib/x86_64-linux-gnu/qt5/mkspecs/features/lex.prf \
 		../Controller/Controller.pro ../Controller/controller.h \
 		../Controller/qTh.h \
-		../Controller/sock_udp.hpp \
 		../Controller/zmq_class.h ../Controller/main.cpp \
 		../Controller/controller.cpp \
 		../Controller/qTh.cpp \
-		../Controller/sock_udp.cpp \
 		../Controller/zmq_class.cpp
 QMAKE_TARGET  = Controller
 DESTDIR       = 
@@ -328,8 +324,8 @@ distdir: FORCE
 	@test -d $(DISTDIR) || mkdir -p $(DISTDIR)
 	$(COPY_FILE) --parents $(DIST) $(DISTDIR)/
 	$(COPY_FILE) --parents /usr/lib/x86_64-linux-gnu/qt5/mkspecs/features/data/dummy.cpp $(DISTDIR)/
-	$(COPY_FILE) --parents ../Controller/controller.h ../Controller/qTh.h ../Controller/sock_udp.hpp ../Controller/zmq_class.h $(DISTDIR)/
-	$(COPY_FILE) --parents ../Controller/main.cpp ../Controller/controller.cpp ../Controller/qTh.cpp ../Controller/sock_udp.cpp ../Controller/zmq_class.cpp $(DISTDIR)/
+	$(COPY_FILE) --parents ../Controller/controller.h ../Controller/qTh.h ../Controller/zmq_class.h $(DISTDIR)/
+	$(COPY_FILE) --parents ../Controller/main.cpp ../Controller/controller.cpp ../Controller/qTh.cpp ../Controller/zmq_class.cpp $(DISTDIR)/
 	$(COPY_FILE) --parents ../Controller/controller.ui $(DISTDIR)/
 	$(COPY_FILE) --parents Controller_ko_KR.ts $(DISTDIR)/
 
@@ -366,16 +362,14 @@ moc_predefs.h: /usr/lib/x86_64-linux-gnu/qt5/mkspecs/features/data/dummy.cpp
 compiler_moc_header_make_all: moc_controller.cpp moc_qTh.cpp
 compiler_moc_header_clean:
 	-$(DEL_FILE) moc_controller.cpp moc_qTh.cpp
-moc_controller.cpp: ../Controller/sock_udp.hpp \
-		../Controller/qTh.h \
+moc_controller.cpp: ../Controller/qTh.h \
 		../Controller/zmq_class.h \
 		../Controller/controller.h \
 		moc_predefs.h \
 		/usr/lib/qt5/bin/moc
 	/usr/lib/qt5/bin/moc $(DEFINES) --include ./moc_predefs.h -I/usr/lib/x86_64-linux-gnu/qt5/mkspecs/linux-g++ -I/home/avees/scale_truck_control/etc/Controller/Controller -I/usr/local/include/opencv4 -I/usr/include/x86_64-linux-gnu/qt5 -I/usr/include/x86_64-linux-gnu/qt5/QtWidgets -I/usr/include/x86_64-linux-gnu/qt5/QtGui -I/usr/include/x86_64-linux-gnu/qt5/QtCore -I. -I/usr/include/c++/7 -I/usr/include/x86_64-linux-gnu/c++/7 -I/usr/include/c++/7/backward -I/usr/lib/gcc/x86_64-linux-gnu/7/include -I/usr/local/include -I/usr/lib/gcc/x86_64-linux-gnu/7/include-fixed -I/usr/include/x86_64-linux-gnu -I/usr/include ../Controller/controller.h -o moc_controller.cpp
 
-moc_qTh.cpp: ../Controller/sock_udp.hpp \
-		../Controller/zmq_class.h \
+moc_qTh.cpp: ../Controller/zmq_class.h \
 		../Controller/qTh.h \
 		moc_predefs.h \
 		/usr/lib/qt5/bin/moc
@@ -401,25 +395,20 @@ compiler_clean: compiler_moc_predefs_clean compiler_moc_header_clean compiler_ui
 ####### Compile
 
 main.o: ../Controller/main.cpp ../Controller/controller.h \
-		../Controller/sock_udp.hpp \
 		../Controller/qTh.h \
 		../Controller/zmq_class.h
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o main.o ../Controller/main.cpp
 
 controller.o: ../Controller/controller.cpp ../Controller/controller.h \
-		../Controller/sock_udp.hpp \
 		../Controller/qTh.h \
 		../Controller/zmq_class.h \
 		../Controller/ui_controller.h
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o controller.o ../Controller/controller.cpp
 
 qTh.o: ../Controller/qTh.cpp ../Controller/qTh.h \
-		../Controller/sock_udp.hpp \
-		../Controller/zmq_class.h
+		../Controller/zmq_class.h \
+		../Controller/controller.h
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o qTh.o ../Controller/qTh.cpp
-
-sock_udp.o: ../Controller/sock_udp.cpp ../Controller/sock_udp.hpp
-	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o sock_udp.o ../Controller/sock_udp.cpp
 
 zmq_class.o: ../Controller/zmq_class.cpp ../Controller/zmq_class.h
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o zmq_class.o ../Controller/zmq_class.cpp

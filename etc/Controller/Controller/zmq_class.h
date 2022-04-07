@@ -1,4 +1,5 @@
-#pragma once
+#ifndef ZMQ_CLASS_H
+#define ZMQ_CLASS_H
 
 #include <stdio.h>
 #include <string.h>
@@ -74,3 +75,5 @@ private:
   zmq::socket_t req_socket0_, req_socket1_, req_socket2_;
   zmq::context_t context_;
 };
+
+#endif

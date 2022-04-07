@@ -1,4 +1,5 @@
 #include "qTh.h"
+#include "controller.h"
 
 qTh::qTh(QObject *parent) : QThread(parent)
 {
@@ -7,16 +8,22 @@ qTh::qTh(QObject *parent) : QThread(parent)
 
 void qTh::run()
 {
-    //UDPrecv.GROUP_ = "239.255.255.250";
-    //UDPrecv.PORT_ = 9307;
-    //UDPrecv.recvInit();
-    //UDPsock::UDP_DATA tmp;
-    ZmqData tmp;
+    ZmqData lv_tmp;
+    ZmqData fv1_tmp;
+    ZmqData fv2_tmp;
 
     while(1)
     {
-        //UDPrecv.recvData(&tmp);
-        emit setValue(tmp);
-        msleep(5);
+        Controller::mutex_.lock();
+        lv_tmp = Controller::lv_data_;
+        fv1_tmp = Controller::fv1_data_;
+        fv2_tmp = Controller::fv2_data_;
+        Controller::mutex_.unlock();
+
+        emit setValue(lv_tmp);
+        emit setValue(fv1_tmp);
+        emit setValue(fv2_tmp);
+
+        msleep(100);
     }
 }
