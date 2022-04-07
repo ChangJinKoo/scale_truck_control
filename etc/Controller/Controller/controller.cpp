@@ -18,6 +18,8 @@ Controller::Controller(QWidget *parent)
     connect(qthread, SIGNAL(setValue(ZmqData)),this,SLOT(updateData(ZmqData)));
     qthread->start();
 
+    gettimeofday(&startTime_, NULL);
+
     int DefaultVel = 0; // cm/s
     MinVel = 0; // cm/s
     MaxVel = 140; // cm/s
@@ -134,8 +136,48 @@ void Controller::sendData(int value_vel, int value_dist, int to)
     mutex_.unlock();
 }
 
+void Controller::recordData(struct timeval *startTime){
+  std::cout << "record!!" << std::endl;
+  struct timeval currentTime;
+  char file_name[] = "CC_log00.csv";
+  static char file[128] = {0x00, };
+  char buf[256] = {0x00,};
+  static bool flag = false;
+  std::ifstream read_file;
+  std::ofstream write_file;
+  if(!flag){
+    for(int i = 0; i < 100; i++){
+      file_name[6] = i/10 + '0';  //ASCI
+      file_name[7] = i%10 + '0';
+      sprintf(file, "%s%s", log_path_.c_str(), file_name);
+      read_file.open(file);
+      if(read_file.fail()){  //Check if the file exists
+        read_file.close();
+        write_file.open(file);
+        break;
+      }
+      read_file.close();
+    }
+    //write_file << "Time[s],Predict,Target,Current,Saturation,Estimate,Alpha" << endl;
+    write_file << "Time,Request_time,Cur_dist" << std::endl; //seconds
+    flag = true;
+  }
+  else{
+    mutex_.lock();
+    gettimeofday(&currentTime, NULL);
+    time_ = ((currentTime.tv_sec - startTime->tv_sec)) + ((currentTime.tv_usec - startTime->tv_usec)/1000000.0);
+    //sprintf(buf, "%.3e,%.3f,%.3f,%.3f,%.3f,%.3f,%d", time_, est_vel_, tar_vel_, cur_vel_, sat_vel_, fabs(cur_vel_ - hat_vel_), alpha_);
+    sprintf(buf, "%.3e,%.3f,%.3f", time_, req_time_, ZMQ_SOCKET_.req_recv0_->cur_dist);
+    write_file.open(file, std::ios::out | std::ios::app);
+    write_file << buf << std::endl;
+    mutex_.unlock();
+  }
+  write_file.close();
+}
+
 void Controller::updateData(ZmqData zmq_data)
 {
+    struct timeval startTime, endTime;
     ZmqData tmp;
     int vel, dist;
     float deci = 100;
@@ -162,7 +204,10 @@ void Controller::updateData(ZmqData zmq_data)
 
           tmp.src_index = 15;
           tmp.tar_index = 0;
+          gettimeofday(&startTime, NULL);
           ZMQ_SOCKET_.requestZMQ(&tmp);
+          gettimeofday(&endTime, NULL);
+          req_time_ = ((endTime.tv_sec - startTime.tv_sec)* 1000.0) + ((endTime.tv_usec - startTime.tv_usec)/1000.0);
           mutex_.lock();
           lv_data_ = *ZMQ_SOCKET_.req_recv0_;
           mutex_.unlock();
@@ -214,6 +259,8 @@ void Controller::updateData(ZmqData zmq_data)
           mutex_.unlock();
       }
     }
+
+    recordData(&startTime_);
 }
 
 cv::Mat Controller::display_Map(ZmqData value)

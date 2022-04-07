@@ -3,8 +3,12 @@
 
 #include <QMainWindow>
 #include <QMutex>
+
 #include <opencv2/opencv.hpp>
 #include <vector>
+#include <fstream>
+#include <iostream>
+#include <string>
 
 #include "qTh.h"
 
@@ -89,5 +93,11 @@ private:
     ZMQ_CLASS ZMQ_SOCKET_;
     cv::Mat display_Map(ZmqData zmq_data);
     qTh* qthread;
+
+    struct timeval startTime_;
+    double time_ = 0.0;
+    double req_time_ = 0.0;
+    std::string log_path_ = "/home/avees/logfiles/";
+    void recordData(struct timeval *time);
 };
 #endif // CONTROLLER_H
