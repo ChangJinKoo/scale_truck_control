@@ -137,7 +137,6 @@ void Controller::sendData(int value_vel, int value_dist, int to)
 }
 
 void Controller::recordData(struct timeval *startTime){
-  std::cout << "record!!" << std::endl;
   struct timeval currentTime;
   char file_name[] = "CC_log00.csv";
   static char file[128] = {0x00, };

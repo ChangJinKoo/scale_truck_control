@@ -95,9 +95,9 @@ bool ZMQ_CLASS::readParameters()
   interface_name_ = std::string("ens33");
 
   tcp_ip_server = std::string("tcp://*");
-  tcp_ip_client0 = std::string("tcp://192.168.0.27");
-  tcp_ip_client1 = std::string("tcp://192.168.0.19");
-  tcp_ip_client2 = std::string("tcp://192.168.0.17");
+  tcp_ip_client0 = std::string("tcp://192.168.0.27");  //LV
+  tcp_ip_client1 = std::string("tcp://192.168.0.19");  //FV1
+  tcp_ip_client2 = std::string("tcp://192.168.0.17");  //FV2
 
   tcpreq_port0 = std::string("7777");  //for LV
   tcpreq_port1 = std::string("8888");  //for FV1
@@ -106,8 +106,8 @@ bool ZMQ_CLASS::readParameters()
   zipcode_ = std::string("00020");
   
   req_flag0_ = true;
-  req_flag1_ = false;
-  req_flag2_ = false;
+  req_flag1_ = true;
+  req_flag2_ = true;
 
   //set reply socket ip
   tcpreq_ip0_ = tcp_ip_client0;
