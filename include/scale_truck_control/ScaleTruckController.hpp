@@ -83,7 +83,7 @@ class ScaleTruckController {
     //object
     int ObjSegments_;
     int ObjCircles_;
-    float distance_ = 0.0f;
+    float distance_ = 0.8f;
     float distAngle_ = 0.0f;
     float LVstopDist_;
     float FVstopDist_;

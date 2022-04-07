@@ -255,7 +255,7 @@ void LocalRC::recordData(struct timeval *startTime){
       read_file.close();
     }
     //write_file << "Time[s],Predict,Target,Current,Saturation,Estimate,Alpha" << endl;
-    write_file << "Time,Request_time" << endl; //seconds
+    write_file << "Time,Request_time,Cur_dist" << endl; //seconds
     flag = true;
   }
   else{
@@ -301,7 +301,7 @@ void LocalRC::communicate(){
     printStatus();
     recordData(&startTime);
 
-    std::this_thread::sleep_for(std::chrono::milliseconds(2));
+    std::this_thread::sleep_for(std::chrono::milliseconds(30));
 
     if(!isNodeRunning()){
       ros::requestShutdown();
