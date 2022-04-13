@@ -21,6 +21,6 @@ void FV1Thread::run()
 
         emit setValue(fv1_tmp);
 
-        msleep(20);
+        msleep(100);
     }
 }

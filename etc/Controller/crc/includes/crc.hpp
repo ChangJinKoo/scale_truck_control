@@ -31,8 +31,6 @@ class CentralRC{
     float sampling_time_;
 
     struct timeval start_time_, end_time_;
-    struct timeval start_time1_, end_time1_;
-    double diff_time1_;
 
     std::thread repThread0_, repThread1_, repThread2_;
     std::mutex data_mutex_;

@@ -106,8 +106,8 @@ bool ZMQ_CLASS::readParameters()
   zipcode_ = std::string("00020");
   
   req_flag0_ = true;
-  req_flag1_ = false;
-  req_flag2_ = false;
+  req_flag1_ = true;
+  req_flag2_ = true;
 
   //set reply socket ip
   tcpreq_ip0_ = tcp_ip_client0;
