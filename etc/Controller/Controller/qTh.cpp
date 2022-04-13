@@ -14,11 +14,11 @@ void qTh::run()
 
     while(1)
     {
-        Controller::mutex_.lock();
+        //Controller::mutex_.lock();
         lv_tmp = Controller::lv_data_;
         fv1_tmp = Controller::fv1_data_;
         fv2_tmp = Controller::fv2_data_;
-        Controller::mutex_.unlock();
+        //Controller::mutex_.unlock();
 
         emit setValue(lv_tmp);
         emit setValue(fv1_tmp);

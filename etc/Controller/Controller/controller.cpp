@@ -1,8 +1,9 @@
 #include "controller.h"
 #include "ui_controller.h"
-#include "qTh.h"
 
-QMutex Controller::mutex_;
+QMutex Controller::lv_mutex_;
+QMutex Controller::fv1_mutex_;
+QMutex Controller::fv2_mutex_;
 
 ZmqData Controller::lv_data_;
 ZmqData Controller::fv1_data_;
@@ -13,10 +14,20 @@ Controller::Controller(QWidget *parent)
     , ui(new Ui::Controller), ZMQ_SOCKET_()
 {
     ui->setupUi(this);
-    qthread = new qTh(this);
+    lv_thread_ = new LVThread(this);
+    fv1_thread_ = new FV1Thread(this);
+    fv2_thread_ = new FV2Thread(this);
     qRegisterMetaType<ZmqData>("ZmqData");
-    connect(qthread, SIGNAL(setValue(ZmqData)),this,SLOT(updateData(ZmqData)));
-    qthread->start();
+    connect(lv_thread_, SIGNAL(request(ZmqData)), this, SLOT(recvData(ZmqData)));
+    connect(lv_thread_, SIGNAL(setValue(ZmqData)),this,SLOT(updateData(ZmqData)));
+    connect(fv1_thread_, SIGNAL(request(ZmqData)), this, SLOT(recvData(ZmqData)));
+    connect(fv1_thread_, SIGNAL(setValue(ZmqData)),this,SLOT(updateData(ZmqData)));
+    connect(fv2_thread_, SIGNAL(request(ZmqData)), this, SLOT(recvData(ZmqData)));
+    connect(fv2_thread_, SIGNAL(setValue(ZmqData)),this,SLOT(updateData(ZmqData)));
+
+    if (ZMQ_SOCKET_.req_flag0_) lv_thread_->start();
+    if (ZMQ_SOCKET_.req_flag1_) fv1_thread_->start();
+    if (ZMQ_SOCKET_.req_flag2_) fv2_thread_->start();
 
     gettimeofday(&startTime_, NULL);
 
@@ -122,18 +133,6 @@ void Controller::sendData(int value_vel, int value_dist, int to)
     zmq_data.tar_dist = value_dist/100.0;
 
     ZMQ_SOCKET_.requestZMQ(&zmq_data);
-
-    mutex_.lock();
-    if(to == 0){
-        lv_data_ = *ZMQ_SOCKET_.req_recv0_;
-    }
-    else if (to == 1){
-        fv1_data_ = *ZMQ_SOCKET_.req_recv1_;
-    }
-    else if (to == 2){
-        fv2_data_ = *ZMQ_SOCKET_.req_recv2_;
-    }
-    mutex_.unlock();
 }
 
 void Controller::recordData(struct timeval *startTime){
@@ -162,21 +161,50 @@ void Controller::recordData(struct timeval *startTime){
     flag = true;
   }
   else{
-    mutex_.lock();
+    lv_mutex_.lock();
     gettimeofday(&currentTime, NULL);
     time_ = ((currentTime.tv_sec - startTime->tv_sec)) + ((currentTime.tv_usec - startTime->tv_usec)/1000000.0);
     //sprintf(buf, "%.3e,%.3f,%.3f,%.3f,%.3f,%.3f,%d", time_, est_vel_, tar_vel_, cur_vel_, sat_vel_, fabs(cur_vel_ - hat_vel_), alpha_);
     sprintf(buf, "%.3e,%.3f,%.3f", time_, req_time_, ZMQ_SOCKET_.req_recv0_->cur_dist);
     write_file.open(file, std::ios::out | std::ios::app);
     write_file << buf << std::endl;
-    mutex_.unlock();
+    lv_mutex_.unlock();
   }
   write_file.close();
 }
 
+void Controller::recvData(ZmqData zmq_data)
+{
+    ZmqData tmp;
+    tmp.tar_index = zmq_data.src_index;
+    struct timeval startTime, endTime;
+
+    if (zmq_data.src_index == 0){
+        lv_mutex_.lock();
+        gettimeofday(&startTime, NULL);
+        ZMQ_SOCKET_.requestZMQ(&tmp);
+        gettimeofday(&endTime, NULL);
+        req_time_ = ((endTime.tv_sec - startTime.tv_sec)* 1000.0) + ((endTime.tv_usec - startTime.tv_usec)/1000.0);
+        lv_data_ = *ZMQ_SOCKET_.req_recv0_;
+        lv_mutex_.unlock();
+        recordData(&startTime_);
+    }
+    else if (zmq_data.src_index == 1){
+        fv1_mutex_.lock();
+        ZMQ_SOCKET_.requestZMQ(&tmp);
+        fv1_data_ = *ZMQ_SOCKET_.req_recv1_;
+        fv1_mutex_.unlock();
+    }
+    else if (zmq_data.src_index == 2){
+        fv2_mutex_.lock();
+        ZMQ_SOCKET_.requestZMQ(&tmp);
+        fv2_data_ = *ZMQ_SOCKET_.req_recv2_;
+        fv2_mutex_.unlock();
+    }
+}
+
 void Controller::updateData(ZmqData zmq_data)
 {
-    struct timeval startTime, endTime;
     ZmqData tmp;
     int vel, dist;
     float deci = 100;
@@ -200,16 +228,6 @@ void Controller::updateData(ZmqData zmq_data)
           cv::Mat frame;
           display_Map(tmp).copyTo(frame);
           ui->LV_MAP->setPixmap(QPixmap::fromImage(QImage(frame.data, frame.cols, frame.rows, frame.step, QImage::Format_RGB888)));
-
-          tmp.src_index = 15;
-          tmp.tar_index = 0;
-          gettimeofday(&startTime, NULL);
-          ZMQ_SOCKET_.requestZMQ(&tmp);
-          gettimeofday(&endTime, NULL);
-          req_time_ = ((endTime.tv_sec - startTime.tv_sec)* 1000.0) + ((endTime.tv_usec - startTime.tv_usec)/1000.0);
-          mutex_.lock();
-          lv_data_ = *ZMQ_SOCKET_.req_recv0_;
-          mutex_.unlock();
       }
       else if (tmp.src_index == 1)
       {
@@ -226,13 +244,6 @@ void Controller::updateData(ZmqData zmq_data)
           cv::Mat frame;
           display_Map(tmp).copyTo(frame);
           ui->FV1_MAP->setPixmap(QPixmap::fromImage(QImage(frame.data, frame.cols, frame.rows, frame.step, QImage::Format_RGB888)));
-
-          tmp.src_index = 15;
-          tmp.tar_index = 1;
-          ZMQ_SOCKET_.requestZMQ(&tmp);
-          mutex_.lock();
-          fv1_data_ = *ZMQ_SOCKET_.req_recv1_;
-          mutex_.unlock();
       }
       else if (tmp.src_index == 2)
       {
@@ -249,17 +260,8 @@ void Controller::updateData(ZmqData zmq_data)
           cv::Mat frame;
           display_Map(tmp).copyTo(frame);
           ui->FV2_MAP->setPixmap(QPixmap::fromImage(QImage(frame.data, frame.cols, frame.rows, frame.step, QImage::Format_RGB888)));
-
-          tmp.src_index = 15;
-          tmp.tar_index = 2;
-          ZMQ_SOCKET_.requestZMQ(&tmp);
-          mutex_.lock();
-          fv2_data_ = *ZMQ_SOCKET_.req_recv2_;
-          mutex_.unlock();
       }
     }
-
-    recordData(&startTime_);
 }
 
 cv::Mat Controller::display_Map(ZmqData value)

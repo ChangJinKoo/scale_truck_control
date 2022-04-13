@@ -1,5 +1,5 @@
-#ifndef QTH_H
-#define QTH_H
+#ifndef FV1THREAD_H
+#define FV1THREAD_H
 
 #include <QThread>
 
@@ -7,11 +7,11 @@
 
 class Controller;
 
-class qTh : public QThread
+class FV1Thread : public QThread
 {
     Q_OBJECT
 public:
-    explicit qTh(QObject* parent = nullptr);
+    explicit FV1Thread(QObject* parent = nullptr);
 
 private:
     void run();
@@ -20,4 +20,4 @@ signals:
     void request(ZmqData zmq_data);
 };
 
-#endif // QTH_H
+#endif // FV1THREAD_H
