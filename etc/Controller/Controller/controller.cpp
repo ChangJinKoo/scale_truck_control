@@ -1,8 +1,9 @@
 #include "controller.h"
 #include "ui_controller.h"
-#include "qTh.h"
 
-QMutex Controller::mutex_;
+QMutex Controller::lv_mutex_;
+QMutex Controller::fv1_mutex_;
+QMutex Controller::fv2_mutex_;
 
 ZmqData Controller::lv_data_;
 ZmqData Controller::fv1_data_;
@@ -13,10 +14,21 @@ Controller::Controller(QWidget *parent)
     , ui(new Ui::Controller), ZMQ_SOCKET_()
 {
     ui->setupUi(this);
-    qthread = new qTh(this);
+    lv_thread_ = new LVThread(this);
+    fv1_thread_ = new FV1Thread(this);
+    fv2_thread_ = new FV2Thread(this);
     qRegisterMetaType<ZmqData>("ZmqData");
-    connect(qthread, SIGNAL(setValue(ZmqData)),this,SLOT(updateData(ZmqData)));
-    qthread->start();
+    //connect(this, SIGNAL(send(ZmqData)), this, SLOT(requestData(ZmqData)));
+    connect(lv_thread_, SIGNAL(request(ZmqData)), this, SLOT(requestData(ZmqData)), Qt::DirectConnection);
+    connect(lv_thread_, SIGNAL(setValue(ZmqData)),this,SLOT(updateData(ZmqData)), Qt::AutoConnection);
+    connect(fv1_thread_, SIGNAL(request(ZmqData)), this, SLOT(requestData(ZmqData)), Qt::DirectConnection);
+    connect(fv1_thread_, SIGNAL(setValue(ZmqData)),this,SLOT(updateData(ZmqData)), Qt::AutoConnection);
+    connect(fv2_thread_, SIGNAL(request(ZmqData)), this, SLOT(requestData(ZmqData)), Qt::DirectConnection);
+    connect(fv2_thread_, SIGNAL(setValue(ZmqData)),this,SLOT(updateData(ZmqData)), Qt::AutoConnection);
+
+    if (ZMQ_SOCKET_.req_flag0_) lv_thread_->start();
+    if (ZMQ_SOCKET_.req_flag1_) fv1_thread_->start();
+    if (ZMQ_SOCKET_.req_flag2_) fv2_thread_->start();
 
     gettimeofday(&startTime_, NULL);
 
@@ -85,55 +97,13 @@ Controller::Controller(QWidget *parent)
     ui->FV1Box->setCurrentIndex(2);
     ui->FV2Box->setCurrentIndex(3);
 
-    sendData(DefaultVel, DefaultDist, 0);
-    sendData(DefaultVel, DefaultDist, 1);
-    sendData(DefaultVel, DefaultDist, 2);
-}
-
-void Controller::sendData(int value_vel, int value_dist, int to)
-{
-    ZmqData zmq_data;
-    zmq_data.src_index = 20;
-    zmq_data.tar_index = to;
-    zmq_data.alpha = 0;
-    zmq_data.beta = 0;
-    zmq_data.gamma = 0;
-
-    if(to == 0){
-        zmq_data.alpha = LV_alpha;
-    }
-    if(to == 1){
-        zmq_data.alpha = FV1_alpha;
-        zmq_data.beta = FV1_beta;
-        zmq_data.gamma = FV1_gamma;
-    }
-    if(to == 2){
-        zmq_data.alpha = FV2_alpha;
-        zmq_data.beta = FV2_beta;
-        zmq_data.gamma = FV2_gamma;
-    }
-
-    if(value_vel >= 10) {
-      zmq_data.tar_vel = value_vel/100.0;
-    }
-    else {
-      zmq_data.tar_vel = 0;
-    }
-    zmq_data.tar_dist = value_dist/100.0;
-
-    ZMQ_SOCKET_.requestZMQ(&zmq_data);
-
-    mutex_.lock();
-    if(to == 0){
-        lv_data_ = *ZMQ_SOCKET_.req_recv0_;
-    }
-    else if (to == 1){
-        fv1_data_ = *ZMQ_SOCKET_.req_recv1_;
-    }
-    else if (to == 2){
-        fv2_data_ = *ZMQ_SOCKET_.req_recv2_;
-    }
-    mutex_.unlock();
+    ZmqData default_data;
+    float default_dist = DefaultDist/100.0f;
+    default_data.src_index = 20;
+    default_data.tar_index = 0;
+    default_data.tar_vel = DefaultVel;
+    default_data.tar_dist = default_dist;
+    requestData(default_data);
 }
 
 void Controller::recordData(struct timeval *startTime){
@@ -162,24 +132,52 @@ void Controller::recordData(struct timeval *startTime){
     flag = true;
   }
   else{
-    mutex_.lock();
+    lv_mutex_.lock();
     gettimeofday(&currentTime, NULL);
     time_ = ((currentTime.tv_sec - startTime->tv_sec)) + ((currentTime.tv_usec - startTime->tv_usec)/1000000.0);
     //sprintf(buf, "%.3e,%.3f,%.3f,%.3f,%.3f,%.3f,%d", time_, est_vel_, tar_vel_, cur_vel_, sat_vel_, fabs(cur_vel_ - hat_vel_), alpha_);
     sprintf(buf, "%.3e,%.3f,%.3f", time_, req_time_, ZMQ_SOCKET_.req_recv0_->cur_dist);
     write_file.open(file, std::ios::out | std::ios::app);
     write_file << buf << std::endl;
-    mutex_.unlock();
+    lv_mutex_.unlock();
   }
   write_file.close();
 }
 
+void Controller::requestData(ZmqData zmq_data)
+{
+    ZmqData send_data = zmq_data;
+    struct timeval startTime, endTime;
+
+    if (send_data.tar_index == 0){
+        lv_mutex_.lock();
+        gettimeofday(&startTime, NULL);
+        ZMQ_SOCKET_.requestZMQ(&send_data);
+        gettimeofday(&endTime, NULL);
+        req_time_ = ((endTime.tv_sec - startTime.tv_sec)* 1000.0) + ((endTime.tv_usec - startTime.tv_usec)/1000.0);
+        lv_data_ = *ZMQ_SOCKET_.req_recv0_;
+        lv_mutex_.unlock();
+        recordData(&startTime_);
+    }
+    else if (send_data.tar_index == 1){
+        fv1_mutex_.lock();
+        ZMQ_SOCKET_.requestZMQ(&send_data);
+        fv1_data_ = *ZMQ_SOCKET_.req_recv1_;
+        fv1_mutex_.unlock();
+    }
+    else if (send_data.tar_index == 2){
+        fv2_mutex_.lock();
+        ZMQ_SOCKET_.requestZMQ(&send_data);
+        fv2_data_ = *ZMQ_SOCKET_.req_recv2_;
+        fv2_mutex_.unlock();
+    }
+}
+
 void Controller::updateData(ZmqData zmq_data)
 {
-    struct timeval startTime, endTime;
     ZmqData tmp;
     int vel, dist;
-    float deci = 100;
+    float deci = 100.0f;
     tmp = zmq_data;
     vel = tmp.cur_vel*deci;
     dist = tmp.cur_dist*deci;
@@ -200,16 +198,6 @@ void Controller::updateData(ZmqData zmq_data)
           cv::Mat frame;
           display_Map(tmp).copyTo(frame);
           ui->LV_MAP->setPixmap(QPixmap::fromImage(QImage(frame.data, frame.cols, frame.rows, frame.step, QImage::Format_RGB888)));
-
-          tmp.src_index = 15;
-          tmp.tar_index = 0;
-          gettimeofday(&startTime, NULL);
-          ZMQ_SOCKET_.requestZMQ(&tmp);
-          gettimeofday(&endTime, NULL);
-          req_time_ = ((endTime.tv_sec - startTime.tv_sec)* 1000.0) + ((endTime.tv_usec - startTime.tv_usec)/1000.0);
-          mutex_.lock();
-          lv_data_ = *ZMQ_SOCKET_.req_recv0_;
-          mutex_.unlock();
       }
       else if (tmp.src_index == 1)
       {
@@ -226,13 +214,6 @@ void Controller::updateData(ZmqData zmq_data)
           cv::Mat frame;
           display_Map(tmp).copyTo(frame);
           ui->FV1_MAP->setPixmap(QPixmap::fromImage(QImage(frame.data, frame.cols, frame.rows, frame.step, QImage::Format_RGB888)));
-
-          tmp.src_index = 15;
-          tmp.tar_index = 1;
-          ZMQ_SOCKET_.requestZMQ(&tmp);
-          mutex_.lock();
-          fv1_data_ = *ZMQ_SOCKET_.req_recv1_;
-          mutex_.unlock();
       }
       else if (tmp.src_index == 2)
       {
@@ -249,17 +230,8 @@ void Controller::updateData(ZmqData zmq_data)
           cv::Mat frame;
           display_Map(tmp).copyTo(frame);
           ui->FV2_MAP->setPixmap(QPixmap::fromImage(QImage(frame.data, frame.cols, frame.rows, frame.step, QImage::Format_RGB888)));
-
-          tmp.src_index = 15;
-          tmp.tar_index = 2;
-          ZMQ_SOCKET_.requestZMQ(&tmp);
-          mutex_.lock();
-          fv2_data_ = *ZMQ_SOCKET_.req_recv2_;
-          mutex_.unlock();
       }
     }
-
-    recordData(&startTime_);
 }
 
 cv::Mat Controller::display_Map(ZmqData value)
@@ -346,29 +318,89 @@ void Controller::on_MDistSlider_valueChanged(int value)
 void Controller::on_LVVelSlider_valueChanged(int value)
 {
     int value_vel, value_dist;
+    float tar_vel = 0.0f, tar_dist = 0.0f;
+    ZmqData zmq_data;
+
     value_vel = value;
     value_dist = ui->LVDistSlider->value();
-    sendData(value_vel, value_dist, 0);
 
+    if(value_vel >= 10) {
+      tar_vel = value_vel/100.0f;
+    }
+    else {
+      tar_vel = 0;
+    }
+    tar_dist = value_dist/100.0f;
+    zmq_data.src_index = 20;
+    zmq_data.tar_index = 0;
+    zmq_data.tar_vel = tar_vel;
+    zmq_data.tar_dist = tar_dist;
+    zmq_data.alpha = LV_alpha;
+    requestData(zmq_data);
+
+    ui->LVVelSlider->setValue(value_vel);
+    ui->FV1VelSlider->setValue(value_vel);
+    ui->FV2VelSlider->setValue(value_vel);
     ui->LVTarVel->setText(QString::number(value/100.0)); // m/s
+    ui->FV1TarVel->setText(QString::number(value/100.0)); // m/s
+    ui->FV2TarVel->setText(QString::number(value/100.0)); // m/s
 }
 
 void Controller::on_LVDistSlider_valueChanged(int value)
 {
     int value_vel, value_dist;
+    float tar_vel = 0.0f, tar_dist = 0.0f;
+    ZmqData zmq_data;
+
     value_vel = ui->LVVelSlider->value();
     value_dist = value;
-    sendData(value_vel, value_dist, 0);
 
+    if(value_vel >= 10) {
+      tar_vel = value_vel/100.0f;
+    }
+    else {
+      tar_vel = 0;
+    }
+    tar_dist = value_dist/100.0f;
+    zmq_data.src_index = 20;
+    zmq_data.tar_index = 0;
+    zmq_data.tar_vel = tar_vel;
+    zmq_data.tar_dist = tar_dist;
+    zmq_data.alpha = LV_alpha;
+    requestData(zmq_data);
+
+    ui->LVDistSlider->setValue(value_dist);
+    ui->FV1DistSlider->setValue(value_dist);
+    ui->FV2DistSlider->setValue(value_dist);
     ui->LVTarDist->setText(QString::number(value/100.0)); // m
+    ui->FV1TarDist->setText(QString::number(value/100.0)); // m
+    ui->FV2TarDist->setText(QString::number(value/100.0)); // m
 }
-
+/*
 void Controller::on_FV1VelSlider_valueChanged(int value)
 {
     int value_vel, value_dist;
+    float tar_vel = 0.0f, tar_dist = 0.0f;
+    ZmqData zmq_data;
+
     value_vel = value;
     value_dist = ui->FV1DistSlider->value();
-    sendData(value_vel, value_dist, 1);
+
+    if(value_vel >= 10) {
+      tar_vel = value_vel/100.0f;
+    }
+    else {
+      tar_vel = 0;
+    }
+    tar_dist = value_dist/100.0f;
+    zmq_data.src_index = 20;
+    zmq_data.tar_index = 1;
+    zmq_data.tar_vel = tar_vel;
+    zmq_data.tar_dist = tar_dist;
+    zmq_data.alpha = FV1_alpha;
+    zmq_data.beta = FV1_beta;
+    zmq_data.gamma = FV1_gamma;
+    requestData(zmq_data);
 
     ui->FV1TarVel->setText(QString::number(value/100.0)); // m/s
 }
@@ -376,9 +408,27 @@ void Controller::on_FV1VelSlider_valueChanged(int value)
 void Controller::on_FV1DistSlider_valueChanged(int value)
 {
     int value_vel, value_dist;
+    float tar_vel = 0.0f, tar_dist = 0.0f;
+    ZmqData zmq_data;
+
     value_vel = ui->FV1VelSlider->value();
     value_dist = value;
-    sendData(value_vel, value_dist, 1);
+
+    if(value_vel >= 10) {
+      tar_vel = value_vel/100.0f;
+    }
+    else {
+      tar_vel = 0;
+    }
+    tar_dist = value_dist/100.0f;
+    zmq_data.src_index = 20;
+    zmq_data.tar_index = 1;
+    zmq_data.tar_vel = tar_vel;
+    zmq_data.tar_dist = tar_dist;
+    zmq_data.alpha = FV1_alpha;
+    zmq_data.beta = FV1_beta;
+    zmq_data.gamma = FV1_gamma;
+    requestData(zmq_data);
 
     ui->FV1TarDist->setText(QString::number(value/100.0)); // m
 }
@@ -386,9 +436,27 @@ void Controller::on_FV1DistSlider_valueChanged(int value)
 void Controller::on_FV2VelSlider_valueChanged(int value)
 {
     int value_vel, value_dist;
+    float tar_vel = 0.0f, tar_dist = 0.0f;
+    ZmqData zmq_data;
+
     value_vel = value;
     value_dist = ui->FV2DistSlider->value();
-    sendData(value_vel, value_dist, 2);
+
+    if(value_vel >= 10) {
+      tar_vel = value_vel/100.0f;
+    }
+    else {
+      tar_vel = 0;
+    }
+    tar_dist = value_dist/100.0f;
+    zmq_data.src_index = 20;
+    zmq_data.tar_index = 2;
+    zmq_data.tar_vel = tar_vel;
+    zmq_data.tar_dist = tar_dist;
+    zmq_data.alpha = FV2_alpha;
+    zmq_data.beta = FV2_beta;
+    zmq_data.gamma = FV2_gamma;
+    requestData(zmq_data);
 
     ui->FV2TarVel->setText(QString::number(value/100.0)); // m/s
 }
@@ -396,25 +464,46 @@ void Controller::on_FV2VelSlider_valueChanged(int value)
 void Controller::on_FV2DistSlider_valueChanged(int value)
 {
     int value_vel, value_dist;
+    float tar_vel = 0.0f, tar_dist = 0.0f;
+    ZmqData zmq_data;
+
     value_vel = ui->FV2VelSlider->value();
     value_dist = value;
-    sendData(value_vel, value_dist, 2);
+
+    if(value_vel >= 10) {
+      tar_vel = value_vel/100.0f;
+    }
+    else {
+      tar_vel = 0;
+    }
+    tar_dist = value_dist/100.0f;
+    zmq_data.src_index = 20;
+    zmq_data.tar_index = 2;
+    zmq_data.tar_vel = tar_vel;
+    zmq_data.tar_dist = tar_dist;
+    zmq_data.alpha = FV2_alpha;
+    zmq_data.beta = FV2_beta;
+    zmq_data.gamma = FV2_gamma;
+    requestData(zmq_data);
 
     ui->FV2TarDist->setText(QString::number(value/100.0)); // m
 }
-
-void Controller::on_pushButton_clicked()
+*/
+void Controller::on_pushButton_clicked()  //Emergency stop
 {
-    int LV_dist = ui->LVDistSlider->value();
-    int FV1_dist = ui->FV1DistSlider->value();
-    int FV2_dist = ui->FV2DistSlider->value();
+    ZmqData zmq_data;
+    float LV_dist = ui->LVDistSlider->value()/100.0f;
     ui->MVelSlider->setValue(0);
     ui->LVVelSlider->setValue(0);
     ui->FV1VelSlider->setValue(0);
     ui->FV2VelSlider->setValue(0);
-    sendData(0, LV_dist, 0);
-    sendData(0, FV1_dist, 1);
-    sendData(0, FV2_dist, 2);
+
+    zmq_data.src_index = 20;
+    zmq_data.tar_index = 0;
+    zmq_data.tar_vel = 0;
+    zmq_data.tar_dist = LV_dist;
+    zmq_data.alpha = LV_alpha;
+    requestData(zmq_data);
 }
 
 void Controller::on_LVBox_activated(int index)
@@ -493,6 +582,9 @@ void Controller::on_FV2Box_activated(int index)
 
 void Controller::on_Send_clicked()
 {
+    ZmqData zmq_data;
+    float tar_vel, tar_dist;
+
     int vel = ui->MTarVel->text().split(" ")[0].toFloat()*100;
     ui->MVelSlider->setValue(vel);
     ui->LVVelSlider->setValue(vel);
@@ -503,68 +595,204 @@ void Controller::on_Send_clicked()
     ui->LVDistSlider->setValue(dist);
     ui->FV1DistSlider->setValue(dist);
     ui->FV2DistSlider->setValue(dist);
-    sendData(ui->LVVelSlider->value(), ui->LVDistSlider->value(), 0);
-    //sendData(ui->FV1VelSlider->value(), ui->FV1DistSlider->value(), 1);
-    //sendData(ui->FV2VelSlider->value(), ui->FV2DistSlider->value(), 2);
+
+    if(ui->LVVelSlider->value() >= 10) {
+      tar_vel = ui->LVVelSlider->value()/100.0f;
+    }
+    else {
+      tar_vel = 0;
+    }
+    tar_dist = ui->LVDistSlider->value()/100.0f;
+    zmq_data.src_index = 20;
+    zmq_data.tar_index = 0;
+    zmq_data.tar_vel = tar_vel;
+    zmq_data.tar_dist = tar_dist;
+    zmq_data.alpha = LV_alpha;
+
+    requestData(zmq_data);
+}
+
+void Controller::on_LV_alpha_toggled(bool checked)
+{
+    ZmqData zmq_data;
+    float tar_vel, tar_dist;
+
+    int value_vel = ui->LVVelSlider->value();
+    int value_dist = ui->LVDistSlider->value();
+    LV_alpha = checked;
+
+    if(value_vel >= 10) {
+      tar_vel = value_vel/100.0f;
+    }
+    else {
+      tar_vel = 0;
+    }
+    tar_dist = value_dist/100.0f;
+    zmq_data.src_index = 20;
+    zmq_data.tar_index = 0;
+    zmq_data.tar_vel = tar_vel;
+    zmq_data.tar_dist = tar_dist;
+    zmq_data.alpha = LV_alpha;
+    requestData(zmq_data);
 }
 
 void Controller::on_FV1_alpha_toggled(bool checked)
 {
+    ZmqData zmq_data;
+    float tar_vel, tar_dist;
+
     int value_vel = ui->FV1VelSlider->value();
     int value_dist = ui->FV1DistSlider->value();
     FV1_alpha = checked;
-    sendData(value_vel, value_dist, 1);
+
+    if(value_vel >= 10) {
+      tar_vel = value_vel/100.0f;
+    }
+    else {
+      tar_vel = 0;
+    }
+    tar_dist = value_dist/100.0f;
+    zmq_data.src_index = 20;
+    zmq_data.tar_index = 1;
+    zmq_data.tar_vel = tar_vel;
+    zmq_data.tar_dist = tar_dist;
+    zmq_data.alpha = FV1_alpha;
+    zmq_data.beta = FV1_beta;
+    zmq_data.gamma = FV1_gamma;
+    requestData(zmq_data);
 }
 
 
 void Controller::on_FV1_beta_toggled(bool checked)
 {
+    ZmqData zmq_data;
+    float tar_vel, tar_dist;
+
     int value_vel = ui->FV1VelSlider->value();
     int value_dist = ui->FV1DistSlider->value();
     FV1_beta = checked;
-    sendData(value_vel, value_dist, 1);
+
+    if(value_vel >= 10) {
+      tar_vel = value_vel/100.0f;
+    }
+    else {
+      tar_vel = 0;
+    }
+    tar_dist = value_dist/100.0f;
+    zmq_data.src_index = 20;
+    zmq_data.tar_index = 1;
+    zmq_data.tar_vel = tar_vel;
+    zmq_data.tar_dist = tar_dist;
+    zmq_data.alpha = FV1_alpha;
+    zmq_data.beta = FV1_beta;
+    zmq_data.gamma = FV1_gamma;
+    requestData(zmq_data);
 }
 
 
 void Controller::on_FV1_gamma_toggled(bool checked)
 {
+    ZmqData zmq_data;
+    float tar_vel, tar_dist;
+
     int value_vel = ui->FV1VelSlider->value();
     int value_dist = ui->FV1DistSlider->value();
     FV1_gamma = checked;
-    sendData(value_vel, value_dist, 1);
+
+    if(value_vel >= 10) {
+      tar_vel = value_vel/100.0f;
+    }
+    else {
+      tar_vel = 0;
+    }
+    tar_dist = value_dist/100.0f;
+    zmq_data.src_index = 20;
+    zmq_data.tar_index = 1;
+    zmq_data.tar_vel = tar_vel;
+    zmq_data.tar_dist = tar_dist;
+    zmq_data.alpha = FV1_alpha;
+    zmq_data.beta = FV1_beta;
+    zmq_data.gamma = FV1_gamma;
+    requestData(zmq_data);
 }
 
 
 void Controller::on_FV2_alpha_toggled(bool checked)
 {
+    ZmqData zmq_data;
+    float tar_vel, tar_dist;
+
     int value_vel = ui->FV2VelSlider->value();
     int value_dist = ui->FV2DistSlider->value();
     FV2_alpha = checked;
-    sendData(value_vel, value_dist, 2);
+
+    if(value_vel >= 10) {
+      tar_vel = value_vel/100.0f;
+    }
+    else {
+      tar_vel = 0;
+    }
+    tar_dist = value_dist/100.0f;
+    zmq_data.src_index = 20;
+    zmq_data.tar_index = 2;
+    zmq_data.tar_vel = tar_vel;
+    zmq_data.tar_dist = tar_dist;
+    zmq_data.alpha = FV2_alpha;
+    zmq_data.beta = FV2_beta;
+    zmq_data.gamma = FV2_gamma;
+    requestData(zmq_data);
 }
 
 
 void Controller::on_FV2_beta_toggled(bool checked)
 {
+    ZmqData zmq_data;
+    float tar_vel, tar_dist;
+
     int value_vel = ui->FV2VelSlider->value();
     int value_dist = ui->FV2DistSlider->value();
     FV2_beta = checked;
-    sendData(value_vel, value_dist, 2);
+
+    if(value_vel >= 10) {
+      tar_vel = value_vel/100.0f;
+    }
+    else {
+      tar_vel = 0;
+    }
+    tar_dist = value_dist/100.0f;
+    zmq_data.src_index = 20;
+    zmq_data.tar_index = 2;
+    zmq_data.tar_vel = tar_vel;
+    zmq_data.tar_dist = tar_dist;
+    zmq_data.alpha = FV2_alpha;
+    zmq_data.beta = FV2_beta;
+    zmq_data.gamma = FV2_gamma;
+    requestData(zmq_data);
 }
 
 
 void Controller::on_FV2_gamma_toggled(bool checked)
 {
+    ZmqData zmq_data;
+    float tar_vel, tar_dist;
+
     int value_vel = ui->FV2VelSlider->value();
     int value_dist = ui->FV2DistSlider->value();
     FV2_gamma = checked;
-    sendData(value_vel, value_dist, 2);
-}
 
-void Controller::on_LV_alpha_toggled(bool checked)
-{
-    int value_vel = ui->LVVelSlider->value();
-    int value_dist = ui->LVDistSlider->value();
-    LV_alpha = checked;
-    sendData(value_vel, value_dist, 0);
+    if(value_vel >= 10) {
+      tar_vel = value_vel/100.0f;
+    }
+    else {
+      tar_vel = 0;
+    }
+    tar_dist = value_dist/100.0f;
+    zmq_data.src_index = 20;
+    zmq_data.tar_index = 2;
+    zmq_data.tar_vel = tar_vel;
+    zmq_data.tar_dist = tar_dist;
+    zmq_data.alpha = FV2_alpha;
+    zmq_data.beta = FV2_beta;
+    zmq_data.gamma = FV2_gamma;
+    requestData(zmq_data);
 }

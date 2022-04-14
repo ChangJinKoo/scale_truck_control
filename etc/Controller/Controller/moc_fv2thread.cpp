@@ -1,16 +1,16 @@
 /****************************************************************************
-** Meta object code from reading C++ file 'qTh.h'
+** Meta object code from reading C++ file 'fv2thread.h'
 **
 ** Created by: The Qt Meta Object Compiler version 67 (Qt 5.9.5)
 **
 ** WARNING! All changes made in this file will be lost!
 *****************************************************************************/
 
-#include "qTh.h"
+#include "fv2thread.h"
 #include <QtCore/qbytearray.h>
 #include <QtCore/qmetatype.h>
 #if !defined(Q_MOC_OUTPUT_REVISION)
-#error "The header file 'qTh.h' doesn't include <QObject>."
+#error "The header file 'fv2thread.h' doesn't include <QObject>."
 #elif Q_MOC_OUTPUT_REVISION != 67
 #error "This file was generated using the moc from 5.9.5. It"
 #error "cannot be used with the include files from this version of Qt."
@@ -20,30 +20,31 @@
 QT_BEGIN_MOC_NAMESPACE
 QT_WARNING_PUSH
 QT_WARNING_DISABLE_DEPRECATED
-struct qt_meta_stringdata_qTh_t {
+struct qt_meta_stringdata_FV2Thread_t {
     QByteArrayData data[6];
-    char stringdata0[39];
+    char stringdata0[45];
 };
 #define QT_MOC_LITERAL(idx, ofs, len) \
     Q_STATIC_BYTE_ARRAY_DATA_HEADER_INITIALIZER_WITH_OFFSET(len, \
-    qptrdiff(offsetof(qt_meta_stringdata_qTh_t, stringdata0) + ofs \
+    qptrdiff(offsetof(qt_meta_stringdata_FV2Thread_t, stringdata0) + ofs \
         - idx * sizeof(QByteArrayData)) \
     )
-static const qt_meta_stringdata_qTh_t qt_meta_stringdata_qTh = {
+static const qt_meta_stringdata_FV2Thread_t qt_meta_stringdata_FV2Thread = {
     {
-QT_MOC_LITERAL(0, 0, 3), // "qTh"
-QT_MOC_LITERAL(1, 4, 8), // "setValue"
-QT_MOC_LITERAL(2, 13, 0), // ""
-QT_MOC_LITERAL(3, 14, 7), // "ZmqData"
-QT_MOC_LITERAL(4, 22, 8), // "zmq_data"
-QT_MOC_LITERAL(5, 31, 7) // "request"
+QT_MOC_LITERAL(0, 0, 9), // "FV2Thread"
+QT_MOC_LITERAL(1, 10, 8), // "setValue"
+QT_MOC_LITERAL(2, 19, 0), // ""
+QT_MOC_LITERAL(3, 20, 7), // "ZmqData"
+QT_MOC_LITERAL(4, 28, 8), // "zmq_data"
+QT_MOC_LITERAL(5, 37, 7) // "request"
 
     },
-    "qTh\0setValue\0\0ZmqData\0zmq_data\0request"
+    "FV2Thread\0setValue\0\0ZmqData\0zmq_data\0"
+    "request"
 };
 #undef QT_MOC_LITERAL
 
-static const uint qt_meta_data_qTh[] = {
+static const uint qt_meta_data_FV2Thread[] = {
 
  // content:
        7,       // revision
@@ -67,10 +68,10 @@ static const uint qt_meta_data_qTh[] = {
        0        // eod
 };
 
-void qTh::qt_static_metacall(QObject *_o, QMetaObject::Call _c, int _id, void **_a)
+void FV2Thread::qt_static_metacall(QObject *_o, QMetaObject::Call _c, int _id, void **_a)
 {
     if (_c == QMetaObject::InvokeMetaMethod) {
-        qTh *_t = static_cast<qTh *>(_o);
+        FV2Thread *_t = static_cast<FV2Thread *>(_o);
         Q_UNUSED(_t)
         switch (_id) {
         case 0: _t->setValue((*reinterpret_cast< ZmqData(*)>(_a[1]))); break;
@@ -80,15 +81,15 @@ void qTh::qt_static_metacall(QObject *_o, QMetaObject::Call _c, int _id, void **
     } else if (_c == QMetaObject::IndexOfMethod) {
         int *result = reinterpret_cast<int *>(_a[0]);
         {
-            typedef void (qTh::*_t)(ZmqData );
-            if (*reinterpret_cast<_t *>(_a[1]) == static_cast<_t>(&qTh::setValue)) {
+            typedef void (FV2Thread::*_t)(ZmqData );
+            if (*reinterpret_cast<_t *>(_a[1]) == static_cast<_t>(&FV2Thread::setValue)) {
                 *result = 0;
                 return;
             }
         }
         {
-            typedef void (qTh::*_t)(ZmqData );
-            if (*reinterpret_cast<_t *>(_a[1]) == static_cast<_t>(&qTh::request)) {
+            typedef void (FV2Thread::*_t)(ZmqData );
+            if (*reinterpret_cast<_t *>(_a[1]) == static_cast<_t>(&FV2Thread::request)) {
                 *result = 1;
                 return;
             }
@@ -96,26 +97,26 @@ void qTh::qt_static_metacall(QObject *_o, QMetaObject::Call _c, int _id, void **
     }
 }
 
-const QMetaObject qTh::staticMetaObject = {
-    { &QThread::staticMetaObject, qt_meta_stringdata_qTh.data,
-      qt_meta_data_qTh,  qt_static_metacall, nullptr, nullptr}
+const QMetaObject FV2Thread::staticMetaObject = {
+    { &QThread::staticMetaObject, qt_meta_stringdata_FV2Thread.data,
+      qt_meta_data_FV2Thread,  qt_static_metacall, nullptr, nullptr}
 };
 
 
-const QMetaObject *qTh::metaObject() const
+const QMetaObject *FV2Thread::metaObject() const
 {
     return QObject::d_ptr->metaObject ? QObject::d_ptr->dynamicMetaObject() : &staticMetaObject;
 }
 
-void *qTh::qt_metacast(const char *_clname)
+void *FV2Thread::qt_metacast(const char *_clname)
 {
     if (!_clname) return nullptr;
-    if (!strcmp(_clname, qt_meta_stringdata_qTh.stringdata0))
+    if (!strcmp(_clname, qt_meta_stringdata_FV2Thread.stringdata0))
         return static_cast<void*>(this);
     return QThread::qt_metacast(_clname);
 }
 
-int qTh::qt_metacall(QMetaObject::Call _c, int _id, void **_a)
+int FV2Thread::qt_metacall(QMetaObject::Call _c, int _id, void **_a)
 {
     _id = QThread::qt_metacall(_c, _id, _a);
     if (_id < 0)
@@ -133,14 +134,14 @@ int qTh::qt_metacall(QMetaObject::Call _c, int _id, void **_a)
 }
 
 // SIGNAL 0
-void qTh::setValue(ZmqData _t1)
+void FV2Thread::setValue(ZmqData _t1)
 {
     void *_a[] = { nullptr, const_cast<void*>(reinterpret_cast<const void*>(&_t1)) };
     QMetaObject::activate(this, &staticMetaObject, 0, _a);
 }
 
 // SIGNAL 1
-void qTh::request(ZmqData _t1)
+void FV2Thread::request(ZmqData _t1)
 {
     void *_a[] = { nullptr, const_cast<void*>(reinterpret_cast<const void*>(&_t1)) };
     QMetaObject::activate(this, &staticMetaObject, 1, _a);
