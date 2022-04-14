@@ -172,6 +172,7 @@ public:
 
         FV1DistSlider = new QSlider(FV1GBOX);
         FV1DistSlider->setObjectName(QStringLiteral("FV1DistSlider"));
+        FV1DistSlider->setEnabled(false);
         FV1DistSlider->setOrientation(Qt::Horizontal);
 
         gridLayout_4->addWidget(FV1DistSlider, 6, 1, 1, 1);
@@ -555,6 +556,7 @@ public:
 
         FV2DistSlider = new QSlider(FV2GBOX);
         FV2DistSlider->setObjectName(QStringLiteral("FV2DistSlider"));
+        FV2DistSlider->setEnabled(false);
         FV2DistSlider->setOrientation(Qt::Horizontal);
 
         gridLayout_5->addWidget(FV2DistSlider, 3, 1, 1, 1);
@@ -748,7 +750,7 @@ public:
         MGBOX->setTitle(QApplication::translate("Controller", "Master", Q_NULLPTR));
         MTarVel->setText(QApplication::translate("Controller", "0", Q_NULLPTR));
         label_39->setText(QApplication::translate("Controller", "m/s", Q_NULLPTR));
-        pushButton->setText(QApplication::translate("Controller", "Emercency Stop", Q_NULLPTR));
+        pushButton->setText(QApplication::translate("Controller", "Emergency Stop", Q_NULLPTR));
         label->setText(QApplication::translate("Controller", "Target Velocity", Q_NULLPTR));
         MTarDist->setText(QApplication::translate("Controller", "0", Q_NULLPTR));
         label_40->setText(QApplication::translate("Controller", "m", Q_NULLPTR));

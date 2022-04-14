@@ -1,6 +1,8 @@
 #ifndef ZMQ_CLASS_H
 #define ZMQ_CLASS_H
 
+#include <QDebug>
+
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
