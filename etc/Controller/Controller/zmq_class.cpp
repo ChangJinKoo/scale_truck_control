@@ -42,7 +42,7 @@ void ZMQ_CLASS::init()
     req_socket0_ = zmq::socket_t(context_, ZMQ_REQ);
     req_socket0_.connect(tcpreq_ip0_);
     req_socket0_.setsockopt(ZMQ_RCVTIMEO, 30000);  //timeout (millisecends)
-    req_socket0_.setsockopt(ZMQ_LINGER, 0);
+    //req_socket0_.setsockopt(ZMQ_LINGER, 0);
   }
 
   if(req_flag1_)
@@ -50,7 +50,7 @@ void ZMQ_CLASS::init()
     req_socket1_ = zmq::socket_t(context_, ZMQ_REQ);
     req_socket1_.connect(tcpreq_ip1_);
     req_socket1_.setsockopt(ZMQ_RCVTIMEO, 30000);  //timeout (millisecends)
-    req_socket1_.setsockopt(ZMQ_LINGER, 0);
+    //req_socket1_.setsockopt(ZMQ_LINGER, 0);
   }
 
   if(req_flag2_)
@@ -58,7 +58,7 @@ void ZMQ_CLASS::init()
     req_socket2_ = zmq::socket_t(context_, ZMQ_REQ);
     req_socket2_.connect(tcpreq_ip2_);
     req_socket2_.setsockopt(ZMQ_RCVTIMEO, 30000);  //timeout (millisecends)
-    req_socket2_.setsockopt(ZMQ_LINGER, 0);
+    //req_socket2_.setsockopt(ZMQ_LINGER, 0);
   }
 
 }

@@ -9,10 +9,11 @@ FV2Thread::FV2Thread(QObject *parent) : QThread(parent)
 void FV2Thread::run()
 {
     ZmqData fv2_tmp;
-    fv2_tmp.src_index = 2;
 
     while(1)
     {
+        fv2_tmp.src_index = 255;
+        fv2_tmp.tar_index = 2;
         emit request(fv2_tmp);
 
         Controller::fv2_mutex_.lock();

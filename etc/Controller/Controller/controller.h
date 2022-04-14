@@ -51,7 +51,7 @@ public:
     int FV2_gamma;
 
 private slots:
-    void recvData(ZmqData zmq_data);
+    void requestData(ZmqData zmq_data);
 
     void updateData(ZmqData zmq_data);
 
@@ -63,13 +63,13 @@ private slots:
 
     void on_LVDistSlider_valueChanged(int value);
 
-    void on_FV1VelSlider_valueChanged(int value);
+    //void on_FV1VelSlider_valueChanged(int value);
 
-    void on_FV1DistSlider_valueChanged(int value);
+    //void on_FV1DistSlider_valueChanged(int value);
 
-    void on_FV2VelSlider_valueChanged(int value);
+    //void on_FV2VelSlider_valueChanged(int value);
 
-    void on_FV2DistSlider_valueChanged(int value);
+    //void on_FV2DistSlider_valueChanged(int value);
 
     void on_pushButton_clicked();
 
@@ -94,6 +94,9 @@ private slots:
     void on_FV2_gamma_toggled(bool checked);
 
     void on_LV_alpha_toggled(bool checked);
+
+signals:
+    void send(ZmqData zmq_data);
 
 private:
     Ui::Controller *ui;

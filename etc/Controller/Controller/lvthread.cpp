@@ -9,10 +9,10 @@ LVThread::LVThread(QObject *parent) : QThread(parent)
 void LVThread::run()
 {
     ZmqData lv_tmp;
-    lv_tmp.src_index = 0;
-
     while(1)
     {
+        lv_tmp.src_index = 255;
+        lv_tmp.tar_index = 0;
         emit request(lv_tmp);
 
         Controller::lv_mutex_.lock();
