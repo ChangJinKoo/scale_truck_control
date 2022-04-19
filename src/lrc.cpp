@@ -89,7 +89,6 @@ bool LocalRC::isNodeRunning(){
 
 
 void LocalRC::XavCallback(const scale_truck_control::xav2lrc &msg){
-  //const std::lock_guard<std::mutex> lock(data_mutex_);
   std::scoped_lock lock(data_mutex_, time_mutex_);
   angle_degree_ = msg.steer_angle;
   cur_dist_ = msg.cur_dist;
@@ -97,6 +96,7 @@ void LocalRC::XavCallback(const scale_truck_control::xav2lrc &msg){
     tar_dist_ = msg.tar_dist;
     tar_vel_ = msg.tar_vel;
   }
+  fi_encoder_ = msg.fi_encoder;
   alpha_ = msg.alpha;
   beta_ = msg.beta;
   gamma_ = msg.gamma;
@@ -104,7 +104,6 @@ void LocalRC::XavCallback(const scale_truck_control::xav2lrc &msg){
 
 //void LocalRC::OcrCallback(const scale_truck_control::lrc2xav &msg){
 void LocalRC::OcrCallback(const scale_truck_control::ocr2lrc &msg){
-  //const std::lock_guard<std::mutex> lock(data_mutex_);
   std::scoped_lock lock(data_mutex_);
   cur_vel_ = msg.cur_vel;
   sat_vel_ = msg.u_k;  //saturated velocity
@@ -114,7 +113,6 @@ void LocalRC::rosPub(){
   scale_truck_control::lrc2xav xav;
   scale_truck_control::lrc2ocr ocr;
   { 
-    //const std::lock_guard<std::mutex> lock(data_mutex_);
     std::scoped_lock lock(data_mutex_, time_mutex_);
     xav.cur_vel = cur_vel_;
     ocr.index = index_;
@@ -122,7 +120,8 @@ void LocalRC::rosPub(){
     ocr.cur_dist = cur_dist_;
     ocr.tar_dist = tar_dist_;
     ocr.tar_vel = tar_vel_;
-    ocr.pred_vel = est_vel_;
+    ocr.est_vel = est_vel_;
+    ocr.fi_encoder = fi_encoder_;
     ocr.alpha = alpha_;
   }
   XavPublisher_.publish(xav);
@@ -133,7 +132,6 @@ void LocalRC::radio(ZmqData* zmq_data)
 {
   while(isNodeRunning()){
     {
-      //const std::lock_guard<std::mutex> lock(data_mutex_);
       std::scoped_lock lock(data_mutex_);
       zmq_data->tar_vel = tar_vel_;
       zmq_data->tar_dist = tar_dist_;
@@ -157,7 +155,6 @@ void LocalRC::request(ZmqData* zmq_data){
   double diff_time = 0.0;
   while(isNodeRunning()){
     {
-      //const std::lock_guard<std::mutex> lock(data_mutex_);
       std::scoped_lock lock(data_mutex_, time_mutex_);
       zmq_data->cur_vel = cur_vel_;
       zmq_data->cur_dist = cur_dist_;
@@ -179,7 +176,6 @@ void LocalRC::request(ZmqData* zmq_data){
 }
 
 void LocalRC::velSensorCheck(){
-  //const std::lock_guard<std::mutex> lock(data_mutex_);
   std::scoped_lock lock(data_mutex_);
   hat_vel_ = a_ * hat_vel_ + b_ * sat_vel_ + l_ * (cur_vel_ - hat_vel_);
   if(fabs(cur_vel_ - hat_vel_) > epsilon_){
@@ -193,7 +189,6 @@ void LocalRC::velSensorCheck(){
 }
 
 void LocalRC::updateMode(uint8_t crc_mode){
-  //const std::lock_guard<std::mutex> lock(data_mutex_);
   std::scoped_lock lock(data_mutex_);
   if(index_ == 10){  //LV
     if(beta_ || crc_mode == 2){  //Camera sensor failure
@@ -220,7 +215,6 @@ void LocalRC::updateMode(uint8_t crc_mode){
 }
 
 void LocalRC::updateData(ZmqData* zmq_data){
-  //const std::lock_guard<std::mutex> lock(data_mutex_);
   std::scoped_lock lock(data_mutex_);
   if(zmq_data->src_index == 30){  //from CRC
     est_vel_ = zmq_data->est_vel;
@@ -276,7 +270,6 @@ void LocalRC::printStatus(){
   if (EnableConsoleOutput_){
     printf("\033[2J");
     printf("\033[1;1H");
-    printf("\nEstimated Velocity:\t%.3f", fabs(cur_vel_ - hat_vel_));
     printf("\nPredict Velocity:\t%.3f", est_vel_);
     printf("\nTarget Velocity:\t%.3f", tar_vel_);
     printf("\nCurrent Velocity:\t%.3f", cur_vel_);
