@@ -31,6 +31,9 @@ typedef struct ZmqData{
 	uint8_t tar_index = 255;
 
 	//sensor failure
+	bool fi_encoder = false;
+	bool fi_camera = false;
+	bool fi_lidar = false;
 	bool alpha = false;
 	bool beta = false;
 	bool gamma = false;

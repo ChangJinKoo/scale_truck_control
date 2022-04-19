@@ -64,6 +64,7 @@ class ScaleTruckController {
 	
     double CycleTime_ = 0.0;
     int index_;
+    bool fi_encoder_ = false;
     bool Alpha_ = false;
 
     //image
@@ -72,6 +73,7 @@ class ScaleTruckController {
     int waitKeyDelay_;
     bool enableConsoleOutput_;
     int sync_flag_;
+    bool fi_camera_ = false;
     bool Beta_ = false;
 
     float AngleDegree_; // -1 ~ 1  - Twist msg angular.z
@@ -89,6 +91,7 @@ class ScaleTruckController {
     float FVstopDist_;
     float TargetDist_;
     float SafetyDist_;
+    bool fi_lidar_ = false;
     bool Gamma_ = false;
 
     //ZMQ

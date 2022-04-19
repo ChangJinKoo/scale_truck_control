@@ -18,7 +18,6 @@ Controller::Controller(QWidget *parent)
     fv1_thread_ = new FV1Thread(this);
     fv2_thread_ = new FV2Thread(this);
     qRegisterMetaType<ZmqData>("ZmqData");
-    //connect(this, SIGNAL(send(ZmqData)), this, SLOT(requestData(ZmqData)));
     connect(lv_thread_, SIGNAL(request(ZmqData)), this, SLOT(requestData(ZmqData)), Qt::DirectConnection);
     connect(lv_thread_, SIGNAL(setValue(ZmqData)),this,SLOT(updateData(ZmqData)), Qt::AutoConnection);
     connect(fv1_thread_, SIGNAL(request(ZmqData)), this, SLOT(requestData(ZmqData)), Qt::DirectConnection);
@@ -39,13 +38,13 @@ Controller::Controller(QWidget *parent)
     MinDist = 15; // cm
     MaxDist = 1000; // cm
 
-    LV_alpha = 0;
-    FV1_alpha = 0;
-    FV1_beta = 0;
-    FV1_gamma = 0;
-    FV2_alpha = 0;
-    FV2_beta = 0;
-    FV2_gamma = 0;
+    LV_fi_encoder = 0;
+    FV1_fi_encoder = 0;
+    FV1_fi_camera = 0;
+    FV1_fi_lidar = 0;
+    FV2_fi_encoder = 0;
+    FV2_fi_camera = 0;
+    FV2_fi_lidar = 0;
 
     ui->LV_beta->setEnabled(false);
     ui->LV_gamma->setEnabled(false);
@@ -335,7 +334,7 @@ void Controller::on_LVVelSlider_valueChanged(int value)
     zmq_data.tar_index = 0;
     zmq_data.tar_vel = tar_vel;
     zmq_data.tar_dist = tar_dist;
-    zmq_data.alpha = LV_alpha;
+    zmq_data.fi_encoder = LV_fi_encoder;
     requestData(zmq_data);
 
     ui->LVVelSlider->setValue(value_vel);
@@ -366,7 +365,7 @@ void Controller::on_LVDistSlider_valueChanged(int value)
     zmq_data.tar_index = 0;
     zmq_data.tar_vel = tar_vel;
     zmq_data.tar_dist = tar_dist;
-    zmq_data.alpha = LV_alpha;
+    zmq_data.fi_encoder = LV_fi_encoder;
     requestData(zmq_data);
 
     ui->LVDistSlider->setValue(value_dist);
@@ -397,9 +396,9 @@ void Controller::on_FV1VelSlider_valueChanged(int value)
     zmq_data.tar_index = 1;
     zmq_data.tar_vel = tar_vel;
     zmq_data.tar_dist = tar_dist;
-    zmq_data.alpha = FV1_alpha;
-    zmq_data.beta = FV1_beta;
-    zmq_data.gamma = FV1_gamma;
+    zmq_data.fi_encoder = FV1_fi_encoder;
+    zmq_data.fi_camera = FV1_fi_camera;
+    zmq_data.fi_lidar = FV1_fi_lidar;
     requestData(zmq_data);
 
     ui->FV1TarVel->setText(QString::number(value/100.0)); // m/s
@@ -425,9 +424,9 @@ void Controller::on_FV1DistSlider_valueChanged(int value)
     zmq_data.tar_index = 1;
     zmq_data.tar_vel = tar_vel;
     zmq_data.tar_dist = tar_dist;
-    zmq_data.alpha = FV1_alpha;
-    zmq_data.beta = FV1_beta;
-    zmq_data.gamma = FV1_gamma;
+    zmq_data.fi_encoder = FV1_fi_encoder;
+    zmq_data.fi_camera = FV1_fi_camera;
+    zmq_data.fi_lidar = FV1_fi_lidar;
     requestData(zmq_data);
 
     ui->FV1TarDist->setText(QString::number(value/100.0)); // m
@@ -453,9 +452,9 @@ void Controller::on_FV2VelSlider_valueChanged(int value)
     zmq_data.tar_index = 2;
     zmq_data.tar_vel = tar_vel;
     zmq_data.tar_dist = tar_dist;
-    zmq_data.alpha = FV2_alpha;
-    zmq_data.beta = FV2_beta;
-    zmq_data.gamma = FV2_gamma;
+    zmq_data.fi_encoder = FV2_fi_encoder;
+    zmq_data.fi_camera = FV2_fi_camera;
+    zmq_data.fi_lidar = FV2_lidar;
     requestData(zmq_data);
 
     ui->FV2TarVel->setText(QString::number(value/100.0)); // m/s
@@ -481,9 +480,9 @@ void Controller::on_FV2DistSlider_valueChanged(int value)
     zmq_data.tar_index = 2;
     zmq_data.tar_vel = tar_vel;
     zmq_data.tar_dist = tar_dist;
-    zmq_data.alpha = FV2_alpha;
-    zmq_data.beta = FV2_beta;
-    zmq_data.gamma = FV2_gamma;
+    zmq_data.fi_encoder = FV2_fi_encoder;
+    zmq_data.fi_camera = FV2_fi_camera;
+    zmq_data.fi_lidar = FV2_lidar;
     requestData(zmq_data);
 
     ui->FV2TarDist->setText(QString::number(value/100.0)); // m
@@ -502,7 +501,7 @@ void Controller::on_pushButton_clicked()  //Emergency stop
     zmq_data.tar_index = 0;
     zmq_data.tar_vel = 0;
     zmq_data.tar_dist = LV_dist;
-    zmq_data.alpha = LV_alpha;
+    zmq_data.fi_encoder = LV_fi_encoder;
     requestData(zmq_data);
 }
 
@@ -607,7 +606,7 @@ void Controller::on_Send_clicked()
     zmq_data.tar_index = 0;
     zmq_data.tar_vel = tar_vel;
     zmq_data.tar_dist = tar_dist;
-    zmq_data.alpha = LV_alpha;
+    zmq_data.fi_encoder = LV_fi_encoder;
 
     requestData(zmq_data);
 }
@@ -619,7 +618,7 @@ void Controller::on_LV_alpha_toggled(bool checked)
 
     int value_vel = ui->LVVelSlider->value();
     int value_dist = ui->LVDistSlider->value();
-    LV_alpha = checked;
+    LV_fi_encoder = checked;
 
     if(value_vel >= 10) {
       tar_vel = value_vel/100.0f;
@@ -632,7 +631,7 @@ void Controller::on_LV_alpha_toggled(bool checked)
     zmq_data.tar_index = 0;
     zmq_data.tar_vel = tar_vel;
     zmq_data.tar_dist = tar_dist;
-    zmq_data.alpha = LV_alpha;
+    zmq_data.fi_encoder = LV_fi_encoder;
     requestData(zmq_data);
 }
 
@@ -643,7 +642,7 @@ void Controller::on_FV1_alpha_toggled(bool checked)
 
     int value_vel = ui->FV1VelSlider->value();
     int value_dist = ui->FV1DistSlider->value();
-    FV1_alpha = checked;
+    FV1_fi_encoder = checked;
 
     if(value_vel >= 10) {
       tar_vel = value_vel/100.0f;
@@ -656,9 +655,9 @@ void Controller::on_FV1_alpha_toggled(bool checked)
     zmq_data.tar_index = 1;
     zmq_data.tar_vel = tar_vel;
     zmq_data.tar_dist = tar_dist;
-    zmq_data.alpha = FV1_alpha;
-    zmq_data.beta = FV1_beta;
-    zmq_data.gamma = FV1_gamma;
+    zmq_data.fi_encoder = FV1_fi_encoder;
+    zmq_data.fi_camera = FV1_fi_camera;
+    zmq_data.fi_lidar = FV1_fi_lidar;
     requestData(zmq_data);
 }
 
@@ -670,7 +669,7 @@ void Controller::on_FV1_beta_toggled(bool checked)
 
     int value_vel = ui->FV1VelSlider->value();
     int value_dist = ui->FV1DistSlider->value();
-    FV1_beta = checked;
+    FV1_fi_camera = checked;
 
     if(value_vel >= 10) {
       tar_vel = value_vel/100.0f;
@@ -683,9 +682,9 @@ void Controller::on_FV1_beta_toggled(bool checked)
     zmq_data.tar_index = 1;
     zmq_data.tar_vel = tar_vel;
     zmq_data.tar_dist = tar_dist;
-    zmq_data.alpha = FV1_alpha;
-    zmq_data.beta = FV1_beta;
-    zmq_data.gamma = FV1_gamma;
+    zmq_data.fi_encoder = FV1_fi_encoder;
+    zmq_data.fi_camera = FV1_fi_camera;
+    zmq_data.fi_lidar = FV1_fi_lidar;
     requestData(zmq_data);
 }
 
@@ -697,7 +696,7 @@ void Controller::on_FV1_gamma_toggled(bool checked)
 
     int value_vel = ui->FV1VelSlider->value();
     int value_dist = ui->FV1DistSlider->value();
-    FV1_gamma = checked;
+    FV1_fi_lidar = checked;
 
     if(value_vel >= 10) {
       tar_vel = value_vel/100.0f;
@@ -710,9 +709,9 @@ void Controller::on_FV1_gamma_toggled(bool checked)
     zmq_data.tar_index = 1;
     zmq_data.tar_vel = tar_vel;
     zmq_data.tar_dist = tar_dist;
-    zmq_data.alpha = FV1_alpha;
-    zmq_data.beta = FV1_beta;
-    zmq_data.gamma = FV1_gamma;
+    zmq_data.fi_encoder = FV1_fi_encoder;
+    zmq_data.fi_camera = FV1_fi_camera;
+    zmq_data.fi_lidar = FV1_fi_lidar;
     requestData(zmq_data);
 }
 
@@ -724,7 +723,7 @@ void Controller::on_FV2_alpha_toggled(bool checked)
 
     int value_vel = ui->FV2VelSlider->value();
     int value_dist = ui->FV2DistSlider->value();
-    FV2_alpha = checked;
+    FV2_fi_encoder = checked;
 
     if(value_vel >= 10) {
       tar_vel = value_vel/100.0f;
@@ -737,9 +736,9 @@ void Controller::on_FV2_alpha_toggled(bool checked)
     zmq_data.tar_index = 2;
     zmq_data.tar_vel = tar_vel;
     zmq_data.tar_dist = tar_dist;
-    zmq_data.alpha = FV2_alpha;
-    zmq_data.beta = FV2_beta;
-    zmq_data.gamma = FV2_gamma;
+    zmq_data.fi_encoder = FV2_fi_encoder;
+    zmq_data.fi_camera = FV2_fi_camera;
+    zmq_data.fi_lidar = FV2_fi_lidar;
     requestData(zmq_data);
 }
 
@@ -751,7 +750,7 @@ void Controller::on_FV2_beta_toggled(bool checked)
 
     int value_vel = ui->FV2VelSlider->value();
     int value_dist = ui->FV2DistSlider->value();
-    FV2_beta = checked;
+    FV2_fi_camera = checked;
 
     if(value_vel >= 10) {
       tar_vel = value_vel/100.0f;
@@ -764,9 +763,9 @@ void Controller::on_FV2_beta_toggled(bool checked)
     zmq_data.tar_index = 2;
     zmq_data.tar_vel = tar_vel;
     zmq_data.tar_dist = tar_dist;
-    zmq_data.alpha = FV2_alpha;
-    zmq_data.beta = FV2_beta;
-    zmq_data.gamma = FV2_gamma;
+    zmq_data.fi_encoder = FV2_fi_encoder;
+    zmq_data.fi_camera = FV2_fi_camera;
+    zmq_data.fi_lidar = FV2_fi_lidar;
     requestData(zmq_data);
 }
 
@@ -778,7 +777,7 @@ void Controller::on_FV2_gamma_toggled(bool checked)
 
     int value_vel = ui->FV2VelSlider->value();
     int value_dist = ui->FV2DistSlider->value();
-    FV2_gamma = checked;
+    FV2_fi_lidar = checked;
 
     if(value_vel >= 10) {
       tar_vel = value_vel/100.0f;
@@ -791,8 +790,8 @@ void Controller::on_FV2_gamma_toggled(bool checked)
     zmq_data.tar_index = 2;
     zmq_data.tar_vel = tar_vel;
     zmq_data.tar_dist = tar_dist;
-    zmq_data.alpha = FV2_alpha;
-    zmq_data.beta = FV2_beta;
-    zmq_data.gamma = FV2_gamma;
+    zmq_data.fi_encoder = FV2_fi_encoder;
+    zmq_data.fi_camera = FV2_fi_camera;
+    zmq_data.fi_lidar = FV2_fi_lidar;
     requestData(zmq_data);
 }

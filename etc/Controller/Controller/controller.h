@@ -42,13 +42,13 @@ public:
     int MaxVel;
     int MinDist;
     int MaxDist;
-    int LV_alpha;
-    int FV1_alpha;
-    int FV1_beta;
-    int FV1_gamma;
-    int FV2_alpha;
-    int FV2_beta;
-    int FV2_gamma;
+    int LV_fi_encoder;
+    int FV1_fi_encoder;
+    int FV1_fi_camera;
+    int FV1_fi_lidar;
+    int FV2_fi_encoder;
+    int FV2_fi_camera;
+    int FV2_fi_lidar;
 
 private slots:
     void requestData(ZmqData zmq_data);

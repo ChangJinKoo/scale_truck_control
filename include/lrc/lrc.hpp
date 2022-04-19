@@ -63,6 +63,7 @@ class LocalRC{
     std::string log_path_;
     float a_, b_, l_;
     float epsilon_;
+    bool fi_encoder_ = false;
     bool alpha_ = false;
     bool beta_ = false;
     bool gamma_ = false;

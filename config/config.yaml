@@ -10,9 +10,6 @@ subscribers:
     queue_size: 1
 
 publishers:
-  lane_coef:
-    topic: /lane_msg
-    queue_size: 10
   xavier_to_lrc:
     topic: /xav2lrc_msg
     queue_size: 1
