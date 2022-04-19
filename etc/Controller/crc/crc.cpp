@@ -50,15 +50,20 @@ void CentralRC::init(){
 }
 
 void CentralRC::reply(ZmqData* zmq_data){
+  ZmqData tmp;
   while(is_node_running_){
+    {
+      std::scoped_lock lock(data_mutex_);
+      tmp = *zmq_data;
+    }
     if(zmq_data->tar_index == 10){  //LV
-      ZMQ_SOCKET_.replyZMQ(zmq_data);
+      ZMQ_SOCKET_.replyZMQ(&tmp);
     }
     else if(zmq_data->tar_index == 11){  //FV1
-      ZMQ_SOCKET_.replyZMQ(zmq_data);
+      ZMQ_SOCKET_.replyZMQ(&tmp);
     }
     else if(zmq_data->tar_index == 12){  //FV2
-      ZMQ_SOCKET_.replyZMQ(zmq_data);
+      ZMQ_SOCKET_.replyZMQ(&tmp);
     }
     std::this_thread::sleep_for(std::chrono::milliseconds(2));
   }
@@ -147,6 +152,7 @@ void CentralRC::printStatus(){
 }
 
 void CentralRC::updateData(ZmqData* zmq_data){
+  std::scoped_lock lock(data_mutex_);
   if(zmq_data->tar_index == 30){
     if(zmq_data->src_index == 10){
       lv_data_->cur_vel = zmq_data->cur_vel;
@@ -202,7 +208,7 @@ void CentralRC::communicate(){
   fv2_prev_dist_ = fv2_data_->cur_dist;
 
   printStatus();
-  std::this_thread::sleep_for(std::chrono::milliseconds(2));
+  std::this_thread::sleep_for(std::chrono::milliseconds(30));
 }
 
 }

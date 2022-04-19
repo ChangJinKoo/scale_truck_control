@@ -64,8 +64,12 @@ class ScaleTruckController {
 	
     double CycleTime_ = 0.0;
     int index_;
+    float RCMVel_;
+    float RCMDist_;
     bool fi_encoder_ = false;
-    bool Alpha_ = false;
+    bool alpha_ = false;
+    uint8_t lrc_mode_ = false;
+    uint8_t crc_mode_ = false;
 
     //image
     LaneDetect::LaneDetector laneDetector_;
@@ -74,7 +78,7 @@ class ScaleTruckController {
     bool enableConsoleOutput_;
     int sync_flag_;
     bool fi_camera_ = false;
-    bool Beta_ = false;
+    bool beta_ = false;
 
     float AngleDegree_; // -1 ~ 1  - Twist msg angular.z
     float TargetVel_ = 0.0f; // -1 ~ 1  - Twist msg linear.x
@@ -92,7 +96,7 @@ class ScaleTruckController {
     float TargetDist_;
     float SafetyDist_;
     bool fi_lidar_ = false;
-    bool Gamma_ = false;
+    bool gamma_ = false;
 
     //ZMQ
     ZMQ_CLASS ZMQ_SOCKET_;
@@ -110,6 +114,7 @@ class ScaleTruckController {
     std::mutex vel_mutex_;
     std::mutex dist_mutex_;
     std::mutex rep_mutex_;
+    std::mutex mode_mutex_;
 
     std::condition_variable cv_;
 

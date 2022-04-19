@@ -25,9 +25,8 @@ ScaleTruckController::~ScaleTruckController() {
     std::scoped_lock lock(rep_mutex_);
     msg.tar_dist = TargetDist_;
     msg.fi_encoder = fi_encoder_;
-    msg.alpha = Alpha_;
-    msg.beta = Beta_;
-    msg.gamma = Gamma_;
+    msg.beta = beta_;
+    msg.gamma = gamma_;
   }
 
   XavPublisher_.publish(msg);
@@ -52,6 +51,7 @@ bool ScaleTruckController::readParameters() {
   nodeHandle_.param("params/safety_vel", SafetyVel_, 0.3f); // m/s
   nodeHandle_.param("params/fv_max_vel", FVmaxVel_, 0.8f); // m/s
   nodeHandle_.param("params/ref_vel", RefVel_, 0.0f); // m/s
+  nodeHandle_.param("params/rcm_vel", RCMVel_, 0.8f);
   
   /*******************/
   /* Distance Option */
@@ -60,6 +60,7 @@ bool ScaleTruckController::readParameters() {
   nodeHandle_.param("params/fv_stop_dist", FVstopDist_, 0.5f); // m
   nodeHandle_.param("params/safety_dist", SafetyDist_, 1.5f); // m
   nodeHandle_.param("params/target_dist", TargetDist_, 0.8f); // m
+  nodeHandle_.param("params/rcm_dist", RCMDist_, 0.8f);
 
   return true;
 }
@@ -170,7 +171,7 @@ void* ScaleTruckController::lanedetectInThread() {
   if(cnt == 0){
     {
       std::scoped_lock lock(rep_mutex_);
-      Beta_ = true;
+      beta_ = true;
     }
     {
       std::scoped_lock lock(dist_mutex_);
@@ -282,11 +283,19 @@ void ScaleTruckController::reply(ZmqData* zmq_data){
       ZMQ_SOCKET_.replyZMQ(zmq_data);
     }
     {
-      std::scoped_lock lock(rep_mutex_);
+      std::scoped_lock lock(rep_mutex_, mode_mutex_);
       if(ZMQ_SOCKET_.rep_recv_->src_index == 20){
-        if(index_ == 0){  //LV
+        if(index_ == 0 && crc_mode_ == 0){  //LV & TM
           TargetVel_ = ZMQ_SOCKET_.rep_recv_->tar_vel;
           TargetDist_ = ZMQ_SOCKET_.rep_recv_->tar_dist;
+	}
+	else if(index_ == 0 && crc_mode_ == 1){  // RCM
+	  TargetVel_ = RCMVel_;
+	  TargetDist_ = RCMDist_;
+	}
+	else if(index_ == 0 && crc_mode_ == 2){  // GDM
+	  TargetVel_ = 0;
+	  TargetDist_ = 0;
 	}
 	fi_encoder_ = ZMQ_SOCKET_.rep_recv_->fi_encoder;
         fi_camera_ = ZMQ_SOCKET_.rep_recv_->fi_camera;
@@ -308,7 +317,7 @@ void ScaleTruckController::displayConsole() {
   printf("\nTar/Cur Vel\t\t: %3.3f / %3.3f m/s", TargetVel_, CurVel_);
   printf("\nTar/Cur Dist\t\t: %3.3f / %3.3f m", TargetDist_, distance_);
   printf("\nEncoder, Camera, Lidar Failure: %d / %d / %d", fi_encoder_, fi_camera_, fi_lidar_);
-  printf("\nAlpha, Beta, Gamma\t: %d / %d / %d", Alpha_, Beta_, Gamma_);
+  printf("\nAlpha, Beta, Gamma\t: %d / %d / %d", alpha_, beta_, gamma_);
   printf("\nK1/K2\t\t\t: %3.3f / %3.3f", laneDetector_.K1_, laneDetector_.K2_);
   if(ObjCircles_ > 0) {
     printf("\nCirs\t\t\t: %d", ObjCircles_);
@@ -363,9 +372,8 @@ void ScaleTruckController::spin() {
       std::scoped_lock lock(rep_mutex_);
       msg.tar_dist = TargetDist_;
       msg.fi_encoder = fi_encoder_;
-      msg.alpha = Alpha_;
-      msg.beta = Beta_;
-      msg.gamma = Gamma_;
+      msg.beta = beta_;
+      msg.gamma = gamma_;
     }
 
     lane = laneDetector_.lane_coef_;
@@ -415,6 +423,12 @@ void ScaleTruckController::imageCallback(const sensor_msgs::ImageConstPtr &msg) 
 }
 
 void ScaleTruckController::XavSubCallback(const scale_truck_control::lrc2xav &msg){
+  {
+    std::scoped_lock lock(mode_mutex_);
+    alpha_ = msg.alpha;
+    lrc_mode_ = msg.lrc_mode;
+    crc_mode_ = msg.crc_mode;
+  }
   {
     std::scoped_lock lock(vel_mutex_);
     CurVel_ = msg.cur_vel;

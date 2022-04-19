@@ -97,7 +97,6 @@ void LocalRC::XavCallback(const scale_truck_control::xav2lrc &msg){
     tar_vel_ = msg.tar_vel;
   }
   fi_encoder_ = msg.fi_encoder;
-  alpha_ = msg.alpha;
   beta_ = msg.beta;
   gamma_ = msg.gamma;
 }
@@ -114,9 +113,12 @@ void LocalRC::rosPub(){
   scale_truck_control::lrc2ocr ocr;
   { 
     std::scoped_lock lock(data_mutex_, time_mutex_);
+    xav.alpha = alpha_;
     xav.cur_vel = cur_vel_;
     xav.tar_vel = tar_vel_;
     xav.tar_dist = tar_dist_;
+    xav.lrc_mode = lrc_mode_;
+    xav.crc_mode = crc_mode_;
     ocr.index = index_;
     ocr.steer_angle = angle_degree_;
     ocr.cur_dist = cur_dist_;

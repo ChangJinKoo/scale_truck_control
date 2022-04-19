@@ -105,7 +105,7 @@ float setSPEED(float tar_vel, float current_vel) {
     I_err = 0;
     A_err = 0;
   } else {
-    if(Index_!=0) {
+    if(Index_ != 10) {
       dist_err = tx_dist_ - tx_tdist_;    
       P_dist_err = Kp_dist_ * dist_err;
       D_dist_err = (Kd_dist_ * ((dist_err - prev_dist_err) / dt_ )); 
