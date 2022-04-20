@@ -146,6 +146,17 @@ void Controller::recordData(struct timeval *startTime){
 void Controller::requestData(ZmqData zmq_data)
 {
     ZmqData send_data = zmq_data;
+    if (send_data.crc_mode == 1 && send_data.tar_vel >= 0.8f){
+        send_data.tar_vel = 0.8f;
+    }
+    if (send_data.crc_mode == 1 && send_data.tar_dist >= 0.8f){
+        send_data.tar_dist = 0.8f;
+    }
+    if (send_data.crc_mode == 2){
+        send_data.tar_vel = 0;
+        send_data.tar_dist = 0;
+    }
+
     struct timeval startTime, endTime;
 
     if (send_data.tar_index == 0){
