@@ -50,31 +50,20 @@ void CentralRC::init(){
 }
 
 void CentralRC::reply(ZmqData* zmq_data){
+  ZmqData tmp;
   while(is_node_running_){
+    {
+      std::scoped_lock lock(data_mutex_);
+      tmp = *zmq_data;
+    }
     if(zmq_data->tar_index == 10){  //LV
-      {
-        std::scoped_lock lock(data_mutex_);
-        zmq_data->est_vel = lv_est_vel_;
-        zmq_data->crc_mode = crc_mode_;
-      }
-      ZMQ_SOCKET_.replyZMQ(zmq_data);
-
+      ZMQ_SOCKET_.replyZMQ(&tmp);
     }
     else if(zmq_data->tar_index == 11){  //FV1
-      {	    
-        std::scoped_lock lock(data_mutex_);
-        zmq_data->est_vel = fv1_est_vel_;
-        zmq_data->crc_mode = crc_mode_;
-      }
-      ZMQ_SOCKET_.replyZMQ(zmq_data);
+      ZMQ_SOCKET_.replyZMQ(&tmp);
     }
     else if(zmq_data->tar_index == 12){  //FV2
-      {
-        std::scoped_lock lock(data_mutex_);
-        zmq_data->est_vel = fv2_est_vel_;
-        zmq_data->crc_mode = crc_mode_;
-      }
-      ZMQ_SOCKET_.replyZMQ(zmq_data);
+      ZMQ_SOCKET_.replyZMQ(&tmp);
     }
     std::this_thread::sleep_for(std::chrono::milliseconds(2));
   }
@@ -95,8 +84,9 @@ void CentralRC::estimateVelocity(uint8_t index){
       lv_data_->est_vel = ((fv1_data_->cur_dist - fv1_prev_dist_) / sampling_time_) + ((fv2_data_->cur_dist - fv2_prev_dist_) / sampling_time_) + fv2_data_->cur_vel;
     }
     else{  //All trucks' velocity sensors are fail 
-      lv_data_->est_vel = 0;
       crc_mode_ = 2;
+      lv_data_->est_vel = 0;
+      lv_data_->crc_mode = crc_mode_;
     }
   }
   else if (index == 11){  //FV1
@@ -110,8 +100,9 @@ void CentralRC::estimateVelocity(uint8_t index){
       fv1_data_->est_vel = ((fv2_data_->cur_dist - fv2_prev_dist_) / sampling_time_) + fv2_data_->cur_vel;
     }
     else{  //All trucks' velocity sensors are fail
-      fv1_data_->est_vel = 0;
       crc_mode_ = 2;
+      fv1_data_->est_vel = 0;
+      fv1_data_->crc_mode = crc_mode_;
     }
   }
   else if (index == 12){  //FV2
@@ -125,8 +116,9 @@ void CentralRC::estimateVelocity(uint8_t index){
       fv2_data_->est_vel = ((-1.0f) * ((fv1_data_->cur_dist - fv1_prev_dist_) / sampling_time_)) + ((-1.0f) * ((fv2_data_->cur_dist - fv2_prev_dist_) / sampling_time_)) + lv_data_->cur_vel;
     }
     else{  //All trucks' velocity sensors are fail
-      fv2_data_->est_vel = 0;
       crc_mode_ = 2;
+      fv2_data_->est_vel = 0;
+      fv2_data_->crc_mode = crc_mode_;
     }
   }
 }
@@ -160,6 +152,7 @@ void CentralRC::printStatus(){
 }
 
 void CentralRC::updateData(ZmqData* zmq_data){
+  std::scoped_lock lock(data_mutex_);
   if(zmq_data->tar_index == 30){
     if(zmq_data->src_index == 10){
       lv_data_->cur_vel = zmq_data->cur_vel;
@@ -215,7 +208,7 @@ void CentralRC::communicate(){
   fv2_prev_dist_ = fv2_data_->cur_dist;
 
   printStatus();
-  std::this_thread::sleep_for(std::chrono::milliseconds(2));
+  std::this_thread::sleep_for(std::chrono::milliseconds(30));
 }
 
 }
