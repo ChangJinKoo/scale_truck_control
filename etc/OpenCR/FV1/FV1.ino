@@ -221,7 +221,7 @@ void CheckEN() {
   if(DATA_LOG)
   {
     Serial.print(target_vel);
-    Serial.print(" m/s | ");ar
+    Serial.print(" m/s | ");
     Serial.print(cur_vel);
     Serial.print(" m/s | ");
     Serial.print(output_vel);
