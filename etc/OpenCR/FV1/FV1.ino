@@ -35,7 +35,7 @@
 #define MIN_STEER     (1200)
 #define STEER_CENTER  (1480)
 
-#define DATA_LOG      (0)
+#define DATA_LOG      (1)
 
 cIMU  IMU;
 Servo throttle_;
@@ -93,12 +93,10 @@ float setSPEED(float tar_vel, float current_vel) {
   float u, u_k;
   float u_dist, u_dist_k;
   float ref_vel, cur_vel;
-  if(!Alpha_){
-    cur_vel = current_vel;
-  }
-  else{
-    cur_vel = est_vel_;
-  }
+  cur_vel = current_vel;
+  //if(Alpha_){
+    //cur_vel = est_vel_;
+  //}
   pub_msg_.cur_vel = cur_vel;
   if(tar_vel <= 0 ) {
     output = ZERO_PWM;
