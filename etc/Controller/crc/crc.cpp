@@ -124,7 +124,6 @@ void CentralRC::estimateVelocity(uint8_t index){
 }
 
 void CentralRC::modeCheck(uint8_t lv_mode, uint8_t fv1_mode, uint8_t fv2_mode){
-  std::scoped_lock lock(data_mutex_);
   if ((lv_mode == 0) && (fv1_mode == 0) && (fv2_mode == 0)){
     crc_mode_ = 0;
   }
@@ -182,7 +181,10 @@ void CentralRC::updateData(ZmqData* zmq_data){
 }
 
 void CentralRC::communicate(){  
-  modeCheck(lv_data_->lrc_mode, fv1_data_->lrc_mode, fv2_data_->lrc_mode);
+  {
+    std::scoped_lock lock(data_mutex_);
+    modeCheck(lv_data_->lrc_mode, fv1_data_->lrc_mode, fv2_data_->lrc_mode);
+  }
 
   updateData(ZMQ_SOCKET_.rep_recv0_);
   updateData(ZMQ_SOCKET_.rep_recv1_);
@@ -204,8 +206,11 @@ void CentralRC::communicate(){
   gettimeofday(&start_time_, NULL);
   if(!time_flag_) time_flag_ = true;
 
-  fv1_prev_dist_ = fv1_data_->cur_dist;
-  fv2_prev_dist_ = fv2_data_->cur_dist;
+  {
+    std::scoped_lock lock(data_mutex_);
+    fv1_prev_dist_ = fv1_data_->cur_dist;
+    fv2_prev_dist_ = fv2_data_->cur_dist;
+  }
 
   printStatus();
   std::this_thread::sleep_for(std::chrono::milliseconds(30));

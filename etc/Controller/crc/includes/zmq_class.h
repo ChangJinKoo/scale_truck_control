@@ -65,7 +65,6 @@ public:
   std::string rad_group_, dsh_group_;
   std::string udp_ip_, tcpreq_ip_, tcprep_ip0_, tcprep_ip1_, tcprep_ip2_;
 
-
   bool controlDone_;
   bool rad_flag_, dsh_flag_, req_flag_, rep_flag0_, rep_flag1_, rep_flag2_;
   ZmqData *rad_send_, *dsh_recv_, *req_send_, *req_recv_, *rep_send_, *rep_recv0_, *rep_recv1_, *rep_recv2_;
