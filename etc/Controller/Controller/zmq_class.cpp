@@ -41,24 +41,24 @@ void ZMQ_CLASS::init()
   {
     req_socket0_ = zmq::socket_t(context_, ZMQ_REQ);
     req_socket0_.connect(tcpreq_ip0_);
-    req_socket0_.setsockopt(ZMQ_RCVTIMEO, 30000);  //timeout (millisecends)
-    //req_socket0_.setsockopt(ZMQ_LINGER, 0);
+    req_socket0_.setsockopt(ZMQ_RCVTIMEO, -1);  //timeout (infinite)
+    req_socket0_.setsockopt(ZMQ_LINGER, 0);
   }
 
   if(req_flag1_)
   {
     req_socket1_ = zmq::socket_t(context_, ZMQ_REQ);
     req_socket1_.connect(tcpreq_ip1_);
-    req_socket1_.setsockopt(ZMQ_RCVTIMEO, 30000);  //timeout (millisecends)
-    //req_socket1_.setsockopt(ZMQ_LINGER, 0);
+    req_socket1_.setsockopt(ZMQ_RCVTIMEO, -1);
+    req_socket1_.setsockopt(ZMQ_LINGER, 0);
   }
 
   if(req_flag2_)
   {
     req_socket2_ = zmq::socket_t(context_, ZMQ_REQ);
     req_socket2_.connect(tcpreq_ip2_);
-    req_socket2_.setsockopt(ZMQ_RCVTIMEO, 30000);  //timeout (millisecends)
-    //req_socket2_.setsockopt(ZMQ_LINGER, 0);
+    req_socket2_.setsockopt(ZMQ_RCVTIMEO, -1);
+    req_socket2_.setsockopt(ZMQ_LINGER, 0);
   }
 
 }
@@ -95,7 +95,8 @@ bool ZMQ_CLASS::readParameters()
   interface_name_ = std::string("ens33");
 
   tcp_ip_server = std::string("tcp://*");
-  tcp_ip_client0 = std::string("tcp://192.168.1.162");  //LV
+  //tcp_ip_client0 = std::string("tcp://192.168.1.162");  //LV
+  tcp_ip_client0 = std::string("tcp://192.168.0.19");  //LV
   tcp_ip_client1 = std::string("tcp://192.168.1.137");  //FV1
   tcp_ip_client2 = std::string("tcp://192.168.1.139");  //FV2
 
@@ -106,8 +107,8 @@ bool ZMQ_CLASS::readParameters()
   zipcode_ = std::string("00020");
   
   req_flag0_ = true;
-  req_flag1_ = true;
-  req_flag2_ = true;
+  req_flag1_ = false;
+  req_flag2_ = false;
 
   //set reply socket ip
   tcpreq_ip0_ = tcp_ip_client0;
