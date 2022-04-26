@@ -34,8 +34,8 @@ LrcSubPub:
 LrcParams:
   lrc_index: 11
   lrc_log_path: /home/jetson/catkin_ws/logfiles/
-  epsilon: 0.7
+  epsilon: 2.0
   lu_ob_A: 0.6817
   lu_ob_B: 0.3183
-  lu_ob_L: 0.2817
+  lu_ob_L: 0.1183
   enable_console_output: false
