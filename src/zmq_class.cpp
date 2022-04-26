@@ -44,7 +44,7 @@ void ZMQ_CLASS::init()
   {
     req_socket_ = zmq::socket_t(context_, ZMQ_REQ); 
     req_socket_.connect(tcpreq_ip_);
-    req_socket_.setsockopt(ZMQ_RCVTIMEO, 10000);  //timeout (millisecends) 
+    req_socket_.setsockopt(ZMQ_RCVTIMEO, -1);  //timeout (infinite) 
     req_socket_.setsockopt(ZMQ_LINGER, 0); 
   }
 
