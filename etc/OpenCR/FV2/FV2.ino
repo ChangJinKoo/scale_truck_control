@@ -90,19 +90,19 @@ float setSPEED(float tar_vel, float current_vel) {
   static float output, err, P_err, I_err;
   static float prev_u_k, prev_u, A_err;
   static float dist_err, prev_dist_err, P_dist_err, D_dist_err;
-  float u, u_k;
-  float u_dist, u_dist_k;
-  float ref_vel, cur_vel;
+  float u = 0.f, u_k = 0.f;
+  float u_dist = 0.f, u_dist_k = 0.f;
+  float ref_vel = 0.f, cur_vel = 0.f;
   cur_vel = current_vel;
   //if(Alpha_){
     //cur_vel = est_vel_;
   //}
   pub_msg_.cur_vel = cur_vel;
-  if(tar_vel <= 0 ) {
-    output = ZERO_PWM;
-    I_err = 0;
-    A_err = 0;
-  } else {
+  //if(tar_vel <= 0 ) {
+    //output = ZERO_PWM;
+    //I_err = 0;
+    //A_err = 0;
+  //} else {
     if(Index_ != 10) {
       dist_err = tx_dist_ - tx_tdist_;    
       P_dist_err = Kp_dist_ * dist_err;
@@ -131,11 +131,17 @@ float setSPEED(float tar_vel, float current_vel) {
 
     pub_msg_.u_k = u_k;
 
-    // inverse function 
-    output = (-4.3253e-02 + sqrt(pow(4.3253e-02,2)-4*(-1.0444e-05)*(-42.3682-u_k)))/(2*(-1.0444e-05));
+    if(tar_vel <= 0){
+      output = ZERO_PWM;
+      I_err = 0;
+      A_err = 0;
+    }
+    else{    // inverse function  
+      output = (-4.3253e-02 + sqrt(pow(4.3253e-02,2)-4*(-1.0444e-05)*(-42.3682-u_k)))/(2*(-1.0444e-05));
+    }
     //output = tx_throttle_;
   
-  }
+  //}
   // output command
   prev_u_k = u_k;
   prev_u = u;
