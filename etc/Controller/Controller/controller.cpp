@@ -167,7 +167,7 @@ void Controller::requestData(ZmqData zmq_data)
         req_time_ = ((endTime.tv_sec - startTime.tv_sec)* 1000.0) + ((endTime.tv_usec - startTime.tv_usec)/1000.0);
         lv_data_ = *ZMQ_SOCKET_.req_recv0_;
         lv_mutex_.unlock();
-        recordData(&startTime_);
+        //recordData(&startTime_);
     }
     else if (send_data.tar_index == 1){
         fv1_mutex_.lock();

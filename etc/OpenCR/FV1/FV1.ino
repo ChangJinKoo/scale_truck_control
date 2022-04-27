@@ -94,9 +94,10 @@ float setSPEED(float tar_vel, float current_vel) {
   float u_dist = 0.f, u_dist_k = 0.f;
   float ref_vel = 0.f, cur_vel = 0.f;
   cur_vel = current_vel;
-  //if(Alpha_){
-    //cur_vel = est_vel_;
-  //}
+  if(Alpha_){
+    cur_vel = est_vel_;
+    if (cur_vel < 0) cur_vel = 0;
+  }
   pub_msg_.cur_vel = cur_vel;
   //if(tar_vel <= 0 ) {
     //output = ZERO_PWM;
@@ -124,6 +125,12 @@ float setSPEED(float tar_vel, float current_vel) {
     I_err += Ki_ * err * dt_;
     A_err += Ka_ * ((prev_u_k - prev_u) / dt_);
     
+    if(tar_vel <= 0){
+      P_err = 0;
+      I_err = 0;
+      A_err = 0;
+    }
+        
     u = P_err + I_err + A_err + ref_vel * Kf_;
 
     if(u > 2.0) u_k = 2.0;
@@ -134,8 +141,6 @@ float setSPEED(float tar_vel, float current_vel) {
 
     if(tar_vel <= 0){
       output = ZERO_PWM;
-      I_err = 0;
-      A_err = 0;
     }
     else{    // inverse function 
       output = (-8.152e-02 + sqrt(pow(-8.152e-02,2)-4*(-2.0975e-05)*(-76.87-u_k)))/(2*(-2.0975e-05));

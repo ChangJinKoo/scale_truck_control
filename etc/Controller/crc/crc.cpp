@@ -135,6 +135,41 @@ void CentralRC::modeCheck(uint8_t lv_mode, uint8_t fv1_mode, uint8_t fv2_mode){
   }
 }
 
+void CentralRC::recordData(struct timeval *startTime){
+  struct timeval currentTime;
+  char file_name[] = "CRC_log00.csv";
+  static char file[128] = {0x00, };
+  char buf[256] = {0x00,};
+  static bool flag = false;
+  std::ifstream read_file;
+  std::ofstream write_file;
+  if(!flag){
+    for(int i = 0; i < 100; i++){
+      file_name[7] = i/10 + '0';  //ASCII
+      file_name[8] = i%10 + '0';
+      sprintf(file, "%s%s", log_path_.c_str(), file_name);
+      read_file.open(file);
+      if(read_file.fail()){  //Check if the file exists
+        read_file.close();
+        write_file.open(file);
+        break;
+      }
+      read_file.close();
+    }
+    write_file << "Time,Tar_dist,Cur_dist,Prev_dist,Sampling_time,Cur_vel,Est_vel,Alpha" << std::endl; //seconds
+    flag = true;
+  }
+  else{
+    std::scoped_lock lock(data_mutex_);
+    gettimeofday(&currentTime, NULL);
+    time_ = ((currentTime.tv_sec - startTime->tv_sec)) + ((currentTime.tv_usec - startTime->tv_usec)/1000000.0);
+    sprintf(buf, "%.3e,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%d", time_, fv1_data_->tar_dist, fv1_data_->cur_dist, fv1_prev_dist_, sampling_time_, fv1_data_->cur_vel, fv1_data_->est_vel, fv1_data_->alpha);
+    write_file.open(file, std::ios::out | std::ios::app);
+    write_file << buf << std::endl;
+  }
+  write_file.close();
+}
+
 void CentralRC::printStatus(){
   printf("\033[2J\033[1;1H");
   printf("CRC is running ...\n");
@@ -155,6 +190,7 @@ void CentralRC::updateData(ZmqData* zmq_data){
   if(zmq_data->tar_index == 30){
     if(zmq_data->src_index == 10){
       lv_data_->cur_vel = zmq_data->cur_vel;
+      lv_data_->tar_dist = zmq_data->tar_dist;
       lv_data_->cur_dist = zmq_data->cur_dist;
       lv_data_->alpha = zmq_data->alpha;
       lv_data_->beta = zmq_data->beta;
@@ -163,6 +199,7 @@ void CentralRC::updateData(ZmqData* zmq_data){
     }
     else if(zmq_data->src_index == 11){
       fv1_data_->cur_vel = zmq_data->cur_vel;
+      fv1_data_->tar_dist = zmq_data->tar_dist;
       fv1_data_->cur_dist = zmq_data->cur_dist;
       fv1_data_->alpha = zmq_data->alpha;
       fv1_data_->beta = zmq_data->beta;
@@ -171,6 +208,7 @@ void CentralRC::updateData(ZmqData* zmq_data){
     }
     else if(zmq_data->src_index == 12){
       fv2_data_->cur_vel = zmq_data->cur_vel;
+      fv2_data_->tar_dist = zmq_data->tar_dist;
       fv2_data_->cur_dist = zmq_data->cur_dist;
       fv2_data_->alpha = zmq_data->alpha;
       fv2_data_->beta = zmq_data->beta;
@@ -198,6 +236,8 @@ void CentralRC::communicate(){
   estimateVelocity(10);
   estimateVelocity(11);
   estimateVelocity(12);
+
+  recordData(&launch_time_);
   
   updateData(ZMQ_SOCKET_.rep_recv0_);
   updateData(ZMQ_SOCKET_.rep_recv1_);
