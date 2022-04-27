@@ -161,6 +161,7 @@ void LocalRC::request(ZmqData* zmq_data){
     {
       std::scoped_lock lock(data_mutex_, time_mutex_);
       zmq_data->cur_vel = cur_vel_;
+      zmq_data->tar_dist = tar_dist_; //because of CRC logging
       zmq_data->cur_dist = cur_dist_;
       zmq_data->alpha = alpha_;
       zmq_data->beta = beta_;
@@ -224,7 +225,7 @@ void LocalRC::updateData(ZmqData* zmq_data){
     est_vel_ = zmq_data->est_vel;
     crc_mode_ = zmq_data->crc_mode;
   }
-  else if(zmq_data->src_index == 10){  //from LV LRC
+  else if(zmq_data->src_index == 10){  //from LV LRC to FVs LRC
     tar_vel_ = zmq_data->tar_vel;
     tar_dist_ = zmq_data->tar_dist;
   }
