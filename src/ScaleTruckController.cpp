@@ -228,7 +228,7 @@ void* ScaleTruckController::objectdetectInThread() {
     droi_ready_ = true;
     cv_.notify_one();
   }  
-  if(ZMQ_SOCKET_.zipcode_.compare(std::string("00000"))){  //LV
+  if(index_ == 0){  //LV
     std::scoped_lock lock(rep_mutex_, dist_mutex_);
     if(distance_ <= LVstopDist_) {
     // Emergency Brake

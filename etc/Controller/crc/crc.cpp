@@ -163,7 +163,7 @@ void CentralRC::recordData(struct timeval *startTime){
     std::scoped_lock lock(data_mutex_);
     gettimeofday(&currentTime, NULL);
     time_ = ((currentTime.tv_sec - startTime->tv_sec)) + ((currentTime.tv_usec - startTime->tv_usec)/1000000.0);
-    sprintf(buf, "%.3e,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%d", time_, fv1_data_->tar_dist, fv1_data_->cur_dist, fv1_prev_dist_, sampling_time_, fv1_data_->cur_vel, fv1_data_->est_vel, fv1_data_->alpha);
+    sprintf(buf, "%.10e,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%d", time_, fv1_data_->tar_dist, fv1_data_->cur_dist, fv1_prev_dist_, sampling_time_, fv1_data_->cur_vel, fv1_data_->est_vel, fv1_data_->alpha);
     write_file.open(file, std::ios::out | std::ios::app);
     write_file << buf << std::endl;
   }
