@@ -102,7 +102,8 @@ void ScaleTruckController::init() {
   objectSubscriber_ = nodeHandle_.subscribe(objectTopicName, objectQueueSize, &ScaleTruckController::objectCallback, this);
   XavSubscriber_ = nodeHandle_.subscribe(XavSubTopicName, XavSubQueueSize, &ScaleTruckController::XavSubCallback, this);
 //  XavSubscriber_ = nodeHandle_.subscribe("/vel_msg", XavSubQueueSize, &ScaleTruckController::XavSubCallback, this);
-  
+  ScanSubError = nodeHandle_.subscribe("/scan_error", 1000, &ScaleTruckController::ScanErrorCallback, this);  
+
   /***********************/
   /* Ros Topic Publisher */
   /***********************/
@@ -397,6 +398,10 @@ void ScaleTruckController::spin() {
       cnt = 0;
     }
   }
+}
+
+void ScaleTruckController::ScanErrorCallback(const std_msgs::UInt32::ConstPtr &msg) {
+   ROS_INFO("I heard: [%x]", msg->data);
 }
 
 void ScaleTruckController::objectCallback(const obstacle_detector::Obstacles& msg) {
