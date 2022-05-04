@@ -56,6 +56,7 @@ void CentralRC::reply(ZmqData* zmq_data){
     {
       std::scoped_lock lock(data_mutex_);
       tmp = *zmq_data;
+      tmp.crc_mode = crc_mode_;
     }
     if(zmq_data->tar_index == 10){  //LV
       ZMQ_SOCKET_.replyZMQ(&tmp);
@@ -93,12 +94,20 @@ void CentralRC::estimateVelocity(uint8_t index){
     }
   }
   else if (index == 11){  //FV1
+    float origin_est_vel;
+//    /* CRC predicted velocity logging */
+//    if(getSamplingTime(fv1_data_->cur_dist, fv1_prev_dist_, 1))
+//      fv1_est_vel_tmp_ = ((-1.0f) * ((fv1_data_->cur_dist - fv1_prev_dist_) / sampling_time1_)) + lv_data_->cur_vel;
+//      fv1_data_->est_vel = lowPassFilter(sampling_time1_, fv1_est_vel_tmp_);
+
     if (!fv1_data_->alpha){
       fv1_data_->est_vel = fv1_data_->cur_vel;
     }
     else if (fv1_data_->alpha && !lv_data_->alpha){
       if(getSamplingTime(fv1_data_->cur_dist, fv1_prev_dist_, 1))
-        fv1_data_->est_vel = ((-1.0f) * ((fv1_data_->cur_dist - fv1_prev_dist_) / sampling_time1_)) + lv_data_->cur_vel;
+        origin_est_vel = ((-1.0f) * ((fv1_data_->cur_dist - fv1_prev_dist_) / sampling_time1_)) + lv_data_->cur_vel;
+        fv1_est_vel_tmp_ = origin_est_vel;
+        fv1_data_->est_vel = lowPassFilter(sampling_time1_, origin_est_vel);
     }
     else if ((fv1_data_->alpha || lv_data_->alpha) && !fv2_data_->alpha){
       if(getSamplingTime(fv2_data_->cur_dist, fv2_prev_dist_, 2))
@@ -142,6 +151,13 @@ void CentralRC::modeCheck(uint8_t lv_mode, uint8_t fv1_mode, uint8_t fv2_mode){
   }
 }
 
+float CentralRC::lowPassFilter(float sampling_time, float pred_vel){
+  float res = 0.f;
+  res = (tau_*prev_res_ + sampling_time*pred_vel)/(tau_+sampling_time);
+  prev_res_ = res;
+  return res;
+}
+
 void CentralRC::recordData(struct timeval *startTime){
   struct timeval currentTime;
   char file_name[] = "CRC_log00.csv";
@@ -163,14 +179,14 @@ void CentralRC::recordData(struct timeval *startTime){
       }
       read_file.close();
     }
-    write_file << "Time,Tar_dist,Cur_dist,Prev_dist,Sampling_time,Cur_vel,Est_vel,Alpha" << std::endl; //seconds
+    write_file << "Time,Tar_dist,Cur_dist,Prev_dist,Sampling_time,LV_Cur_vel,Cur_vel,Est_vel,Origin_Est_vel,Alpha" << std::endl; //seconds
     flag = true;
   }
   else{
     std::scoped_lock lock(data_mutex_);
     gettimeofday(&currentTime, NULL);
     time_ = ((currentTime.tv_sec - startTime->tv_sec)) + ((currentTime.tv_usec - startTime->tv_usec)/1000000.0);
-    sprintf(buf, "%.10e,%.3f,%.3f,%.3f,%.6f,%.3f,%.3f,%d", time_, fv1_data_->tar_dist, fv1_data_->cur_dist, fv1_prev_dist_, sampling_time1_, fv1_data_->cur_vel, fv1_data_->est_vel, fv1_data_->alpha);
+    sprintf(buf, "%.10e,%.3f,%.3f,%.3f,%.6f,%.3f,%.3f,%.3f,%.3f,%d", time_, fv1_data_->tar_dist, fv1_data_->cur_dist, fv1_prev_dist_, sampling_time1_, lv_data_->cur_vel, fv1_data_->cur_vel, fv1_data_->est_vel, fv1_est_vel_tmp_, fv1_data_->alpha);
     write_file.open(file, std::ios::out | std::ios::app);
     write_file << buf << std::endl;
   }
@@ -238,12 +254,14 @@ bool CentralRC::getSamplingTime(float cur_dist, float prev_dist, int idx){
   if(time_flag_ && (cur_dist != prev_dist) && idx == 1){
     gettimeofday(&end_time1_, NULL);
     sampling_time1_ = (end_time1_.tv_sec - start_time1_.tv_sec) + ((end_time1_.tv_usec - start_time1_.tv_usec)/1000000.0);  //seconds
+    if (sampling_time1_ > 0.1f) sampling_time1_ = 0.1f;
     get_flag = true;
     gettimeofday(&start_time1_, NULL);
   }
   if(time_flag_ && (cur_dist != prev_dist) && idx == 2){
     gettimeofday(&end_time2_, NULL);
     sampling_time2_ = (end_time2_.tv_sec - start_time2_.tv_sec) + ((end_time2_.tv_usec - start_time2_.tv_usec)/1000000.0);  //seconds
+    if (sampling_time2_ > 0.1f) sampling_time2_ = 0.1f;
     get_flag = true;
     gettimeofday(&start_time2_, NULL);
   }

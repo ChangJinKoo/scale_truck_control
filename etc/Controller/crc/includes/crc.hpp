@@ -23,12 +23,17 @@ class CentralRC{
     void printStatus();
     void updateData(ZmqData* zmq_data);
     bool getSamplingTime(float cur_dist, float prev_dist, int idx);
+    float lowPassFilter(float sampling_time, float pred_vel);
 
     bool time_flag_;
     uint8_t index_;
     uint8_t crc_mode_;
 
     ZmqData *lv_data_, *fv1_data_, *fv2_data_;
+
+    float tau_ = 0.5f;
+    float fv1_est_vel_tmp_ = 0.f;
+    float prev_res_ = 0.8f;
 
     float fv1_prev_dist_, fv2_prev_dist_;
     float lv_est_vel_, fv1_est_vel_, fv2_est_vel_;
