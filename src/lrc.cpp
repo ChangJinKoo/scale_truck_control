@@ -253,14 +253,14 @@ void LocalRC::recordData(struct timeval *startTime){
       }
       read_file.close();
     }
-    write_file << "Time,Request_time,Tar_dist,Cur_dist,Tar_vel,Cur_vel,Sat_vel,Hat_vel,Alpha" << endl; //seconds
+    write_file << "Time,Request_time,Tar_dist,Cur_dist,Tar_vel,Cur_vel,Est_vel,Sat_vel,Hat_vel,Alpha" << endl; //seconds
     flag = true;
   }
   else{
     std::scoped_lock lock(data_mutex_, time_mutex_);
     gettimeofday(&currentTime, NULL);
     time_ = ((currentTime.tv_sec - startTime->tv_sec)) + ((currentTime.tv_usec - startTime->tv_usec)/1000000.0);
-    sprintf(buf, "%.10e,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%d", time_, req_time_, tar_dist_, cur_dist_, tar_vel_, cur_vel_, sat_vel_, hat_vel_, alpha_);
+    sprintf(buf, "%.10e,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%d", time_, req_time_, tar_dist_, cur_dist_, tar_vel_, cur_vel_, est_vel_, sat_vel_, hat_vel_, alpha_);
     write_file.open(file, std::ios::out | std::ios::app);
     write_file << buf << endl;
   }

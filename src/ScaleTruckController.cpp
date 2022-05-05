@@ -288,18 +288,18 @@ void ScaleTruckController::reply(ZmqData* zmq_data){
         if(index_ == 0){  //LV 
           float t_vel = ZMQ_SOCKET_.rep_recv_->tar_vel;
           float t_dist = ZMQ_SOCKET_.rep_recv_->tar_dist;
-	  if(crc_mode_ == 2){  //GDM
-	    TargetVel_ = 0;
-	    TargetDist_ = 0;
-	  }
-	  else if(crc_mode_ == 1){  //RCM
-            if (t_vel > RCMVel_) TargetVel_ = RCMVel_;
-	    if (t_dist < RCMDist_) TargetDist_ = RCMDist_;
-	  }
-	  else{  //TM
+//	  if(crc_mode_ == 2){  //GDM
+//	    TargetVel_ = 0;
+//	    TargetDist_ = 0;
+//	  }
+//	  else if(crc_mode_ == 1){  //RCM
+//            if (t_vel > RCMVel_) TargetVel_ = RCMVel_;
+//	    if (t_dist < RCMDist_) TargetDist_ = RCMDist_;
+//	  }
+//	  else{  //TM
             TargetVel_ = t_vel;
             TargetDist_ = t_dist;
-	  }
+//	  }
 	}
 	fi_encoder_ = ZMQ_SOCKET_.rep_recv_->fi_encoder;
         fi_camera_ = ZMQ_SOCKET_.rep_recv_->fi_camera;
