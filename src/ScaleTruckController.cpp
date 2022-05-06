@@ -320,6 +320,7 @@ void ScaleTruckController::displayConsole() {
   printf("\nEncoder, Camera, Lidar Failure: %d / %d / %d", fi_encoder_, fi_camera_, fi_lidar_);
   printf("\nAlpha, Beta, Gamma\t: %d / %d / %d", alpha_, beta_, gamma_);
   printf("\nK1/K2\t\t\t: %3.3f / %3.3f", laneDetector_.K1_, laneDetector_.K2_);
+  printf("\nLdrErrMsg\t\t\t: %x", LdrErrMsg_);
   if(ObjCircles_ > 0) {
     printf("\nCirs\t\t\t: %d", ObjCircles_);
     printf("\nDistAng\t\t\t: %2.3f degree", distAngle_);
