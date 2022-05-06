@@ -401,12 +401,24 @@ void ScaleTruckController::spin() {
 }
 
 void ScaleTruckController::ScanErrorCallback(const std_msgs::UInt32::ConstPtr &msg) {
-   ROS_INFO("I heard: [%x]", msg->data);
+   uint32_t LdrErrMsg = msg->data;
+   if(fi_lidar) {
+     LdrErrMsg = 0x80008002;
+   }
+   ROS_INFO("I heard: [%x]", LdrErrMsg);
+   {
+     std::scoped_lock lock(rep_mutex_);
+     if(LdrErrMsg){
+       gamma_ = true;
+     }
+   }
 }
 
 void ScaleTruckController::objectCallback(const obstacle_detector::Obstacles& msg) {
-  std::scoped_lock lock(object_mutex_);
-  Obstacle_ = msg;
+  {
+    std::scoped_lock lock(object_mutex_);
+    Obstacle_ = msg;
+  }
 }
 
 void ScaleTruckController::imageCallback(const sensor_msgs::ImageConstPtr &msg) {
