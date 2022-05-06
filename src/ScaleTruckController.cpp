@@ -102,7 +102,8 @@ void ScaleTruckController::init() {
   objectSubscriber_ = nodeHandle_.subscribe(objectTopicName, objectQueueSize, &ScaleTruckController::objectCallback, this);
   XavSubscriber_ = nodeHandle_.subscribe(XavSubTopicName, XavSubQueueSize, &ScaleTruckController::XavSubCallback, this);
 //  XavSubscriber_ = nodeHandle_.subscribe("/vel_msg", XavSubQueueSize, &ScaleTruckController::XavSubCallback, this);
-  
+  ScanSubError = nodeHandle_.subscribe("/scan_error", 1000, &ScaleTruckController::ScanErrorCallback, this);  
+
   /***********************/
   /* Ros Topic Publisher */
   /***********************/
@@ -323,6 +324,7 @@ void ScaleTruckController::displayConsole() {
   printf("\nEncoder, Camera, Lidar Failure: %d / %d / %d", fi_encoder_, fi_camera_, fi_lidar_);
   printf("\nAlpha, Beta, Gamma\t: %d / %d / %d", alpha_, beta_, gamma_);
   printf("\nK1/K2\t\t\t: %3.3f / %3.3f", laneDetector_.K1_, laneDetector_.K2_);
+  printf("\nLdrErrMsg\t\t\t: %x", LdrErrMsg_);
   if(ObjCircles_ > 0) {
     printf("\nCirs\t\t\t: %d", ObjCircles_);
     printf("\nDistAng\t\t\t: %2.3f degree", distAngle_);
@@ -403,9 +405,24 @@ void ScaleTruckController::spin() {
   }
 }
 
+void ScaleTruckController::ScanErrorCallback(const std_msgs::UInt32::ConstPtr &msg) {
+   LdrErrMsg_ = msg->data;
+   if(fi_lidar_) {
+     LdrErrMsg_ = 0x80008002;
+   }
+   {
+     std::scoped_lock lock(rep_mutex_);
+     if(LdrErrMsg_){
+       gamma_ = true;
+     }
+   }
+}
+
 void ScaleTruckController::objectCallback(const obstacle_detector::Obstacles& msg) {
-  std::scoped_lock lock(object_mutex_);
-  Obstacle_ = msg;
+  {
+    std::scoped_lock lock(object_mutex_);
+    Obstacle_ = msg;
+  }
 }
 
 void ScaleTruckController::imageCallback(const sensor_msgs::ImageConstPtr &msg) {
