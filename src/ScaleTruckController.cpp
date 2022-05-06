@@ -401,14 +401,13 @@ void ScaleTruckController::spin() {
 }
 
 void ScaleTruckController::ScanErrorCallback(const std_msgs::UInt32::ConstPtr &msg) {
-   uint32_t LdrErrMsg = msg->data;
-   if(fi_lidar) {
-     LdrErrMsg = 0x80008002;
+   LdrErrMsg_ = msg->data;
+   if(fi_lidar_) {
+     LdrErrMsg_ = 0x80008002;
    }
-   ROS_INFO("I heard: [%x]", LdrErrMsg);
    {
      std::scoped_lock lock(rep_mutex_);
-     if(LdrErrMsg){
+     if(LdrErrMsg_){
        gamma_ = true;
      }
    }

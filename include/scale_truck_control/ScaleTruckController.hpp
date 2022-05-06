@@ -98,9 +98,10 @@ class ScaleTruckController {
     float FVstopDist_;
     float TargetDist_;
     float SafetyDist_;
+    uint32_t LdrErrMsg_;
     bool fi_lidar_ = false;
     bool gamma_ = false;
-
+    
     //ZMQ
     ZMQ_CLASS ZMQ_SOCKET_;
     ZmqData* zmq_data_;
