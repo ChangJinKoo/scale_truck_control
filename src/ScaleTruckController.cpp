@@ -288,16 +288,16 @@ void ScaleTruckController::reply(ZmqData* zmq_data){
     {
       std::scoped_lock lock(rep_mutex_, mode_mutex_);
       if(index_ == 0){
-	if(crc_mode_ == 2){
+        if(crc_mode_ == 2){
           TargetVel_ = 0;
-  	  TargetDist_ = 0;
+	  TargetDist_ = 0;
 	}
 	else if(crc_mode_ == 1){
-          if (t_vel > RCMVel_) TargetVel_ = RCMVel_;
+          if(t_vel > RCMVel_) TargetVel_ = RCMVel_;
           else TargetVel_ = t_vel;
-          if (t_dist < RCMDist_) TargetDist_ = RCMDist_;
-          else TargetDist_ = t_dist;
-        }
+	  if(t_dist < RCMDist_) TargetDist_ = RCMDist_;
+	  else TargetDist_ = t_dist;
+	}
       }
       if(ZMQ_SOCKET_.rep_recv_->src_index == 20){
         if(index_ == 0){  //LV 
