@@ -35,7 +35,7 @@
 #define MIN_STEER     (1200)
 #define STEER_CENTER  (1480)
 
-#define DATA_LOG      (0)
+#define DATA_LOG      (1)
 
 cIMU  IMU;
 Servo throttle_;
@@ -50,6 +50,7 @@ float tx_dist_;
 float tx_tdist_;
 float est_vel_;
 float output_;
+float u_k_;
 volatile int EN_pos_;
 volatile int CountT_;
 volatile int cumCountT_;
@@ -94,11 +95,12 @@ float setSPEED(float tar_vel, float current_vel) {
   float u_dist = 0.f, u_dist_k = 0.f;
   float ref_vel = 0.f, cur_vel = 0.f;
   cur_vel = current_vel;
+  pub_msg_.cur_vel = cur_vel;
+//  if(fi_encoder_) cur_vel = 0;
   if(Alpha_){
     cur_vel = est_vel_;
     if (cur_vel < 0) cur_vel = 0;
   }
-  pub_msg_.cur_vel = cur_vel;
   //if(tar_vel <= 0 ) {
     //output = ZERO_PWM;
     //I_err = 0;
@@ -137,6 +139,7 @@ float setSPEED(float tar_vel, float current_vel) {
     else if(u <= 0) u_k = 0;
     else u_k = u;
 
+    u_k_ = u_k;
     pub_msg_.u_k = u_k;
 
     if(tar_vel <= 0){
@@ -215,12 +218,16 @@ void CheckEN() {
   static float target_ANGLE;
   static float target_RPM;
   static float cur_RPM;
+  static unsigned long start_time;
+  unsigned long cur_time;
+  double diff_time;
+  static bool flag = false;
   target_vel = tx_throttle_; // m/s
   target_ANGLE = tx_steer_; // degree
   if(cumCountT_ == 0)
     cur_vel = 0;
   else{
-    if (fi_encoder_) EN_pos_ = 0;
+    //if (fi_encoder_) EN_pos_ = 0;
     cur_vel = (float)EN_pos_ / TICK2CYCLE * ( SEC_TIME / ((float)cumCountT_*T_TIME)) * circ_; // m/s
   }
 
@@ -247,40 +254,35 @@ void CheckEN() {
     Serial.print(output_angle);
     Serial.println(" deg");
   }
+  if(!flag){
+    logfile_ = SD.open(filename_, FILE_WRITE);
+    logfile_.println("Time,Tar_vel,Cur_vel,Est_vel,Sat_vel,Fi_Encoder,Alpha,output,Tar_dist,Cur_dist");
+    logfile_.close();
+    start_time = millis();
+    flag = true;
+  }
   logfile_ = SD.open(filename_, FILE_WRITE);
+  cur_time = millis();
+  diff_time = ((double)(cur_time - start_time)) / 1000.0;
+  logfile_.print(diff_time);
+  logfile_.print(",");
   logfile_.print(target_vel);
   logfile_.print(",");
   logfile_.print(cur_vel);
   logfile_.print(",");
   logfile_.print(est_vel_);
   logfile_.print(",");
+  logfile_.print(u_k_);
+  logfile_.print(",");
   logfile_.print(fi_encoder_);
   logfile_.print(",");
   logfile_.print(Alpha_);
   logfile_.print(",");
-  logfile_.print(EN_pos_);
-  logfile_.print(",");
-  logfile_.print(cumCountT_);
-  logfile_.print(",");
   logfile_.print(output_vel);
   logfile_.print(",");
-  logfile_.print(Kp_);
+  logfile_.print(tx_tdist_);
   logfile_.print(",");
-  logfile_.print(Ki_);
-  logfile_.print(",");
-  logfile_.print(tx_dist_);
-  logfile_.print(",");
-  logfile_.print(target_ANGLE);
-  logfile_.print(",");
-  logfile_.print(IMU.rpy[0]);
-  logfile_.print(",");
-  logfile_.print(IMU.rpy[1]);
-  logfile_.print(",");
-  logfile_.print(IMU.rpy[2]);
-  logfile_.print(",");
-  logfile_.print(digitalRead(EN_PINA));
-  logfile_.print(",");
-  logfile_.println(digitalRead(EN_PINB));
+  logfile_.println(tx_dist_);
   logfile_.close();
   // CLEAR counter
   ClearT();

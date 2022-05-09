@@ -24,6 +24,7 @@
 #include <geometry_msgs/Twist.h>
 #include <ros/ros.h>
 #include <std_msgs/Float32.h>
+#include <std_msgs/UInt32.h>
 #include <sensor_msgs/Image.h>
 #include <sensor_msgs/image_encodings.h>
 #include <obstacle_detector/Obstacles.h>
@@ -54,6 +55,7 @@ class ScaleTruckController {
     void imageCallback(const sensor_msgs::ImageConstPtr &msg);
     void objectCallback(const obstacle_detector::Obstacles &msg);
     void XavSubCallback(const scale_truck_control::lrc2xav &msg);
+    void ScanErrorCallback(const std_msgs::UInt32::ConstPtr &msg);
     //bool publishControlMsg(const scale_truck_control::ctl msg);
 
     ros::NodeHandle nodeHandle_;
@@ -61,7 +63,8 @@ class ScaleTruckController {
     ros::Subscriber imageSubscriber_;
     ros::Subscriber objectSubscriber_;
     ros::Subscriber XavSubscriber_;
-	
+    ros::Subscriber ScanSubError;	
+
     double CycleTime_ = 0.0;
     int index_;
     float RCMVel_;
@@ -95,9 +98,10 @@ class ScaleTruckController {
     float FVstopDist_;
     float TargetDist_;
     float SafetyDist_;
+    uint32_t LdrErrMsg_;
     bool fi_lidar_ = false;
     bool gamma_ = false;
-
+    
     //ZMQ
     ZMQ_CLASS ZMQ_SOCKET_;
     ZmqData* zmq_data_;

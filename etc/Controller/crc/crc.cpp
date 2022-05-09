@@ -95,19 +95,28 @@ void CentralRC::estimateVelocity(uint8_t index){
   }
   else if (index == 11){  //FV1
     float origin_est_vel;
-//    /* CRC predicted velocity logging */
-//    if(getSamplingTime(fv1_data_->cur_dist, fv1_prev_dist_, 1))
-//      fv1_est_vel_tmp_ = ((-1.0f) * ((fv1_data_->cur_dist - fv1_prev_dist_) / sampling_time1_)) + lv_data_->cur_vel;
-//      fv1_data_->est_vel = lowPassFilter(sampling_time1_, fv1_est_vel_tmp_);
-
     if (!fv1_data_->alpha){
-      fv1_data_->est_vel = fv1_data_->cur_vel;
+//      fv1_data_->est_vel = fv1_data_->cur_vel;
+      //senario 1
+      if(getSamplingTime(fv1_data_->cur_dist, fv1_prev_dist_, 1)){
+        origin_est_vel = ((-1.0f) * ((fv1_data_->cur_dist - fv1_prev_dist_) / sampling_time1_)) + lv_data_->cur_vel;
+	if (origin_est_vel > 1.2f) origin_est_vel = 1.2f;
+        fv1_est_vel_tmp_ = lowPassFilter(sampling_time1_, origin_est_vel);
+        fv1_data_->est_vel = fv1_est_vel_tmp_;
+      }
+//      //senario 2
+//      if(getSamplingTime(fv1_data_->cur_dist, fv1_prev_dist_, 1)){
+//        origin_est_vel = ((-1.0f) * ((fv1_data_->cur_dist - fv1_prev_dist_) / sampling_time1_)) + lv_data_->cur_vel;
+//        fv1_est_vel_tmp_ = origin_est_vel;
+//        fv1_data_->est_vel = lowPassFilter(sampling_time1_, origin_est_vel);
+//      }
     }
     else if (fv1_data_->alpha && !lv_data_->alpha){
-      if(getSamplingTime(fv1_data_->cur_dist, fv1_prev_dist_, 1))
+      if(getSamplingTime(fv1_data_->cur_dist, fv1_prev_dist_, 1)){
         origin_est_vel = ((-1.0f) * ((fv1_data_->cur_dist - fv1_prev_dist_) / sampling_time1_)) + lv_data_->cur_vel;
-        fv1_est_vel_tmp_ = origin_est_vel;
-        fv1_data_->est_vel = lowPassFilter(sampling_time1_, origin_est_vel);
+        fv1_est_vel_tmp_ = lowPassFilter(sampling_time1_, origin_est_vel);
+        fv1_data_->est_vel =  fv1_est_vel_tmp_;
+      }
     }
     else if ((fv1_data_->alpha || lv_data_->alpha) && !fv2_data_->alpha){
       if(getSamplingTime(fv2_data_->cur_dist, fv2_prev_dist_, 2))
@@ -142,18 +151,22 @@ void CentralRC::estimateVelocity(uint8_t index){
 void CentralRC::modeCheck(uint8_t lv_mode, uint8_t fv1_mode, uint8_t fv2_mode){
   if ((lv_mode == 0) && (fv1_mode == 0) && (fv2_mode == 0)){
     crc_mode_ = 0;
+    printf("crc 0\n");
   }
   else if (((lv_mode == 2) || (fv1_mode == 2) || (fv2_mode == 2)) || ((lv_mode == 1) && (fv1_mode == 1) && (fv2_mode == 1))){
     crc_mode_ = 2;
+    printf("crc 2\n");
   }
   else{
     crc_mode_ = 1;
+    printf("crc 1\n");
   }
 }
 
 float CentralRC::lowPassFilter(float sampling_time, float pred_vel){
   float res = 0.f;
   res = (tau_*prev_res_ + sampling_time*pred_vel)/(tau_+sampling_time);
+  if (std::abs(res) < 0.1f) res = 0;
   prev_res_ = res;
   return res;
 }
@@ -181,7 +194,7 @@ void CentralRC::recordData(struct timeval *startTime){
     }
     write_file << "Time,Tar_dist,Cur_dist,Prev_dist,Sampling_time,LV_Cur_vel,Cur_vel,Est_vel,Origin_Est_vel,Alpha" << std::endl; //seconds
     flag = true;
-  }
+ }
   else{
     std::scoped_lock lock(data_mutex_);
     gettimeofday(&currentTime, NULL);
@@ -251,14 +264,16 @@ bool CentralRC::getSamplingTime(float cur_dist, float prev_dist, int idx){
     std::this_thread::sleep_for(std::chrono::milliseconds(1));
     time_flag_ = true;
   }
-  if(time_flag_ && (cur_dist != prev_dist) && idx == 1){
+  //if(time_flag_ && (cur_dist != prev_dist) && idx == 1){
+  if(time_flag_ &&  idx == 1){
     gettimeofday(&end_time1_, NULL);
     sampling_time1_ = (end_time1_.tv_sec - start_time1_.tv_sec) + ((end_time1_.tv_usec - start_time1_.tv_usec)/1000000.0);  //seconds
     if (sampling_time1_ > 0.1f) sampling_time1_ = 0.1f;
     get_flag = true;
     gettimeofday(&start_time1_, NULL);
   }
-  if(time_flag_ && (cur_dist != prev_dist) && idx == 2){
+  //if(time_flag_ && (cur_dist != prev_dist) && idx == 2){
+  if(time_flag_ && idx == 2){
     gettimeofday(&end_time2_, NULL);
     sampling_time2_ = (end_time2_.tv_sec - start_time2_.tv_sec) + ((end_time2_.tv_usec - start_time2_.tv_usec)/1000000.0);  //seconds
     if (sampling_time2_ > 0.1f) sampling_time2_ = 0.1f;
@@ -285,7 +300,7 @@ void CentralRC::communicate(){
   recordData(&launch_time_);
   
   printStatus();
-  std::this_thread::sleep_for(std::chrono::milliseconds(30));
+  std::this_thread::sleep_for(std::chrono::milliseconds(2));
 }
 
 }
