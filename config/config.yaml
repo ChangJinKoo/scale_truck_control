@@ -7,12 +7,12 @@ subscribers:
     queue_size: 100
   lrc_to_xavier:
     topic: /lrc2xav_msg
-    queue_size: 1
+    queue_size: 10
 
 publishers:
   xavier_to_lrc:
     topic: /xav2lrc_msg
-    queue_size: 1
+    queue_size: 10
 
 LaneDetector:  
   steer_angle: 0.0
