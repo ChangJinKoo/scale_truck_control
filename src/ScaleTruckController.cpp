@@ -383,7 +383,7 @@ void ScaleTruckController::spin() {
     
     {
       std::scoped_lock lock(dist_mutex_, rep_mutex_);
-      origin_est_vel = ((-1.0f) * ((distance_ - prev_dist_) / sampling_time_) + lv_cur_vel_;
+      origin_est_vel = ((-1.0f) * ((distance_ - prev_dist_) / sampling_time_)) + lv_cur_vel_;
       est_vel_ = lowPassFilter(sampling_time_, origin_est_vel);
       prev_dist_ = distance_;
     }
@@ -493,7 +493,7 @@ float ScaleTruckController::lowPassFilter(float sampling_time, float pred_vel){
   return res;
 }
 
-bool ScaleTruckController::getSamplingTime(float cur_dist, float prev_dist, int idx){
+bool ScaleTruckController::getSamplingTime(float cur_dist, float prev_dist){
   bool get_flag = false;
   if(!time_flag_){
     gettimeofday(&start_time_, NULL);
@@ -502,7 +502,7 @@ bool ScaleTruckController::getSamplingTime(float cur_dist, float prev_dist, int 
   }
   if(time_flag_ && (cur_dist != prev_dist)){
     gettimeofday(&end_time_, NULL);
-    sampling_time = (end_time_.tv_sec - start_time_.tv_sec) + ((end_time_.tv_usec - start_time_.tv_usec)/1000000.0);
+    sampling_time_ = (end_time_.tv_sec - start_time_.tv_sec) + ((end_time_.tv_usec - start_time_.tv_usec)/1000000.0);
     get_flag = true;
     gettimeofday(&start_time_, NULL);
   }
