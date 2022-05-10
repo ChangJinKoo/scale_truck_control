@@ -5,3 +5,4 @@ float32 tar_vel
 bool fi_encoder
 bool beta
 bool gamma
+float32 est_vel

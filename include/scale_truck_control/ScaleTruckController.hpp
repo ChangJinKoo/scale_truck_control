@@ -135,6 +135,18 @@ class ScaleTruckController {
 
     float CurVel_ = 0.0f;
     float RefVel_ = 0.0f;
+
+    //test code
+    bool time_flag_ = false;
+    struct timeval start_time_, end_time_;
+    float lv_cur_vel_ = 0.0f;
+    float prev_dist_ = 0.8f;
+    float est_vel_ = 0.0f;
+    float sampling_time_ = 0.1f;
+    float tau_ = 0.5f;
+    float prev_res_ = 0.0f;
+    float lowPassFilter(float sampling_time, float pred_vel);
+    bool getSamplingTime(float cur_dist, float prev_dist);
      
     bool getImageStatus(void);	
     void* lanedetectInThread();

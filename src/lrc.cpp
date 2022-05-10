@@ -99,6 +99,7 @@ void LocalRC::XavCallback(const scale_truck_control::xav2lrc &msg){
   fi_encoder_ = msg.fi_encoder;
   beta_ = msg.beta;
   gamma_ = msg.gamma;
+  est_vel_ = msg.est_vel;
 }
 
 //void LocalRC::OcrCallback(const scale_truck_control::lrc2xav &msg){
@@ -119,6 +120,7 @@ void LocalRC::rosPub(){
     xav.tar_dist = tar_dist_;
     xav.lrc_mode = lrc_mode_;
     xav.crc_mode = crc_mode_;
+    xav.lv_cur_vel = lv_cur_vel_;
     ocr.index = index_;
     ocr.steer_angle = angle_degree_;
     ocr.cur_dist = cur_dist_;
@@ -139,6 +141,7 @@ void LocalRC::radio(ZmqData* zmq_data)
       std::scoped_lock lock(data_mutex_);
       zmq_data->tar_vel = tar_vel_;
       zmq_data->tar_dist = tar_dist_;
+      zmq_data->cur_vel = cur_vel_; //test code
     }
     ZMQ_SOCKET_.radioZMQ(zmq_data);
     std::this_thread::sleep_for(std::chrono::milliseconds(2));
@@ -230,12 +233,13 @@ void LocalRC::updateMode(uint8_t crc_mode){
 void LocalRC::updateData(ZmqData* zmq_data){
   std::scoped_lock lock(data_mutex_);
   if(zmq_data->src_index == 30){  //from CRC
-    est_vel_ = zmq_data->est_vel;
+    //est_vel_ = zmq_data->est_vel;
     crc_mode_ = zmq_data->crc_mode;
   }
   else if(zmq_data->src_index == 10){  //from LV LRC to FVs LRC
     tar_vel_ = zmq_data->tar_vel;
     tar_dist_ = zmq_data->tar_dist;
+    lv_cur_vel_ = zmq_data->cur_vel;  //test code
   }
 }
 
@@ -288,8 +292,8 @@ void LocalRC::printStatus(){
     printf("\nCurrent Distance:\t%.3f", cur_dist_);
     printf("\nSaturated Velocity:\t%.3f", sat_vel_);
     printf("\nEstimated Value:\t%.3f", fabs(cur_vel_ - hat_vel_));
-    printf("\nalpha, beta, gamma:\t%d / %d / %d", alpha_, beta_, gamma_); 
-    printf("\nCRC mode, LRC mode:\t%d / %d", crc_mode_, lrc_mode_);
+    printf("\nalpha, beta, gamma:\t%d, %d, %d", alpha_, beta_, gamma_); 
+    printf("\nMODE:\t%d", lrc_mode_);
     printf("\n");
   }
 }
