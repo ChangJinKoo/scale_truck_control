@@ -288,8 +288,8 @@ void LocalRC::printStatus(){
     printf("\nCurrent Distance:\t%.3f", cur_dist_);
     printf("\nSaturated Velocity:\t%.3f", sat_vel_);
     printf("\nEstimated Value:\t%.3f", fabs(cur_vel_ - hat_vel_));
-    printf("\nalpha, beta, gamma:\t%d, %d, %d", alpha_, beta_, gamma_); 
-    printf("\nMODE:\t%d", lrc_mode_);
+    printf("\nalpha, beta, gamma:\t%d / %d / %d", alpha_, beta_, gamma_); 
+    printf("\nCRC mode, LRC mode:\t%d / %d", crc_mode_, lrc_mode_);
     printf("\n");
   }
 }
