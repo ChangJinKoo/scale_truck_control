@@ -182,9 +182,17 @@ void LocalRC::request(ZmqData* zmq_data){
 
 void LocalRC::velSensorCheck(){
   std::scoped_lock lock(data_mutex_);
-  hat_vel_ = a_ * hat_vel_ + b_ * sat_vel_ - l_ * (cur_vel_ - hat_vel_);
-  if(fabs(cur_vel_ - hat_vel_) > epsilon_){
-    alpha_ = true;
+  if(!fi_encoder_){
+    hat_vel_ = a_ * hat_vel_ + b_ * sat_vel_ - l_ * (cur_vel_ - hat_vel_);
+    if(fabs(cur_vel_ - hat_vel_) > epsilon_){
+      alpha_ = true;
+    }
+  }
+  else{
+    hat_vel_ = a_ * hat_vel_ + b_ * 2.0f - l_ * (0.0f - hat_vel_);
+    if(fabs(0.0f - hat_vel_) > epsilon_){
+      alpha_ = true;
+    }
   }
 /*  
   else{  //Recovery
@@ -297,7 +305,7 @@ void LocalRC::communicate(){
     printStatus();
     recordData(&startTime);
 
-    std::this_thread::sleep_for(std::chrono::milliseconds(30));
+    std::this_thread::sleep_for(std::chrono::milliseconds(2));
 
     if(!isNodeRunning()){
       ros::requestShutdown();
