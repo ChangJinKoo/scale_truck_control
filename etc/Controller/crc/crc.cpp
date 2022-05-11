@@ -80,11 +80,9 @@ void CentralRC::estimateVelocity(uint8_t index){
       lv_data_->est_vel = lv_data_->cur_vel;
     }
     else if (lv_data_->alpha && !lv_data_->alpha){
-      if(getSamplingTime(fv1_data_->cur_dist, fv1_prev_dist_, 1))
         lv_data_->est_vel = ((fv1_data_->cur_dist - fv1_prev_dist_) / sampling_time1_) + fv1_data_->cur_vel;
     }
     else if ((lv_data_->alpha || fv1_data_->alpha) && !fv2_data_->alpha){
-      if(getSamplingTime(fv1_data_->cur_dist, fv1_prev_dist_, 1) && getSamplingTime(fv2_data_->cur_dist, fv2_prev_dist_, 2))
         lv_data_->est_vel = ((fv1_data_->cur_dist - fv1_prev_dist_) / sampling_time1_) + ((fv2_data_->cur_dist - fv2_prev_dist_) / sampling_time2_) + fv2_data_->cur_vel;
     }
     else{  //All trucks' velocity sensors are fail 
@@ -122,11 +120,9 @@ void CentralRC::estimateVelocity(uint8_t index){
       fv2_data_->est_vel = fv2_data_->cur_vel;
     }
     else if (fv2_data_->alpha && !fv1_data_->alpha){
-      if(getSamplingTime(fv2_data_->cur_dist, fv2_prev_dist_, 2))
         fv2_data_->est_vel = ((-1.0f) * ((fv2_data_->cur_dist - fv2_prev_dist_) / sampling_time2_)) + fv1_data_->cur_vel;
     }
     else if ((fv2_data_->alpha || fv1_data_->alpha) && !lv_data_->alpha){
-      if(getSamplingTime(fv1_data_->cur_dist, fv1_prev_dist_, 1) && getSamplingTime(fv2_data_->cur_dist, fv2_prev_dist_, 2))
         fv2_data_->est_vel = ((-1.0f) * ((fv1_data_->cur_dist - fv1_prev_dist_) / sampling_time1_)) + ((-1.0f) * ((fv2_data_->cur_dist - fv2_prev_dist_) / sampling_time2_)) + lv_data_->cur_vel;
     }
     else{  //All trucks' velocity sensors are fail

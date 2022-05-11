@@ -70,9 +70,13 @@ void LrcCallback(const scale_truck_control::lrc2ocr &msg) {
   tx_dist_ = msg.cur_dist;
   tx_tdist_ = msg.tar_dist;
   tx_throttle_ = msg.tar_vel;
-  est_vel_ = msg.est_vel;
+  //est_vel_ = msg.est_vel;
   fi_encoder_ = msg.fi_encoder;
   Alpha_ = msg.alpha;
+}
+
+void XavCallback(const scale_truck_control::xav2ocr &msg){
+  est_vel_ = msg.est_vel;
 }
 /*
    SPEED to RPM
@@ -299,6 +303,7 @@ void CountT() {
 */
 ros::NodeHandle nh_;
 ros::Subscriber<scale_truck_control::lrc2ocr> rosSubMsg("/lrc2ocr_msg", &LrcCallback);
+ros::Subscriber<scale_truck_control::xav2ocr> rosSubMsg("/xav2ocr_msg", &XavCallback);
 ros::Publisher rosPubMsg("/ocr2lrc_msg", &pub_msg_);
 /*
    Arduino setup()
