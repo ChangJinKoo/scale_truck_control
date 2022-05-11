@@ -13,6 +13,9 @@ publishers:
   xavier_to_lrc:
     topic: /xav2lrc_msg
     queue_size: 10
+  xavier_to_ocr:
+    topic: /xav2ocr_msg
+    queue_size: 10
 
 LaneDetector:  
   steer_angle: 0.0

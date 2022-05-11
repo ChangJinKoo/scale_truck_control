@@ -61,6 +61,7 @@ class ScaleTruckController {
 
     ros::NodeHandle nodeHandle_;
     ros::Publisher XavPublisher_;
+    ros::Publisher XavPublisher_test_;
     ros::Subscriber imageSubscriber_;
     ros::Subscriber objectSubscriber_;
     ros::Subscriber XavSubscriber_;

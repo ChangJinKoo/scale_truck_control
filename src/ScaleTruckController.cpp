@@ -79,6 +79,9 @@ void ScaleTruckController::init() {
   std::string XavPubTopicName;
   int XavPubQueueSize;
 
+  std::string XavPubTopicName_test;
+  int XavPubQueueSize_test;
+
   /******************************/
   /* Ros Topic Subscribe Option */
   /******************************/
@@ -94,6 +97,8 @@ void ScaleTruckController::init() {
   /****************************/
   nodeHandle_.param("publishers/xavier_to_lrc/topic", XavPubTopicName, std::string("/xav2lrc_msg"));
   nodeHandle_.param("publishers/xavier_to_lrc/queue_size", XavPubQueueSize, 1);
+  nodeHandle_.param("publishers/xavier_to_ocr/topic", XavPubTopicName_test, std::string("/xav2lrc_msg"));
+  nodeHandle_.param("publishers/xavier_to_ocr/queue_size", XavPubQueueSize_test, 1);
 
   /************************/
   /* Ros Topic Subscriber */
@@ -108,6 +113,8 @@ void ScaleTruckController::init() {
   /* Ros Topic Publisher */
   /***********************/
   XavPublisher_ = nodeHandle_.advertise<scale_truck_control::xav2lrc>(XavPubTopicName, XavPubQueueSize);
+  XavPublisher_test_ = nodeHandle_.advertise<scale_truck_control::xav2ocr>(XavPubTopicName_test, XavPubQueueSize_test);
+
 
   /**********************/
   /* Safety Start Setup */
@@ -365,6 +372,7 @@ void ScaleTruckController::spin() {
   
   scale_truck_control::xav2lrc msg;
   scale_truck_control::lane_coef lane;
+  scale_truck_control::xav2ocr test_msg;
   std::thread lanedetect_thread;
   std::thread objectdetect_thread;
   
@@ -406,8 +414,11 @@ void ScaleTruckController::spin() {
     }
     msg.est_vel = est_vel_;
 
+    test_msg.est_vel = est_vel_;
+
     lane = laneDetector_.lane_coef_;
     XavPublisher_.publish(msg);
+    XavPublisher_test_.publish(test_msg);
 
     if(!isNodeRunning_) {
       controlDone_ = true;
