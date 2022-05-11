@@ -66,6 +66,7 @@ add_message_files(
   lrc2xav.msg
   lrc2ocr.msg
   ocr2lrc.msg
+  xav2ocr.msg
 )
 
 generate_messages(
