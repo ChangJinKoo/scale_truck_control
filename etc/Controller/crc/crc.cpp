@@ -166,7 +166,7 @@ void CentralRC::recordData(struct timeval *startTime){
       read_file.close();
     }
 //    write_file << "Time,Tar_dist,Cur_dist,Prev_dist,Sampling_time,LV_Cur_vel,Tar_vel,Cur_vel,Est_vel,Origin_Est_vel,Alpha" << std::endl; //seconds
-    write_file << "Time,Tar_vel0,Tar_dist0,Tar_vel1,Tar_dist1,Tar_vel2,Tar_dist2,Alpha0,Beta0,Gamma0,Alpha1,Beta1,Gamma1,Alpha2,Beta2,Gamma2,LRC_mode0,LRC_mode1,LRC_mode2,CRC_mode" << std::endl; //seconds
+    write_file << "Time,Tar_vel0,Cur_vel0,Tar_dist0,Cur_dist0,Tar_vel1,Cur_vel1,Tar_dist1,Cur_dist1,Tar_vel2,Cur_vel2,Tar_dist2,Cur_dist2,Alpha0,Beta0,Gamma0,Alpha1,Beta1,Gamma1,Alpha2,Beta2,Gamma2,LRC_mode0,LRC_mode1,LRC_mode2,CRC_mode" << std::endl; //seconds
     flag = true;
  }
   else{
@@ -174,7 +174,7 @@ void CentralRC::recordData(struct timeval *startTime){
     gettimeofday(&currentTime, NULL);
     time_ = ((currentTime.tv_sec - startTime->tv_sec)) + ((currentTime.tv_usec - startTime->tv_usec)/1000000.0);
 //    sprintf(buf, "%.10e,%.3f,%.3f,%.3f,%.6f,%.3f,%.3f,%.3f,%.3f,%d", time_, fv1_data_->tar_dist, fv1_data_->cur_dist, fv1_prev_dist_, sampling_time1_, lv_data_->cur_vel, fv1_data_->tar_vel, fv1_data_->cur_vel, fv1_data_->est_vel, fv1_est_vel_tmp_, fv1_data_->alpha);
-    sprintf(buf, "%.10e,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d", time_, lv_data_->tar_vel, lv_data_->tar_dist, fv1_data_->tar_vel, fv1_data_->tar_dist, fv2_data_->tar_vel, fv2_data_->tar_dist, lv_data_->alpha, lv_data_->beta, lv_data_->gamma, fv1_data_->alpha, fv1_data_->beta, fv1_data_->gamma, fv2_data_->alpha, fv2_data_->beta, fv2_data_->gamma, lv_data_->lrc_mode, fv1_data_->lrc_mode, fv2_data_->lrc_mode, crc_mode_);
+    sprintf(buf, "%.10e,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d", time_, lv_data_->tar_vel, lv_data_->cur_vel, lv_data_->tar_dist, lv_data_->cur_dist, fv1_data_->tar_vel, fv1_data_->cur_vel, fv1_data_->tar_dist, fv1_data_->cur_dist, fv2_data_->tar_vel, fv2_data_->cur_vel, fv2_data_->tar_dist, fv2_data_->cur_dist, lv_data_->alpha, lv_data_->beta, lv_data_->gamma, fv1_data_->alpha, fv1_data_->beta, fv1_data_->gamma, fv2_data_->alpha, fv2_data_->beta, fv2_data_->gamma, lv_data_->lrc_mode, fv1_data_->lrc_mode, fv2_data_->lrc_mode, crc_mode_);
     write_file.open(file, std::ios::out | std::ios::app);
     write_file << buf << std::endl;
   }
