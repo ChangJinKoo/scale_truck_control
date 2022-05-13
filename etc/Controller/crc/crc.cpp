@@ -87,19 +87,13 @@ void CentralRC::estimateVelocity(uint8_t index){
     }
     else{  //All trucks' velocity sensors are fail 
       crc_mode_ = 2;
-      lv_data_->est_vel = 0;
       lv_data_->crc_mode = crc_mode_;
     }
   }
   else if (index == 11){  //FV1
     float origin_est_vel;
     if (!fv1_data_->alpha){
-      //fv1_data_->est_vel = fv1_data_->cur_vel;
-
-      origin_est_vel = ((-1.0f) * ((fv1_data_->cur_dist - fv1_prev_dist_) / sampling_time1_)) + lv_data_->cur_vel;
-      fv1_est_vel_tmp_ = origin_est_vel;
-      fv1_data_->est_vel = lowPassFilter(sampling_time1_, origin_est_vel);
-;
+      fv1_data_->est_vel = fv1_data_->cur_vel;
     }
     else if (fv1_data_->alpha && !lv_data_->alpha){
       origin_est_vel = ((-1.0f) * ((fv1_data_->cur_dist - fv1_prev_dist_) / sampling_time1_)) + lv_data_->cur_vel;
@@ -111,7 +105,6 @@ void CentralRC::estimateVelocity(uint8_t index){
     }
     else{  //All trucks' velocity sensors are fail
       crc_mode_ = 2;
-      fv1_data_->est_vel = 0;
       fv1_data_->crc_mode = crc_mode_;
     }
   }
@@ -127,7 +120,6 @@ void CentralRC::estimateVelocity(uint8_t index){
     }
     else{  //All trucks' velocity sensors are fail
       crc_mode_ = 2;
-      fv2_data_->est_vel = 0;
       fv2_data_->crc_mode = crc_mode_;
     }
   }
@@ -156,7 +148,7 @@ void CentralRC::recordData(struct timeval *startTime){
   struct timeval currentTime;
   char file_name[] = "CRC_log00.csv";
   static char file[128] = {0x00, };
-  char buf[256] = {0x00,};
+  char buf[512] = {0x00,};
   static bool flag = false;
   std::ifstream read_file;
   std::ofstream write_file;
@@ -173,14 +165,16 @@ void CentralRC::recordData(struct timeval *startTime){
       }
       read_file.close();
     }
-    write_file << "Time,Tar_dist,Cur_dist,Prev_dist,Sampling_time,LV_Cur_vel,Cur_vel,Est_vel,Origin_Est_vel,Alpha" << std::endl; //seconds
+//    write_file << "Time,Tar_dist,Cur_dist,Prev_dist,Sampling_time,LV_Cur_vel,Tar_vel,Cur_vel,Est_vel,Origin_Est_vel,Alpha" << std::endl; //seconds
+    write_file << "Time,Tar_vel0,Tar_dist0,Tar_vel1,Tar_dist1,Tar_vel2,Tar_dist2,Alpha0,Beta0,Gamma0,Alpha1,Beta1,Gamma1,Alpha2,Beta2,Gamma2,LRC_mode0,LRC_mode1,LRC_mode2,CRC_mode" << std::endl; //seconds
     flag = true;
  }
   else{
     std::scoped_lock lock(data_mutex_);
     gettimeofday(&currentTime, NULL);
     time_ = ((currentTime.tv_sec - startTime->tv_sec)) + ((currentTime.tv_usec - startTime->tv_usec)/1000000.0);
-    sprintf(buf, "%.10e,%.3f,%.3f,%.3f,%.6f,%.3f,%.3f,%.3f,%.3f,%d", time_, fv1_data_->tar_dist, fv1_data_->cur_dist, fv1_prev_dist_, sampling_time1_, lv_data_->cur_vel, fv1_data_->cur_vel, fv1_data_->est_vel, fv1_est_vel_tmp_, fv1_data_->alpha);
+//    sprintf(buf, "%.10e,%.3f,%.3f,%.3f,%.6f,%.3f,%.3f,%.3f,%.3f,%d", time_, fv1_data_->tar_dist, fv1_data_->cur_dist, fv1_prev_dist_, sampling_time1_, lv_data_->cur_vel, fv1_data_->tar_vel, fv1_data_->cur_vel, fv1_data_->est_vel, fv1_est_vel_tmp_, fv1_data_->alpha);
+    sprintf(buf, "%.10e,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d", time_, lv_data_->tar_vel, lv_data_->tar_dist, fv1_data_->tar_vel, fv1_data_->tar_dist, fv2_data_->tar_vel, fv2_data_->tar_dist, lv_data_->alpha, lv_data_->beta, lv_data_->gamma, fv1_data_->alpha, fv1_data_->beta, fv1_data_->gamma, fv2_data_->alpha, fv2_data_->beta, fv2_data_->gamma, lv_data_->lrc_mode, fv1_data_->lrc_mode, fv2_data_->lrc_mode, crc_mode_);
     write_file.open(file, std::ios::out | std::ios::app);
     write_file << buf << std::endl;
   }
@@ -206,6 +200,7 @@ void CentralRC::updateData(ZmqData* zmq_data){
   std::scoped_lock lock(data_mutex_);
   if(zmq_data->tar_index == 30){
     if(zmq_data->src_index == 10){
+      lv_data_->tar_vel = zmq_data->tar_vel;
       lv_data_->cur_vel = zmq_data->cur_vel;
       lv_data_->tar_dist = zmq_data->tar_dist;
       lv_data_->cur_dist = zmq_data->cur_dist;
@@ -215,6 +210,7 @@ void CentralRC::updateData(ZmqData* zmq_data){
       lv_data_->lrc_mode = zmq_data->lrc_mode;
     }
     else if(zmq_data->src_index == 11){
+      fv1_data_->tar_vel = zmq_data->tar_vel;
       fv1_data_->cur_vel = zmq_data->cur_vel;
       fv1_data_->tar_dist = zmq_data->tar_dist;
       fv1_data_->cur_dist = zmq_data->cur_dist;
@@ -225,6 +221,7 @@ void CentralRC::updateData(ZmqData* zmq_data){
       getSamplingTime(fv1_data_->cur_dist, fv1_prev_dist_, 1);
     }
     else if(zmq_data->src_index == 12){
+      fv2_data_->tar_vel = zmq_data->tar_vel;
       fv2_data_->cur_vel = zmq_data->cur_vel;
       fv2_data_->tar_dist = zmq_data->tar_dist;
       fv2_data_->cur_dist = zmq_data->cur_dist;
