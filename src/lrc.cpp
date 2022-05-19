@@ -236,7 +236,7 @@ void LocalRC::updateMode(uint8_t crc_mode){
 void LocalRC::updateData(ZmqData* zmq_data){
   std::scoped_lock lock(data_mutex_);
   if(zmq_data->src_index == 30){  //from CRC
-    //est_vel_ = zmq_data->est_vel;
+    est_vel_ = zmq_data->est_vel;
     crc_mode_ = zmq_data->crc_mode;
   }
   else if(zmq_data->src_index == 10){  //from LV LRC to FVs LRC
@@ -307,7 +307,7 @@ void LocalRC::communicate(){
   static int cnt = 0;
   while(ros::ok()){
     velSensorCheck();
-    //updateMode(crc_mode_);
+    updateMode(crc_mode_);
     rosPub();
     printStatus();
     recordData(&startTime);
