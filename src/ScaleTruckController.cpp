@@ -25,9 +25,12 @@ ScaleTruckController::~ScaleTruckController() {
     std::scoped_lock lock(rep_mutex_);
     msg.tar_dist = TargetDist_;
     msg.fi_encoder = fi_encoder_;
+    msg.fi_camera = fi_camera_;
+    msg.fi_lidar = fi_lidar_;
     msg.beta = beta_;
     msg.gamma = gamma_;
   }
+  msg.est_vel = est_vel_;
 
   XavPublisher_.publish(msg);
   controlThread_.join();
@@ -409,6 +412,8 @@ void ScaleTruckController::spin() {
       std::scoped_lock lock(rep_mutex_);
       msg.tar_dist = TargetDist_;
       msg.fi_encoder = fi_encoder_;
+      msg.fi_camera = fi_camera_;
+      msg.fi_lidar = fi_lidar_;
       msg.beta = beta_;
       msg.gamma = gamma_;
     }

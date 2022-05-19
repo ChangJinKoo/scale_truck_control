@@ -97,6 +97,8 @@ void LocalRC::XavCallback(const scale_truck_control::xav2lrc &msg){
     tar_vel_ = msg.tar_vel;
   }
   fi_encoder_ = msg.fi_encoder;
+  fi_camera_ = msg.fi_camera;
+  fi_lidar_ = msg.fi_lidar;
   beta_ = msg.beta;
   gamma_ = msg.gamma;
   est_vel_ = msg.est_vel;
@@ -266,14 +268,14 @@ void LocalRC::recordData(struct timeval *startTime){
       }
       read_file.close();
     }
-    write_file << "Time,Request_time,Tar_dist,Cur_dist,Tar_vel,Cur_vel,Est_vel,Sat_vel,Hat_vel,Alpha,Beta,Gamma,CRC_mode,LRC_mode" << endl; //seconds
+    write_file << "Time,Request_time,Tar_dist,Cur_dist,Tar_vel,Cur_vel,Est_vel,Sat_vel,Hat_vel,Fi_encoder,Alpha,Fi_camera,Beta,Fi_lidar,Gamma,LRC_mode,CRC_mode" << endl; //seconds
     flag = true;
   }
   else{
     std::scoped_lock lock(data_mutex_, time_mutex_);
     gettimeofday(&currentTime, NULL);
     time_ = ((currentTime.tv_sec - startTime->tv_sec)) + ((currentTime.tv_usec - startTime->tv_usec)/1000000.0);
-    sprintf(buf, "%.10e,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%d,%d,%d,%d,%d", time_, req_time_, tar_dist_, cur_dist_, tar_vel_, cur_vel_, est_vel_, sat_vel_, hat_vel_, alpha_, beta_, gamma_, crc_mode_, lrc_mode_);
+    sprintf(buf, "%.10e,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%d,%d,%d,%d,%d,%d,%d,%d", time_, req_time_, tar_dist_, cur_dist_, tar_vel_, cur_vel_, est_vel_, sat_vel_, hat_vel_, fi_encoder_, alpha_, fi_camera_, beta_, fi_lidar_, gamma_, lrc_mode_, crc_mode_);
     write_file.open(file, std::ios::out | std::ios::app);
     write_file << buf << endl;
   }

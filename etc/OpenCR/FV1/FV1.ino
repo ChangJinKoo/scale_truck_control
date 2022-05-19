@@ -9,6 +9,7 @@
 #include <IMU.h>
 #include <lrc2ocr.h>
 #include <ocr2lrc.h>
+#include <xav2ocr.h>
 
 // Period
 #define BAUD_RATE     (57600)
@@ -70,13 +71,13 @@ void LrcCallback(const scale_truck_control::lrc2ocr &msg) {
   tx_dist_ = msg.cur_dist;
   tx_tdist_ = msg.tar_dist;
   tx_throttle_ = msg.tar_vel;
-  //est_vel_ = msg.est_vel;
+  est_vel_ = msg.est_vel;
   fi_encoder_ = msg.fi_encoder;
   Alpha_ = msg.alpha;
 }
 
 void XavCallback(const scale_truck_control::xav2ocr &msg){
-  est_vel_ = msg.est_vel;
+  //est_vel_ = msg.est_vel;
 }
 /*
    SPEED to RPM
@@ -102,8 +103,14 @@ float setSPEED(float tar_vel, float current_vel) {
   pub_msg_.cur_vel = cur_vel;
 //  if(fi_encoder_) cur_vel = 0;
   if(Alpha_){
+    Kp_dist_ = 0.7;
+    Kd_dist_ = 0.5;
     cur_vel = est_vel_;
     if (cur_vel < 0) cur_vel = 0;
+  }
+  else{
+    Kp_dist_ = 1.0;
+    Kd_dist_ = 0.05;
   }
   //if(tar_vel <= 0 ) {
     //output = ZERO_PWM;
@@ -303,7 +310,7 @@ void CountT() {
 */
 ros::NodeHandle nh_;
 ros::Subscriber<scale_truck_control::lrc2ocr> rosSubMsg("/lrc2ocr_msg", &LrcCallback);
-ros::Subscriber<scale_truck_control::xav2ocr> rosSubMsg("/xav2ocr_msg", &XavCallback);
+ros::Subscriber<scale_truck_control::xav2ocr> xavSubMsg("/xav2ocr_msg", &XavCallback);
 ros::Publisher rosPubMsg("/ocr2lrc_msg", &pub_msg_);
 /*
    Arduino setup()
@@ -311,6 +318,7 @@ ros::Publisher rosPubMsg("/ocr2lrc_msg", &pub_msg_);
 void setup() {
   nh_.initNode();
   nh_.subscribe(rosSubMsg);
+  //nh_.subscribe(xavSubMsg);
   nh_.advertise(rosPubMsg);
   throttle_.attach(THROTTLE_PIN);
   steer_.attach(STEER_PIN);

@@ -47,7 +47,6 @@ class LocalRC{
     bool isNodeRunning();
     void XavCallback(const scale_truck_control::xav2lrc &msg);
     void OcrCallback(const scale_truck_control::ocr2lrc &msg);
-//    void OcrCallback(const scale_truck_control::lrc2xav &msg);
     void rosPub();
     void radio(ZmqData* zmq_data);
     void dish();
@@ -64,6 +63,8 @@ class LocalRC{
     float a_, b_, l_;
     float epsilon_;
     bool fi_encoder_ = false;
+    bool fi_camera_ = false;
+    bool fi_lidar_ = false;
     bool alpha_ = false;
     bool beta_ = false;
     bool gamma_ = false;
