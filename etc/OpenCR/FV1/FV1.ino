@@ -9,7 +9,6 @@
 #include <IMU.h>
 #include <lrc2ocr.h>
 #include <ocr2lrc.h>
-#include <xav2ocr.h>
 
 // Period
 #define BAUD_RATE     (57600)
@@ -36,7 +35,7 @@
 #define MIN_STEER     (1200)
 #define STEER_CENTER  (1480)
 
-#define DATA_LOG      (1)
+#define DATA_LOG      (0)
 
 cIMU  IMU;
 Servo throttle_;
@@ -74,10 +73,6 @@ void LrcCallback(const scale_truck_control::lrc2ocr &msg) {
   est_vel_ = msg.est_vel;
   fi_encoder_ = msg.fi_encoder;
   Alpha_ = msg.alpha;
-}
-
-void XavCallback(const scale_truck_control::xav2ocr &msg){
-  //est_vel_ = msg.est_vel;
 }
 /*
    SPEED to RPM
@@ -310,7 +305,6 @@ void CountT() {
 */
 ros::NodeHandle nh_;
 ros::Subscriber<scale_truck_control::lrc2ocr> rosSubMsg("/lrc2ocr_msg", &LrcCallback);
-ros::Subscriber<scale_truck_control::xav2ocr> xavSubMsg("/xav2ocr_msg", &XavCallback);
 ros::Publisher rosPubMsg("/ocr2lrc_msg", &pub_msg_);
 /*
    Arduino setup()
@@ -318,7 +312,6 @@ ros::Publisher rosPubMsg("/ocr2lrc_msg", &pub_msg_);
 void setup() {
   nh_.initNode();
   nh_.subscribe(rosSubMsg);
-  //nh_.subscribe(xavSubMsg);
   nh_.advertise(rosPubMsg);
   throttle_.attach(THROTTLE_PIN);
   steer_.attach(STEER_PIN);
