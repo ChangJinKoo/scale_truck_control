@@ -30,7 +30,6 @@ ScaleTruckController::~ScaleTruckController() {
     msg.beta = beta_;
     msg.gamma = gamma_;
   }
-  msg.est_vel = est_vel_;
 
   XavPublisher_.publish(msg);
   controlThread_.join();
