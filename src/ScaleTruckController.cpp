@@ -82,9 +82,6 @@ void ScaleTruckController::init() {
   std::string XavPubTopicName;
   int XavPubQueueSize;
 
-  std::string XavPubTopicName_test;
-  int XavPubQueueSize_test;
-
   /******************************/
   /* Ros Topic Subscribe Option */
   /******************************/
@@ -100,8 +97,6 @@ void ScaleTruckController::init() {
   /****************************/
   nodeHandle_.param("publishers/xavier_to_lrc/topic", XavPubTopicName, std::string("/xav2lrc_msg"));
   nodeHandle_.param("publishers/xavier_to_lrc/queue_size", XavPubQueueSize, 1);
-  nodeHandle_.param("publishers/xavier_to_ocr/topic", XavPubTopicName_test, std::string("/xav2lrc_msg"));
-  nodeHandle_.param("publishers/xavier_to_ocr/queue_size", XavPubQueueSize_test, 1);
 
   /************************/
   /* Ros Topic Subscriber */
@@ -109,15 +104,12 @@ void ScaleTruckController::init() {
   imageSubscriber_ = nodeHandle_.subscribe(imageTopicName, imageQueueSize, &ScaleTruckController::imageCallback, this);
   objectSubscriber_ = nodeHandle_.subscribe(objectTopicName, objectQueueSize, &ScaleTruckController::objectCallback, this);
   XavSubscriber_ = nodeHandle_.subscribe(XavSubTopicName, XavSubQueueSize, &ScaleTruckController::XavSubCallback, this);
-//  XavSubscriber_ = nodeHandle_.subscribe("/vel_msg", XavSubQueueSize, &ScaleTruckController::XavSubCallback, this);
   ScanSubError = nodeHandle_.subscribe("/scan_error", 1000, &ScaleTruckController::ScanErrorCallback, this);  
 
   /***********************/
   /* Ros Topic Publisher */
   /***********************/
   XavPublisher_ = nodeHandle_.advertise<scale_truck_control::xav2lrc>(XavPubTopicName, XavPubQueueSize);
-  XavPublisher_test_ = nodeHandle_.advertise<scale_truck_control::xav2ocr>(XavPubTopicName_test, XavPubQueueSize_test);
-
 
   /**********************/
   /* Safety Start Setup */
@@ -223,7 +215,6 @@ void* ScaleTruckController::objectdetectInThread() {
     std::scoped_lock lock(dist_mutex_);
     distance_ = dist_tmp;
     distAngle_ = angle_tmp;
-    getSamplingTime(distance_, prev_dist_);
   }
   /*****************************/
   /* Dynamic ROI Distance Data */
@@ -375,13 +366,10 @@ void ScaleTruckController::spin() {
   
   scale_truck_control::xav2lrc msg;
   scale_truck_control::lane_coef lane;
-  scale_truck_control::xav2ocr test_msg;
   std::thread lanedetect_thread;
   std::thread objectdetect_thread;
   
   const auto wait_image = std::chrono::milliseconds(20);
-  
-  static float origin_est_vel = 0.0f;
 
   while(!controlDone_ && ros::ok()) {
     struct timeval start_time, end_time;
@@ -391,13 +379,6 @@ void ScaleTruckController::spin() {
     
     lanedetect_thread.join();
     objectdetect_thread.join();    
-    
-    {
-      std::scoped_lock lock(dist_mutex_, rep_mutex_);
-      origin_est_vel = ((-1.0f) * ((distance_ - prev_dist_) / sampling_time_)) + lv_cur_vel_;
-      est_vel_ = lowPassFilter(sampling_time_, origin_est_vel);
-      prev_dist_ = distance_;
-    }
 
     if(enableConsoleOutput_)
       displayConsole();
@@ -417,13 +398,9 @@ void ScaleTruckController::spin() {
       msg.beta = beta_;
       msg.gamma = gamma_;
     }
-    msg.est_vel = est_vel_;
-
-    test_msg.est_vel = est_vel_;
 
     lane = laneDetector_.lane_coef_;
     XavPublisher_.publish(msg);
-    XavPublisher_test_.publish(test_msg);
 
     if(!isNodeRunning_) {
       controlDone_ = true;
@@ -498,31 +475,7 @@ void ScaleTruckController::XavSubCallback(const scale_truck_control::lrc2xav &ms
     std::scoped_lock lock(rep_mutex_);
     TargetVel_ = msg.tar_vel;
     TargetDist_ = msg.tar_dist;
-    lv_cur_vel_ = msg.lv_cur_vel;
   }
-}
-
-float ScaleTruckController::lowPassFilter(float sampling_time, float pred_vel){
-  float res = 0.f;
-  res = (tau_*prev_res_ + sampling_time*pred_vel)/(tau_+sampling_time);
-  prev_res_ = res;
-  return res;
-}
-
-bool ScaleTruckController::getSamplingTime(float cur_dist, float prev_dist){
-  bool get_flag = false;
-  if(!time_flag_){
-    gettimeofday(&start_time_, NULL);
-    std::this_thread::sleep_for(std::chrono::milliseconds(1));
-    time_flag_ = true;
-  }
-  if(time_flag_ && (cur_dist != prev_dist)){
-    gettimeofday(&end_time_, NULL);
-    sampling_time_ = (end_time_.tv_sec - start_time_.tv_sec) + ((end_time_.tv_usec - start_time_.tv_usec)/1000000.0);
-    get_flag = true;
-    gettimeofday(&start_time_, NULL);
-  }
-  return get_flag;
 }
 
 } /* namespace scale_truck_control */ 

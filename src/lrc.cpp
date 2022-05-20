@@ -60,7 +60,6 @@ void LocalRC::init(){
   /************************/
   XavSubscriber_ = nodeHandle_.subscribe(XavSubTopicName, XavSubQueueSize, &LocalRC::XavCallback, this);
   OcrSubscriber_ = nodeHandle_.subscribe(OcrSubTopicName, OcrSubQueueSize, &LocalRC::OcrCallback, this);
-//  OcrSubscriber_ = nodeHandle_.subscribe("/vel_msg", OcrSubQueueSize, &LocalRC::OcrCallback, this);
 
   /************************/
   /* ROS Topic Publisher */ 
@@ -101,10 +100,8 @@ void LocalRC::XavCallback(const scale_truck_control::xav2lrc &msg){
   fi_lidar_ = msg.fi_lidar;
   beta_ = msg.beta;
   gamma_ = msg.gamma;
-  est_vel_ = msg.est_vel;
 }
 
-//void LocalRC::OcrCallback(const scale_truck_control::lrc2xav &msg){
 void LocalRC::OcrCallback(const scale_truck_control::ocr2lrc &msg){
   std::scoped_lock lock(data_mutex_);
   cur_vel_ = msg.cur_vel;
@@ -122,7 +119,6 @@ void LocalRC::rosPub(){
     xav.tar_dist = tar_dist_;
     xav.lrc_mode = lrc_mode_;
     xav.crc_mode = crc_mode_;
-    xav.lv_cur_vel = lv_cur_vel_;
     ocr.index = index_;
     ocr.steer_angle = angle_degree_;
     ocr.cur_dist = cur_dist_;
@@ -143,7 +139,6 @@ void LocalRC::radio(ZmqData* zmq_data)
       std::scoped_lock lock(data_mutex_);
       zmq_data->tar_vel = tar_vel_;
       zmq_data->tar_dist = tar_dist_;
-      zmq_data->cur_vel = cur_vel_; //test code
     }
     ZMQ_SOCKET_.radioZMQ(zmq_data);
     std::this_thread::sleep_for(std::chrono::milliseconds(2));
@@ -242,7 +237,6 @@ void LocalRC::updateData(ZmqData* zmq_data){
   else if(zmq_data->src_index == 10){  //from LV LRC to FVs LRC
     tar_vel_ = zmq_data->tar_vel;
     tar_dist_ = zmq_data->tar_dist;
-    lv_cur_vel_ = zmq_data->cur_vel;  //test code
   }
 }
 

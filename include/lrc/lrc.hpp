@@ -80,8 +80,6 @@ class LocalRC{
     double time_ = 0;
     double req_time_ = 0;
 
-    float lv_cur_vel_ = 0; //test code
-
     std::thread lrcThread_;
     std::thread udpThread_;
     std::thread tcpThread_;

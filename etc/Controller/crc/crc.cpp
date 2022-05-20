@@ -243,7 +243,6 @@ bool CentralRC::getSamplingTime(float cur_dist, float prev_dist, int idx){
     time_flag_ = true;
   }
   if(time_flag_ && (cur_dist != prev_dist) && idx == 1){
-  //if(time_flag_ &&  idx == 1){
     gettimeofday(&end_time1_, NULL);
     sampling_time1_ = (end_time1_.tv_sec - start_time1_.tv_sec) + ((end_time1_.tv_usec - start_time1_.tv_usec)/1000000.0);  //seconds
     if (sampling_time1_ > 0.1f) sampling_time1_ = 0.1f;
@@ -251,7 +250,6 @@ bool CentralRC::getSamplingTime(float cur_dist, float prev_dist, int idx){
     gettimeofday(&start_time1_, NULL);
   }
   if(time_flag_ && (cur_dist != prev_dist) && idx == 2){
-  //if(time_flag_ && idx == 2){
     gettimeofday(&end_time2_, NULL);
     sampling_time2_ = (end_time2_.tv_sec - start_time2_.tv_sec) + ((end_time2_.tv_usec - start_time2_.tv_usec)/1000000.0);  //seconds
     if (sampling_time2_ > 0.1f) sampling_time2_ = 0.1f;

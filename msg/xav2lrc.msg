@@ -7,4 +7,3 @@ bool fi_camera
 bool fi_lidar
 bool beta
 bool gamma
-float32 est_vel
