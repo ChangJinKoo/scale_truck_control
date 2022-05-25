@@ -54,7 +54,7 @@ float u_k_;
 volatile int EN_pos_;
 volatile int CountT_;
 volatile int cumCountT_;
-char filename_[] = "FV1_00.TXT";
+char filename_[] = "FV1_00.csv";
 File logfile_;
 
 HardwareTimer Timer1(TIMER_CH1); // T Method
@@ -77,12 +77,12 @@ void LrcCallback(const scale_truck_control::lrc2ocr &msg) {
 /*
    SPEED to RPM
 */
-float Kp_dist_ = 1.0; // 2.0; //0.8;
-float Kd_dist_ = 0.05; //0.05;
-float Kp_ = 0.8; // 2.0; //0.8;
-float Ki_ = 2.0; // 0.4; //10.0;
+float Kp_dist_ = 1.2; // 1.2;
+float Kd_dist_ = 0.01; // 0.01;
+float Kp_ = 0.4; // 2.0; //0.8;
+float Ki_ = 1.3; // 0.4; //10.0;
 float Ka_ = 0.01;
-float Kf_ = 1.0;  // feed forward const.
+float Kf_ = 0.8;  // feed forward const.
 float dt_ = 0.1;
 float circ_ = WHEEL_DIM * M_PI;
 scale_truck_control::ocr2lrc pub_msg_;
@@ -96,16 +96,15 @@ float setSPEED(float tar_vel, float current_vel) {
   float ref_vel = 0.f, cur_vel = 0.f;
   cur_vel = current_vel;
   pub_msg_.cur_vel = cur_vel;
-//  if(fi_encoder_) cur_vel = 0;
+  //if(fi_encoder_) cur_vel = 0;
   if(Alpha_){
     Kp_dist_ = 0.7;
     Kd_dist_ = 0.5;
     cur_vel = est_vel_;
-    if (cur_vel < 0) cur_vel = 0;
   }
   else{
-    Kp_dist_ = 1.0;
-    Kd_dist_ = 0.05;
+    Kp_dist_ = 1.2;
+    Kd_dist_ = 0.01;
   }
   //if(tar_vel <= 0 ) {
     //output = ZERO_PWM;
@@ -152,7 +151,7 @@ float setSPEED(float tar_vel, float current_vel) {
       output = ZERO_PWM;
     }
     else{    // inverse function 
-      output = (-8.152e-02 + sqrt(pow(-8.152e-02,2)-4*(-2.0975e-05)*(-76.87-u_k)))/(2*(-2.0975e-05));
+      output = (-0.078814 + sqrt(pow(0.078814,2)-4*(-2.037e-05)*(-73.9552-u_k)))/(2*(-2.037e-05));
     }
     //output = tx_throttle_;
     
@@ -262,7 +261,7 @@ void CheckEN() {
   }
   if(!flag){
     logfile_ = SD.open(filename_, FILE_WRITE);
-    logfile_.println("Time,Tar_vel,Cur_vel,Est_vel,Sat_vel,Fi_Encoder,Alpha,output,Tar_dist,Cur_dist");
+    logfile_.println("Time,Tar_vel,Cur_vel,Sat_vel,Est_vel,Fi_Encoder,Alpha,output,Tar_dist,Cur_dist");
     logfile_.close();
     start_time = millis();
     flag = true;
@@ -276,9 +275,9 @@ void CheckEN() {
   logfile_.print(",");
   logfile_.print(cur_vel);
   logfile_.print(",");
-  logfile_.print(est_vel_);
-  logfile_.print(",");
   logfile_.print(u_k_);
+  logfile_.print(",");
+  logfile_.print(est_vel_);
   logfile_.print(",");
   logfile_.print(fi_encoder_);
   logfile_.print(",");

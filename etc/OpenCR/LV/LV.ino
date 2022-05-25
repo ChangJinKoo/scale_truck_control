@@ -219,7 +219,7 @@ void CheckEN() {
   if(cumCountT_ == 0)
     cur_vel = 0;
   else{
-    if (fi_encoder_) EN_pos_ = 0;
+    //if (fi_encoder_) EN_pos_ = 0;
     cur_vel = (float)EN_pos_ / TICK2CYCLE * ( SEC_TIME / ((float)cumCountT_*T_TIME)) * circ_; // m/s
   }
 
