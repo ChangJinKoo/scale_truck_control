@@ -435,36 +435,67 @@ Mat LaneDetector::detect_lines_sliding_window(Mat _frame, bool _view) {
 				L_gap = (Llane_current - L_prev);
 			}
 		}
-		if ((Lsum != 0) && (Rsum != 0)) {
-			for (int i = 0; i < Llane_x.size() ; i++)
-			{
-				if((Llane_x.at(i) != -1) && (Rlane_x.at(i) != -1)) {
-					center_x_.insert(center_x_.end(), (Llane_x.at(i)+Rlane_x.at(i)) / 2 );
-					center_y_.insert(center_y_.end(), Llane_y.at(i));
-				}
-			}
-			//center_x_.insert(center_x_.end(), (Llane_current + Rlane_current) / 2);
-			//center_y_.insert(center_y_.end(), Ly_pos + (window_height / 2));	
+
+	    if ((Lsum != 0) && (Rsum != 0)) {
+	      int cnt = 0;
+	      int sum_center_x = 0;
+	      for (int i = 0; i < Llane_x.size(); i++)
+	      {
+		if ((Llane_x.at(i) != -1) && (Rlane_x.at(i) != -1)) {
+		  center_x_.insert(center_x_.end(), (Llane_x.at(i)+Rlane_x.at(i))/ 2);
+		  center_y_.insert(center_y_.end(), Llane_y.at(i));  
 		}
-		L_prev = Llane_current;
-		R_prev = Rlane_current;
-	}
+	      }
+	      //center_x_.insert(center_x_.end(), (Llane_current + Rlane_current) / 2);
+	      //center_y_.insert(center_y_.end(), Ly_pos + (window_height / 2));  
+	    }
 
-	if (left_x_.size() != 0) {
-		left_coef_ = polyfit(left_y_, left_x_);
-	}
-	if (right_x_.size() != 0) {
-		right_coef_ = polyfit(right_y_, right_x_);
-	}	
-	if ((left_x_.size() != 0) && (right_x_.size() != 0)) {
-		center_coef_ = polyfit(center_y_, center_x_);
-	}
-	
-	delete[] hist;
-	delete[] weight_distrib;
+	    L_prev = Llane_current;
+	    R_prev = Rlane_current;
+	  }
 
-	return result;
+
+	  float left_lane_value[480] = { 0,};
+	  float right_lane_value[480] = { 0,};
+	  float center_lane_value[480] = { 0,};
+
+	  if (left_x_.size() != 0) {
+	    left_coef_ = polyfit(left_y_, left_x_);
+	    
+	    for(int i = 0; i < 480; i++){
+	      left_lane_value[i] = left_coef_.at<float>(2,0) * pow(i,2) + left_coef_.at<float>(1,0) * i + left_coef_.at<float>(0,0);
+	    }
+	    
+	  }
+
+	  if (right_x_.size() != 0) {
+	    right_coef_ = polyfit(right_y_, right_x_);
+	    
+	    for(int i = 0; i < 480; i++){
+	      right_lane_value[i] = right_coef_.at<float>(2,0) * pow(i,2) + right_coef_.at<float>(1,0) * i + right_coef_.at<float>(0,0);
+	    }
+	    
+	  }
+	  
+	  for (int i = 0; i < 480; i++){
+	    float center_x_value = (left_lane_value[i] + right_lane_value[i]) / 2;
+	    center_y_.push_back(i);
+	    center_x_.push_back(center_x_value);
+	  }
+	  
+	//  if ((left_x_.size() != 0) && (right_x_.size() != 0)) {
+	  if (center_x_.size() != 0){
+	    center_coef_ = polyfit(center_y_, center_x_);
+	  }
+	//  }
+
+	  delete[] hist;
+
+	  return result;
 }
+
+
+
 
 Mat LaneDetector::draw_lane(Mat _sliding_frame, Mat _frame) {
 	Mat new_frame, left_coef(left_coef_), right_coef(right_coef_), center_coef(center_coef_), trans;
@@ -711,7 +742,7 @@ void LaneDetector::calc_curv_rad_and_center_dist() {
 }
 
 float LaneDetector::display_img(Mat _frame, int _delay, bool _view) {		
-	Mat new_frame, gray_frame, edge_frame, binary_frame, sliding_frame, resized_frame;
+	Mat new_frame, gray_frame, edge_frame, binary_frame, sliding_frame, resized_frame, test_gray_frame;
 
 	if(!_frame.empty()) resize(_frame, new_frame, Size(width_, height_));
 	Mat trans = getPerspectiveTransform(corners_, warpCorners_);
@@ -730,9 +761,8 @@ float LaneDetector::display_img(Mat _frame, int _delay, bool _view) {
 	filters = cv::cuda::createGaussianFilter(gpu_warped_frame.type(), gpu_blur_frame.type(), cv::Size(5,5), 0, 0, cv::BORDER_DEFAULT);
 	filters->apply(gpu_warped_frame, gpu_blur_frame);
 	cuda::cvtColor(gpu_blur_frame, gpu_gray_frame, COLOR_BGR2GRAY);
-	cuda::threshold(gpu_gray_frame, gpu_binary_frame, threshold_, 255, THRESH_BINARY);
-	gpu_binary_frame.download(gray_frame);
-	
+	gpu_gray_frame.download(test_gray_frame);
+	adaptiveThreshold(test_gray_frame, gray_frame, 255, ADAPTIVE_THRESH_MEAN_C, THRESH_BINARY, 51, -50);
 	sliding_frame = detect_lines_sliding_window(gray_frame, _view);
 	calc_curv_rad_and_center_dist();
 
