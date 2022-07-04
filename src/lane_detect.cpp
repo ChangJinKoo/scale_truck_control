@@ -731,8 +731,7 @@ void LaneDetector::calc_curv_rad_and_center_dist() {
 }
 
 float LaneDetector::display_img(Mat _frame, int _delay, bool _view) {    
-  Mat new_frame, gray_frame, edge_frame, binary_frame, sliding_frame, resized_frame, hls_frame;
-  double minVal, maxVal;
+  Mat new_frame, gray_frame, edge_frame, binary_frame, sliding_frame, resized_frame, hls_frame, test_gray_frame;
 
   if(!_frame.empty()) resize(_frame, new_frame, Size(width_, height_));
   Mat trans = getPerspectiveTransform(corners_, warpCorners_);
@@ -751,14 +750,9 @@ float LaneDetector::display_img(Mat _frame, int _delay, bool _view) {
   filters = cv::cuda::createGaussianFilter(gpu_warped_frame.type(), gpu_blur_frame.type(), cv::Size(5,5), 0, 0, cv::BORDER_DEFAULT);
   filters->apply(gpu_warped_frame, gpu_blur_frame);
   cuda::cvtColor(gpu_blur_frame, gpu_gray_frame, COLOR_BGR2GRAY);
-  //cuda::threshold(gpu_gray_frame, gpu_binary_frame, threshold_, 255, THRESH_BINARY);
-  //gpu_binary_frame.download(gray_frame);
-  gpu_gray_frame.download(gray_frame);
-  minMaxLoc(gray_frame, &minVal, &maxVal);
-  threshold(gray_frame, binary_frame, maxVal-50, 255, THRESH_BINARY);
-  
-//  sliding_frame = detect_lines_sliding_window(gray_frame, _view);
-  sliding_frame = detect_lines_sliding_window(binary_frame, _view);
+  gpu_gray_frame.download(test_gray_frame);
+  adaptiveThreshold(test_gray_frame, gray_frame, 255, ADAPTIVE_THRESH_MEAN_C, THRESH_BINARY, 51, -50);
+  sliding_frame = detect_lines_sliding_window(gray_frame, _view);
   calc_curv_rad_and_center_dist();
 
   if (_view) {
