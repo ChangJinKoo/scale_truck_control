@@ -60,7 +60,6 @@ void LocalRC::init(){
   /************************/
   XavSubscriber_ = nodeHandle_.subscribe(XavSubTopicName, XavSubQueueSize, &LocalRC::XavCallback, this);
   OcrSubscriber_ = nodeHandle_.subscribe(OcrSubTopicName, OcrSubQueueSize, &LocalRC::OcrCallback, this);
-//  OcrSubscriber_ = nodeHandle_.subscribe("/vel_msg", OcrSubQueueSize, &LocalRC::OcrCallback, this);
 
   /************************/
   /* ROS Topic Publisher */ 
@@ -97,11 +96,12 @@ void LocalRC::XavCallback(const scale_truck_control::xav2lrc &msg){
     tar_vel_ = msg.tar_vel;
   }
   fi_encoder_ = msg.fi_encoder;
+  fi_camera_ = msg.fi_camera;
+  fi_lidar_ = msg.fi_lidar;
   beta_ = msg.beta;
   gamma_ = msg.gamma;
 }
 
-//void LocalRC::OcrCallback(const scale_truck_control::lrc2xav &msg){
 void LocalRC::OcrCallback(const scale_truck_control::ocr2lrc &msg){
   std::scoped_lock lock(data_mutex_);
   cur_vel_ = msg.cur_vel;
@@ -160,6 +160,7 @@ void LocalRC::request(ZmqData* zmq_data){
   while(isNodeRunning()){
     {
       std::scoped_lock lock(data_mutex_, time_mutex_);
+      zmq_data->tar_vel = tar_vel_;
       zmq_data->cur_vel = cur_vel_;
       zmq_data->tar_dist = tar_dist_; //because of CRC logging
       zmq_data->cur_dist = cur_dist_;
@@ -182,9 +183,17 @@ void LocalRC::request(ZmqData* zmq_data){
 
 void LocalRC::velSensorCheck(){
   std::scoped_lock lock(data_mutex_);
-  hat_vel_ = a_ * hat_vel_ + b_ * sat_vel_ - l_ * (cur_vel_ - hat_vel_);
-  if(fabs(cur_vel_ - hat_vel_) > epsilon_){
-    alpha_ = true;
+  if(!fi_encoder_){
+//    hat_vel_ = a_ * hat_vel_ + b_ * sat_vel_ - l_ * (cur_vel_ - hat_vel_);
+//    if(fabs(cur_vel_ - hat_vel_) > epsilon_){
+//      alpha_ = true;
+//    }
+  }
+  else{
+    hat_vel_ = a_ * hat_vel_ + b_ * 2.0f - l_ * (0.0f - hat_vel_);
+    if(fabs(0.0f - hat_vel_) > epsilon_){
+      alpha_ = true;
+    }
   }
 /*  
   else{  //Recovery
@@ -196,24 +205,24 @@ void LocalRC::velSensorCheck(){
 void LocalRC::updateMode(uint8_t crc_mode){
   std::scoped_lock lock(data_mutex_);
   if(index_ == 10){  //LV
-    if(beta_ || crc_mode == 2){  //Camera sensor failure
+    if(beta_ || gamma_){  //Camera sensor failure
       lrc_mode_ = 2;  //GDM
     }
-    else if((alpha_ || gamma_) && (crc_mode == 0 || crc_mode == 1)){
+    else if(alpha_){
       lrc_mode_ = 1;  //RCM
     }
-    else if(crc_mode == 0 || (!alpha_ && !beta_ && !gamma_)){
+    else{
       lrc_mode_ = 0;  //TM
     }
   }
   else{  //FV1, FV2
-    if((beta_ && gamma_) || crc_mode == 2){
+    if(gamma_){
       lrc_mode_ = 2;  
     }
-    else if((alpha_ || beta_ || gamma_) && (crc_mode == 0 || crc_mode == 1)){
+    else if(alpha_ || beta_){
       lrc_mode_ = 1;  
     }
-    else if(crc_mode == 0 || (!alpha_ && !beta_ && !gamma_)){
+    else{
       lrc_mode_ = 0;
     }
   }
@@ -253,14 +262,14 @@ void LocalRC::recordData(struct timeval *startTime){
       }
       read_file.close();
     }
-    write_file << "Time,Request_time,Tar_dist,Cur_dist,Tar_vel,Cur_vel,Sat_vel,Hat_vel,Alpha" << endl; //seconds
+    write_file << "Time,Request_time,Tar_dist,Cur_dist,Tar_vel,Cur_vel,Est_vel,Sat_vel,Hat_vel,Fi_encoder,Alpha,Fi_camera,Beta,Fi_lidar,Gamma,LRC_mode,CRC_mode" << endl; //seconds
     flag = true;
   }
   else{
     std::scoped_lock lock(data_mutex_, time_mutex_);
     gettimeofday(&currentTime, NULL);
     time_ = ((currentTime.tv_sec - startTime->tv_sec)) + ((currentTime.tv_usec - startTime->tv_usec)/1000000.0);
-    sprintf(buf, "%.10e,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%d", time_, req_time_, tar_dist_, cur_dist_, tar_vel_, cur_vel_, sat_vel_, hat_vel_, alpha_);
+    sprintf(buf, "%.10e,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%d,%d,%d,%d,%d,%d,%d,%d", time_, req_time_, tar_dist_, cur_dist_, tar_vel_, cur_vel_, est_vel_, sat_vel_, hat_vel_, fi_encoder_, alpha_, fi_camera_, beta_, fi_lidar_, gamma_, lrc_mode_, crc_mode_);
     write_file.open(file, std::ios::out | std::ios::app);
     write_file << buf << endl;
   }
@@ -297,7 +306,7 @@ void LocalRC::communicate(){
     printStatus();
     recordData(&startTime);
 
-    std::this_thread::sleep_for(std::chrono::milliseconds(30));
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
     if(!isNodeRunning()){
       ros::requestShutdown();

@@ -56,7 +56,6 @@ class ScaleTruckController {
     void objectCallback(const obstacle_detector::Obstacles &msg);
     void XavSubCallback(const scale_truck_control::lrc2xav &msg);
     void ScanErrorCallback(const std_msgs::UInt32::ConstPtr &msg);
-    //bool publishControlMsg(const scale_truck_control::ctl msg);
 
     ros::NodeHandle nodeHandle_;
     ros::Publisher XavPublisher_;
@@ -71,8 +70,8 @@ class ScaleTruckController {
     float RCMDist_;
     bool fi_encoder_ = false;
     bool alpha_ = false;
-    uint8_t lrc_mode_ = false;
-    uint8_t crc_mode_ = false;
+    uint8_t lrc_mode_ = 0;
+    uint8_t crc_mode_ = 0;
 
     //image
     LaneDetect::LaneDetector laneDetector_;

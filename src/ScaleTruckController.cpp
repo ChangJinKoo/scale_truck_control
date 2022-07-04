@@ -25,6 +25,8 @@ ScaleTruckController::~ScaleTruckController() {
     std::scoped_lock lock(rep_mutex_);
     msg.tar_dist = TargetDist_;
     msg.fi_encoder = fi_encoder_;
+    msg.fi_camera = fi_camera_;
+    msg.fi_lidar = fi_lidar_;
     msg.beta = beta_;
     msg.gamma = gamma_;
   }
@@ -86,14 +88,14 @@ void ScaleTruckController::init() {
   nodeHandle_.param("subscribers/camera_reading/queue_size", imageQueueSize, 1);
   nodeHandle_.param("subscribers/obstacle_reading/topic", objectTopicName, std::string("/raw_obstacles"));
   nodeHandle_.param("subscribers/obstacle_reading/queue_size", objectQueueSize, 100);
-  nodeHandle_.param("lrcSubPub/lrc_to_xavier/topic", XavSubTopicName, std::string("/lrc2xav_msg"));
-  nodeHandle_.param("lrcSubPub/lrc_to_xavier/queue_size", XavSubQueueSize, 1);
+  nodeHandle_.param("subscribers/lrc_to_xavier/topic", XavSubTopicName, std::string("/lrc2xav_msg"));
+  nodeHandle_.param("subscribers/lrc_to_xavier/queue_size", XavSubQueueSize, 1);
   
   /****************************/
   /* Ros Topic Publish Option */
   /****************************/
-  nodeHandle_.param("lrcSubPub/xavier_to_lrc/topic", XavPubTopicName, std::string("/xav2lrc_msg"));
-  nodeHandle_.param("lrcSubPub/xavier_to_lrc/queue_size", XavPubQueueSize, 1);
+  nodeHandle_.param("publishers/xavier_to_lrc/topic", XavPubTopicName, std::string("/xav2lrc_msg"));
+  nodeHandle_.param("publishers/xavier_to_lrc/queue_size", XavPubQueueSize, 1);
 
   /************************/
   /* Ros Topic Subscriber */
@@ -101,7 +103,6 @@ void ScaleTruckController::init() {
   imageSubscriber_ = nodeHandle_.subscribe(imageTopicName, imageQueueSize, &ScaleTruckController::imageCallback, this);
   objectSubscriber_ = nodeHandle_.subscribe(objectTopicName, objectQueueSize, &ScaleTruckController::objectCallback, this);
   XavSubscriber_ = nodeHandle_.subscribe(XavSubTopicName, XavSubQueueSize, &ScaleTruckController::XavSubCallback, this);
-//  XavSubscriber_ = nodeHandle_.subscribe("/vel_msg", XavSubQueueSize, &ScaleTruckController::XavSubCallback, this);
   ScanSubError = nodeHandle_.subscribe("/scan_error", 1000, &ScaleTruckController::ScanErrorCallback, this);  
 
   /***********************/
@@ -262,6 +263,8 @@ void* ScaleTruckController::objectdetectInThread() {
 
 void ScaleTruckController::reply(ZmqData* zmq_data){
   while(isNodeRunning_){
+    static float t_vel = 0.0f;
+    static float t_dist = 0.8f;
     if(zmq_data->tar_index == 20){
       {
         std::scoped_lock lock(vel_mutex_, dist_mutex_);
@@ -285,18 +288,31 @@ void ScaleTruckController::reply(ZmqData* zmq_data){
     }
     {
       std::scoped_lock lock(rep_mutex_, mode_mutex_);
+      if(index_ == 0){
+        if(crc_mode_ == 2){
+          TargetVel_ = 0;
+	}
+	else if(crc_mode_ == 1){
+          if(t_vel > RCMVel_) TargetVel_ = RCMVel_;
+          else TargetVel_ = t_vel;
+	  if(t_dist < RCMDist_) TargetDist_ = RCMDist_;
+	  else TargetDist_ = t_dist;
+	}
+      }
       if(ZMQ_SOCKET_.rep_recv_->src_index == 20){
-        if(index_ == 0 && crc_mode_ == 0){  //LV & TM
-          TargetVel_ = ZMQ_SOCKET_.rep_recv_->tar_vel;
-          TargetDist_ = ZMQ_SOCKET_.rep_recv_->tar_dist;
-	}
-	else if(index_ == 0 && crc_mode_ == 1){  // RCM
-	  TargetVel_ = RCMVel_;
-	  TargetDist_ = RCMDist_;
-	}
-	else if(index_ == 0 && crc_mode_ == 2){  // GDM
-	  TargetVel_ = 0;
-	  TargetDist_ = 0;
+        if(index_ == 0){  //LV 
+          t_vel = ZMQ_SOCKET_.rep_recv_->tar_vel;
+          t_dist = ZMQ_SOCKET_.rep_recv_->tar_dist;
+	  if(crc_mode_ == 1){  //RCM
+            if (t_vel > RCMVel_) TargetVel_ = RCMVel_;
+	    else TargetVel_ = t_vel;
+	    if (t_dist < RCMDist_) TargetDist_ = RCMDist_;
+	    else TargetDist_ = t_dist;
+	  }
+	  else{  //TM
+            TargetVel_ = t_vel;
+            TargetDist_ = t_dist;
+	  }
 	}
 	fi_encoder_ = ZMQ_SOCKET_.rep_recv_->fi_encoder;
         fi_camera_ = ZMQ_SOCKET_.rep_recv_->fi_camera;
@@ -319,6 +335,7 @@ void ScaleTruckController::displayConsole() {
   printf("\nTar/Cur Dist\t\t: %3.3f / %3.3f m", TargetDist_, distance_);
   printf("\nEncoder, Camera, Lidar Failure: %d / %d / %d", fi_encoder_, fi_camera_, fi_lidar_);
   printf("\nAlpha, Beta, Gamma\t: %d / %d / %d", alpha_, beta_, gamma_);
+  printf("\nCRC mode, LRC mode\t: %d / %d", crc_mode_, lrc_mode_);
   printf("\nK1/K2\t\t\t: %3.3f / %3.3f", laneDetector_.K1_, laneDetector_.K2_);
   printf("\nLdrErrMsg\t\t\t: %x", LdrErrMsg_);
   if(ObjCircles_ > 0) {
@@ -374,6 +391,8 @@ void ScaleTruckController::spin() {
       std::scoped_lock lock(rep_mutex_);
       msg.tar_dist = TargetDist_;
       msg.fi_encoder = fi_encoder_;
+      msg.fi_camera = fi_camera_;
+      msg.fi_lidar = fi_lidar_;
       msg.beta = beta_;
       msg.gamma = gamma_;
     }
