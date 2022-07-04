@@ -291,7 +291,6 @@ void ScaleTruckController::reply(ZmqData* zmq_data){
       if(index_ == 0){
         if(crc_mode_ == 2){
           TargetVel_ = 0;
-	  TargetDist_ = 0;
 	}
 	else if(crc_mode_ == 1){
           if(t_vel > RCMVel_) TargetVel_ = RCMVel_;
