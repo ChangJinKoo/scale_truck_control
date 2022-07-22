@@ -269,7 +269,7 @@ Mat LaneDetector::detect_lines_sliding_window(Mat _frame, bool _view) {
     distance = distance_;
   } else {
     distance = 0;
-      window_height = height / n_windows;
+    window_height = height / n_windows;
   }
   int offset = margin;
   int range = 120 / 4;
@@ -474,6 +474,7 @@ Mat LaneDetector::detect_lines_sliding_window(Mat _frame, bool _view) {
     float center_x_value = (left_lane_value[i] + right_lane_value[i]) / 2;
     center_y_.push_back(i);
     center_x_.push_back(center_x_value);
+//    printf("Desired Points : (%d, %.3f)\n", i, center_x_value);
   }
   
 //  if ((left_x_.size() != 0) && (right_x_.size() != 0)) {
@@ -484,6 +485,71 @@ Mat LaneDetector::detect_lines_sliding_window(Mat _frame, bool _view) {
   delete[] hist;
 
   return result;
+}
+
+Mat LaneDetector::estimateDistance(Mat frame){
+  Mat rect_frame;
+  frame.copyTo(rect_frame);
+  static struct timeval start_time, end_time;
+  double diff_time;
+  static bool flag = false;
+  int n_rect = 4;
+  int height = frame.rows / n_rect;
+  int width = height * n_rect / 4;
+  int dist_pixel = 0;
+  int cnt = 0;
+  int min_pixel = 20;
+  float est_dist = 0;
+
+  for (int i = 0; i < n_rect; i++){
+    float center_p_y = (i*2+1) * height / 2; 
+    float center_p_x = center_coef_.at<float>(2,0) * pow(center_p_y,2) + center_coef_.at<float>(1,0) * center_p_y + center_coef_.at<float>(0,0);
+    float p_y1 = center_p_y - height / 2; 
+    float p_x1 = center_p_x - width / 2;
+    float p_y2 = center_p_y + height / 2; 
+    float p_x2 = center_p_x + width / 2;    
+    for (int h = p_y1; h < p_y2; h++){
+      for (int w = p_x1; w < p_x2; w++){
+        if ((rect_frame.at<Vec3b>(Point(w,h))[0] == 255) && \
+		(rect_frame.at<Vec3b>(Point(w,h))[1] == 255) && \
+		(rect_frame.at<Vec3b>(Point(w,h))[2] == 255)){
+          if (cnt > min_pixel) dist_pixel = h;
+          cnt++;
+	}
+      }
+    }
+    if (cnt < min_pixel) break;
+    rectangle(rect_frame, Point(p_x1, p_y1), Point(p_x2, p_y2), Scalar(0,255,0), 1, 8, 0);
+    cnt = 0;
+  }
+
+  line(rect_frame, Point(180, dist_pixel), Point(460, dist_pixel), Scalar::all(255), 1, 8, 0);
+
+  // Convert pixel to distance (1 m = 490 px, Max distance in ROI is 1.24 m)
+  //est_dist = 1.24f - (dist_pixel/490.0f);
+  est_dist = 1.2f - (dist_pixel/500.0f);
+  gettimeofday(&end_time, NULL);
+  if (!flag){
+    diff_time = (end_time.tv_sec - start_.tv_sec) + (end_time.tv_usec - start_.tv_usec)/1000000.0;
+    flag = true;
+  }
+  else{
+    diff_time = (end_time.tv_sec - start_time.tv_sec) + (end_time.tv_usec - start_time.tv_usec)/1000000.0;
+    start_time = end_time;
+  }
+  est_dist = lowPassFilter(diff_time, est_dist);
+  est_dist_ = est_dist;
+
+  return rect_frame;
+}
+
+float LaneDetector::lowPassFilter(float sampling_time, float est_dist){
+  float res = 0.f;
+  float tau = 0.5f;
+  static float prev_res_ = 0.f;
+  res = (tau * prev_res_ + sampling_time*est_dist)/(tau+sampling_time);
+  prev_res_ = res;
+  return res;
 }
 
 Mat LaneDetector::draw_lane(Mat _sliding_frame, Mat _frame) {
@@ -731,7 +797,7 @@ void LaneDetector::calc_curv_rad_and_center_dist() {
 }
 
 float LaneDetector::display_img(Mat _frame, int _delay, bool _view) {    
-  Mat new_frame, gray_frame, edge_frame, binary_frame, sliding_frame, resized_frame, hls_frame, test_gray_frame;
+  Mat new_frame, gray_frame, edge_frame, binary_frame, sliding_frame, resized_frame, hls_frame, test_gray_frame, circle_frame;
 
   if(!_frame.empty()) resize(_frame, new_frame, Size(width_, height_));
   Mat trans = getPerspectiveTransform(corners_, warpCorners_);
@@ -754,6 +820,7 @@ float LaneDetector::display_img(Mat _frame, int _delay, bool _view) {
   adaptiveThreshold(test_gray_frame, gray_frame, 255, ADAPTIVE_THRESH_MEAN_C, THRESH_BINARY, 51, -50);
   sliding_frame = detect_lines_sliding_window(gray_frame, _view);
   calc_curv_rad_and_center_dist();
+  sliding_frame = estimateDistance(sliding_frame);
 
   if (_view) {
     resized_frame = draw_lane(sliding_frame, new_frame);
