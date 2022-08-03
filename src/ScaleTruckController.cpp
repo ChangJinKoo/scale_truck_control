@@ -76,6 +76,8 @@ void ScaleTruckController::init() {
   int imageQueueSize;
   std::string objectTopicName;
   int objectQueueSize; 
+  std::string clusterTopicName;
+  int clusterQueueSize; 
   std::string XavSubTopicName;
   int XavSubQueueSize;
   std::string XavPubTopicName;
@@ -88,6 +90,8 @@ void ScaleTruckController::init() {
   nodeHandle_.param("subscribers/camera_reading/queue_size", imageQueueSize, 1);
   nodeHandle_.param("subscribers/obstacle_reading/topic", objectTopicName, std::string("/raw_obstacles"));
   nodeHandle_.param("subscribers/obstacle_reading/queue_size", objectQueueSize, 100);
+  nodeHandle_.param("subscribers/cluster_reading/topic", clusterTopicName, std::string("/preceding_truck_points"));
+  nodeHandle_.param("subscribers/cluster_reading/queue_size", clusterQueueSize, 5);
   nodeHandle_.param("subscribers/lrc_to_xavier/topic", XavSubTopicName, std::string("/lrc2xav_msg"));
   nodeHandle_.param("subscribers/lrc_to_xavier/queue_size", XavSubQueueSize, 1);
   
@@ -102,6 +106,7 @@ void ScaleTruckController::init() {
   /************************/
   imageSubscriber_ = nodeHandle_.subscribe(imageTopicName, imageQueueSize, &ScaleTruckController::imageCallback, this);
   objectSubscriber_ = nodeHandle_.subscribe(objectTopicName, objectQueueSize, &ScaleTruckController::objectCallback, this);
+  clusterSubscriber_ = nodeHandle_.subscribe(clusterTopicName, clusterQueueSize, &ScaleTruckController::clusterCallback, this);
   XavSubscriber_ = nodeHandle_.subscribe(XavSubTopicName, XavSubQueueSize, &ScaleTruckController::XavSubCallback, this);
   ScanSubError = nodeHandle_.subscribe("/scan_error", 1000, &ScaleTruckController::ScanErrorCallback, this);  
 
@@ -187,34 +192,61 @@ void* ScaleTruckController::lanedetectInThread() {
 }
 
 void* ScaleTruckController::objectdetectInThread() {
+  sensor_msgs::PointCloud obstacle;
+  float rotation_angle = 0.0f;
+  float lateral_offset = 0.0f;
   float dist, angle; 
   float dist_tmp, angle_tmp;
   dist_tmp = 10.f; 
   /**************/
   /* Lidar Data */
   /**************/
+//  {
+//    std::scoped_lock lock(object_mutex_, rep_mutex_);
+//    ObjSegments_ = Obstacle_.segments.size();
+//    ObjCircles_ = Obstacle_.circles.size();
+//  
+//    for(int i = 0; i < ObjCircles_; i++)
+//    {
+//      //dist = sqrt(pow(Obstacle_.circles[i].center.x,2)+pow(Obstacle_.circles[i].center.y,2));
+//      dist = -Obstacle_.circles[i].center.x - Obstacle_.circles[i].true_radius;
+//      angle = atanf(Obstacle_.circles[i].center.y/Obstacle_.circles[i].center.x)*(180.0f/M_PI);
+//      if(dist_tmp >= dist) {
+//        dist_tmp = dist;
+//        angle_tmp = angle;
+//      }
+//    }
+//    if(gamma_ == true){
+//      dist_tmp = laneDetector_.est_dist_;
+//    }
+//  }
+//  if(ObjCircles_ != 0)
+//  {
+//    std::scoped_lock lock(dist_mutex_);
+//    distance_ = dist_tmp;
+//    distAngle_ = angle_tmp;
+//  }
+
+  /******************************************/
+  /* Find distance with point cloud library */
+  /******************************************/ 
   {
     std::scoped_lock lock(object_mutex_);
-    ObjSegments_ = Obstacle_.segments.size();
-    ObjCircles_ = Obstacle_.circles.size();
-  
-    for(int i = 0; i < ObjCircles_; i++)
-    {
-      //dist = sqrt(pow(Obstacle_.circles[i].center.x,2)+pow(Obstacle_.circles[i].center.y,2));
-      dist = -Obstacle_.circles[i].center.x - Obstacle_.circles[i].true_radius;
-      angle = atanf(Obstacle_.circles[i].center.y/Obstacle_.circles[i].center.x)*(180.0f/M_PI);
-      if(dist_tmp >= dist) {
-        dist_tmp = dist;
-        angle_tmp = angle;
-      }
-    }
+    obstacle = preceding_truck_point_;
   }
-  if(ObjCircles_ != 0)
-  {
-    std::scoped_lock lock(dist_mutex_);
-    distance_ = dist_tmp;
-    distAngle_ = angle_tmp;
+  dist = sqrt(pow(obstacle.points[1].x, 2) + pow(obstacle.points[1].y, 2));
+  angle = atanf(obstacle.points[1].y/obstacle.points[1].x) * (180.0f/M_PI);
+  rotation_angle = atan((obstacle.points[2].x - obstacle.points[0].x) / (obstacle.points[2].y - obstacle.points[0].y)) * (180.0f/M_PI);
+  lateral_offset = obstacle.points[1].y;
+  distance_tmp1_ = rotation_angle;
+  distance_tmp2_ = lateral_offset;
+  if (dist_tmp >= dist){
+    dist_tmp = dist;
+    angle_tmp = angle;
   }
+  distance_ = dist_tmp;
+  distAngle_ = angle_tmp;
+
   /*****************************/
   /* Dynamic ROI Distance Data */
   /*****************************/
@@ -222,8 +254,12 @@ void* ScaleTruckController::objectdetectInThread() {
     std::scoped_lock lock(lane_mutex_);
     if(dist_tmp < 1.24 && dist_tmp > 0.30) // 1.26 ~ 0.28
     {
-      laneDetector_.distance_ = (int)((1.24 - dist_tmp)*490.0);
+      laneDetector_.distance_ = (int)((1.24 - dist_tmp)*490.0) + 70;
     }
+//    if(dist_tmp < 1.2 && dist_tmp > 0.24) // 1.26 ~ 0.28
+//    {
+//      laneDetector_.distance_ = (int)((1.2 - dist_tmp)*500.0);
+//    }
     else {
       laneDetector_.distance_ = 0;
     }
@@ -349,6 +385,43 @@ void ScaleTruckController::displayConsole() {
   printf("\n");
 }
 
+void ScaleTruckController::recordData(struct timeval startTime){
+  struct timeval currentTime;
+  char file_name[] = "SCT_log00.csv";
+  static char file[128] = {0x00, };
+  char buf[256] = {0x00,};
+  static bool flag = false;
+  double diff_time;
+  ifstream read_file;
+  ofstream write_file;
+  string log_path = "/home/jetson/catkin_ws/logfiles/";
+  if(!flag){
+    for(int i = 0; i < 100; i++){
+      file_name[7] = i/10 + '0';  //ASCII
+      file_name[8] = i%10 + '0';
+      sprintf(file, "%s%s", log_path.c_str(), file_name);
+      read_file.open(file);
+      if(read_file.fail()){  //Check if the file exists
+        read_file.close();
+        write_file.open(file);
+        break;
+      }
+      read_file.close();
+    }
+    write_file << "Time,rotation_angle,lateral_offset" << endl; //seconds
+    flag = true;
+  }
+  else{
+    std::scoped_lock lock(dist_mutex_);
+    gettimeofday(&currentTime, NULL);
+    diff_time = ((currentTime.tv_sec - startTime.tv_sec)) + ((currentTime.tv_usec - startTime.tv_usec)/1000000.0);
+    sprintf(buf, "%.10e,%.3f,%.3f", diff_time, distance_tmp1_, distance_tmp2_);
+    write_file.open(file, std::ios::out | std::ios::app);
+    write_file << buf << endl;
+  }
+  write_file.close();
+}
+
 void ScaleTruckController::spin() {
   double diff_time=0.0;
   int cnt = 0;
@@ -417,6 +490,8 @@ void ScaleTruckController::spin() {
       diff_time = 0.0;
       cnt = 0;
     }
+
+    recordData(laneDetector_.start_);
   }
 }
 
@@ -433,10 +508,17 @@ void ScaleTruckController::ScanErrorCallback(const std_msgs::UInt32::ConstPtr &m
    }
 }
 
-void ScaleTruckController::objectCallback(const obstacle_detector::Obstacles& msg) {
+void ScaleTruckController::objectCallback(const obstacle_detector::Obstacles &msg) {
   {
     std::scoped_lock lock(object_mutex_);
     Obstacle_ = msg;
+  }
+}
+
+void ScaleTruckController::clusterCallback(const sensor_msgs::PointCloud &msg) {
+  {
+    std::scoped_lock lock(object_mutex_);
+    preceding_truck_point_ = msg;
   }
 }
 

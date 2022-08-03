@@ -820,7 +820,7 @@ float LaneDetector::display_img(Mat _frame, int _delay, bool _view) {
   adaptiveThreshold(test_gray_frame, gray_frame, 255, ADAPTIVE_THRESH_MEAN_C, THRESH_BINARY, 51, -50);
   sliding_frame = detect_lines_sliding_window(gray_frame, _view);
   calc_curv_rad_and_center_dist();
-  sliding_frame = estimateDistance(sliding_frame);
+  //sliding_frame = estimateDistance(sliding_frame);
 
   if (_view) {
     resized_frame = draw_lane(sliding_frame, new_frame);
