@@ -125,16 +125,29 @@ void CentralRC::estimateVelocity(uint8_t index){
   }
 }
 
-void CentralRC::modeCheck(uint8_t lv_mode, uint8_t fv1_mode, uint8_t fv2_mode){
+void CentralRC::statusCheck(ZmqData *lv_data, ZmqData *fv1_data, ZmqData *fv2_data){
+  uint8_t lv_mode = lv_data->lrc_mode;
+  uint8_t fv1_mode = fv1_data->lrc_mode;
+  uint8_t fv2_mode = fv2_data->lrc_mode;
+
   if ((lv_mode == 0) && (fv1_mode == 0) && (fv2_mode == 0)){
     crc_mode_ = 0;
   }
   else if (((lv_mode == 2) || (fv1_mode == 2) || (fv2_mode == 2)) || ((lv_mode == 1) && (fv1_mode == 1) && (fv2_mode == 1))){
     crc_mode_ = 2;
+    //crc_mode_ = 1;
   }
   else{
     crc_mode_ = 1;
   }
+
+  if (fv1_data->beta && fv1_data->gamma){
+    lv_data->send_rear_camera_image = true;
+  }
+  if (fv2_data->beta && fv2_data->gamma){
+    fv1_data->send_rear_camera_image = true;
+  }
+
 }
 
 float CentralRC::lowPassFilter(float sampling_time, float pred_vel){
@@ -262,7 +275,7 @@ bool CentralRC::getSamplingTime(float cur_dist, float prev_dist, int idx){
 void CentralRC::communicate(){  
   {
     std::scoped_lock lock(data_mutex_);
-    modeCheck(lv_data_->lrc_mode, fv1_data_->lrc_mode, fv2_data_->lrc_mode);
+    statusCheck(lv_data_, fv1_data_, fv2_data_);
   }
 
   updateData(ZMQ_SOCKET_.rep_recv0_);
@@ -273,14 +286,14 @@ void CentralRC::communicate(){
   estimateVelocity(11);
   estimateVelocity(12);
   
-  recordData(&launch_time_);
+  //recordData(&launch_time_);
 
   {
     std::scoped_lock lock(data_mutex_);
     fv1_prev_dist_ = fv1_data_->cur_dist;
     fv2_prev_dist_ = fv2_data_->cur_dist;
   }
- 
+
   printStatus();
   std::this_thread::sleep_for(std::chrono::milliseconds(10));
 }
