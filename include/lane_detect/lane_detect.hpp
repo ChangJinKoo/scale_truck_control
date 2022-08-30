@@ -32,6 +32,7 @@ public:
 	void get_steer_coef(float vel);
 	float K1_, K2_;
 	int distance_ = 0;
+	float est_dist_ = 0;
 	scale_truck_control::lane_coef lane_coef_;
 	Mat frame_;
 
@@ -42,6 +43,8 @@ private:
 	Mat warped_back_img(Mat _frame);
 	Mat warped_img(Mat _frame);
 	Mat detect_lines_sliding_window(Mat _frame, bool _view);
+	Mat estimateDistance(Mat frame);
+	float lowPassFilter(float sampling_time, float est_dist);
 	Mat draw_lane(Mat _sliding_frame, Mat _frame);
 	void calc_curv_rad_and_center_dist();
 	void clear_release();

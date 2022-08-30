@@ -5,6 +5,9 @@ subscribers:
   obstacle_reading:
     topic: /tracked_obstacles
     queue_size: 100
+  cluster_reading:
+    topic: /preceding_truck_points
+    queue_size: 5
   lrc_to_xavier:
     topic: /lrc2xav_msg
     queue_size: 10
@@ -26,6 +29,6 @@ ROI:
   threshold: 128
   
 image_view:
-  enable_opencv: False
+  enable_opencv: true
   wait_key_delay: 1
   enable_console_output: true

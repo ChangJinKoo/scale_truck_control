@@ -23,10 +23,12 @@
 //ROS
 #include <geometry_msgs/Twist.h>
 #include <ros/ros.h>
+#include <pcl_ros/point_cloud.h>
 #include <std_msgs/Float32.h>
 #include <std_msgs/UInt32.h>
 #include <sensor_msgs/Image.h>
 #include <sensor_msgs/image_encodings.h>
+#include <sensor_msgs/PointCloud.h>
 #include <obstacle_detector/Obstacles.h>
 
 //OpenCV
@@ -54,13 +56,16 @@ class ScaleTruckController {
 
     void imageCallback(const sensor_msgs::ImageConstPtr &msg);
     void objectCallback(const obstacle_detector::Obstacles &msg);
+    void clusterCallback(const sensor_msgs::PointCloud &msg);
     void XavSubCallback(const scale_truck_control::lrc2xav &msg);
     void ScanErrorCallback(const std_msgs::UInt32::ConstPtr &msg);
+    void recordData(struct timeval startTime);
 
     ros::NodeHandle nodeHandle_;
     ros::Publisher XavPublisher_;
     ros::Subscriber imageSubscriber_;
     ros::Subscriber objectSubscriber_;
+    ros::Subscriber clusterSubscriber_;
     ros::Subscriber XavSubscriber_;
     ros::Subscriber ScanSubError;	
 
@@ -100,6 +105,9 @@ class ScaleTruckController {
     uint32_t LdrErrMsg_;
     bool fi_lidar_ = false;
     bool gamma_ = false;
+    float distance_tmp1_ = 0.8f;
+    float distance_tmp2_ = 0.8f;
+    sensor_msgs::PointCloud preceding_truck_point_;
     
     //ZMQ
     ZMQ_CLASS ZMQ_SOCKET_;
