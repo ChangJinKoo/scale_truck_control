@@ -18,7 +18,7 @@ class CentralRC{
     void init();
     void reply(ZmqData* zmq_data);
     void estimateVelocity(uint8_t index);
-    void modeCheck(uint8_t lv_mode, uint8_t fv1_mode, uint8_t fv2_mode);
+    void statusCheck(ZmqData *lv_data, ZmqData *fv1_data, ZmqData *fv2_data);
     void recordData(struct timeval *time);
     void printStatus();
     void updateData(ZmqData* zmq_data);

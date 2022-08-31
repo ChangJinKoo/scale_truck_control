@@ -20,7 +20,7 @@
 
 #include <zmq.hpp>
 
-#define DATASIZE 80
+#define DATASIZE 76
 
 typedef struct LaneCoef{
 	float a = 0.0f;
@@ -28,32 +28,44 @@ typedef struct LaneCoef{
 	float c = 0.0f;
 }LaneCoef;
 
+typedef struct ImgData{
+        uint8_t src_index = 255;
+        uint8_t tar_index = 255;
+
+        struct timeval startTime;
+
+        u_char comp_image[65000] = {0,};
+        size_t size = 0;
+}ImgData;
+
 typedef struct ZmqData{
-	//Control center = 20, CRC = 30, LRC = 10, 11, 12, LV = 0, FV1 = 1, FV2 = 2
-	uint8_t src_index = 255;
-	uint8_t tar_index = 255;
+        //Control center = 20, CRC = 30, LRC = 10, 11, 12, LV = 0, FV1 = 1, FV2 = 2
+        uint8_t src_index = 255;
+        uint8_t tar_index = 255;
 
-	//sensor failure
-	bool fi_encoder = false;
-	bool fi_camera = false;
-	bool fi_lidar = false;
-	bool alpha = false;
-	bool beta = false;
-	bool gamma = false;
+        //sensor failure
+        bool fi_encoder = false;
+        bool fi_camera = false;
+        bool fi_lidar = false;
+        bool alpha = false;
+        bool beta = false;
+        bool gamma = false;
 
-	float cur_vel = 0.0f;
-	float cur_dist = 0.0f;
-    float cur_angle = 0.0f;
-	float tar_vel = 0.0f;
-	float tar_dist = 0.0f;
-	float est_vel = 0.0f;  //estimated velocity
-	float est_dist = 0.0f;
+        //flag to send rear camera sensor image
+        bool send_rear_camera_image = false;
 
-	//TM = 0, RCM = 1, GDM = 2
-	uint8_t lrc_mode = 0;
-	uint8_t crc_mode = 0;
+        float cur_vel = 0.0f;
+        float cur_dist = 0.0f;
+        float cur_angle = 0.0f;
+        float tar_vel = 0.0f;
+        float tar_dist = 0.0f;
+        float est_vel = 0.0f;  //estimated velocity
 
-    LaneCoef coef[3];
+        //TM = 0, RCM = 1, GDM = 2
+        uint8_t lrc_mode = 0;
+        uint8_t crc_mode = 0;
+
+        LaneCoef coef[3];
 }ZmqData;
 
 class ZMQ_CLASS{
