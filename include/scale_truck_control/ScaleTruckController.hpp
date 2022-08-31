@@ -169,6 +169,8 @@ class ScaleTruckController {
     void* objectdetectInThread();
 
     bool run_yolo_ = false;
+    bool tcp_img_req_ = false;
+    bool tcp_img_rep_ = false;
     int req_check_ = 0;
     int rep_check_ = 0;
     double time_ = 0.0;

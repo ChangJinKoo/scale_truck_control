@@ -338,8 +338,8 @@ void ScaleTruckController::requestImage(ImgData* img_data)
         std::copy(compImageSend_.begin(), compImageSend_.end(), img_data->comp_image);
       }
       img_data->size = compImageSend_.size();
-      ZMQ_SOCKET_.requestImageZMQ(img_data); 
       req_check_++;
+      ZMQ_SOCKET_.requestImageZMQ(img_data); 
     }
     std::this_thread::sleep_for(std::chrono::milliseconds(2));
   } 
@@ -456,7 +456,6 @@ void ScaleTruckController::displayConsole() {
     printf("\nSegs\t\t\t: %d", ObjSegments_);
   }
   printf("\nCycle Time\t\t: %3.3f ms", CycleTime_);
-  printf("\nREQ Check\t\t: %d", req_check_);
   printf("\n");
 }
 
@@ -483,14 +482,14 @@ void ScaleTruckController::recordData(struct timeval startTime){
       }
       read_file.close();
     }
-    write_file << "Time,rotation_angle,lateral_offset" << endl; //seconds
+    write_file << "time,networkDelay" << endl; //seconds
     flag = true;
   }
   else{
     std::scoped_lock lock(dist_mutex_);
     gettimeofday(&currentTime, NULL);
     diff_time = ((currentTime.tv_sec - startTime.tv_sec)) + ((currentTime.tv_usec - startTime.tv_usec)/1000000.0);
-    sprintf(buf, "%.10e", diff_time);
+    sprintf(buf, "%.10e, %.10e", diff_time, DelayTime_);
     write_file.open(file, std::ios::out | std::ios::app);
     write_file << buf << endl;
   }
@@ -571,14 +570,16 @@ void ScaleTruckController::spin() {
       cnt = 0;
     }
 
-    //recordData(laneDetector_.start_);
+    recordData(laneDetector_.start_);
 
-    if (send_rear_camera_image_ && (index_ == 0 || index_ == 1)){
+    if (!tcp_img_req_ && send_rear_camera_image_ && (index_ == 0 || index_ == 1)){
       tcpImgReqThread_ = std::thread(&ScaleTruckController::requestImage, this, img_data_);
+      tcp_img_req_ = true;
     }
 
-    if (run_yolo_ && (index_ == 1 || index_ == 2)){
+    if (!tcp_img_rep_ && run_yolo_ && (index_ == 1 || index_ == 2)){
       tcpImgRepThread_ = std::thread(&ScaleTruckController::replyImage, this);
+      tcp_img_rep_ = true;
     }
   }
 }

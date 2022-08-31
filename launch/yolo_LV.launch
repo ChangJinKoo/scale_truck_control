@@ -11,7 +11,7 @@
   <arg name="lrc_param_file"             default="$(find scale_truck_control)/config/lrc_LV.yaml"/>
   <arg name="vehicle_param_file"             default="$(find scale_truck_control)/config/LV.yaml"/>
   <arg name="lidar_param_file"             default="$(find scale_truck_control)/config/laser_filter.yaml"/>
-  <arg name="yolo_param_file"		default="$(find yolo_object_detection)/config/yolov3-tiny-custom.yaml"/>
+  <arg name="yolo_param_file"		default="$(find scale_truck_control)/config/yolov3-tiny-custom.yaml"/>
 
   <!-- Load parameters -->
   <rosparam command="load" ns="scale_truck_control" file="$(arg ros_param_file)"/>
