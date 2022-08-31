@@ -1,5 +1,5 @@
 etc/Controller/crc/build/*
-etc/Controller/Controller/Controller
-etc/Controller/Controller/*.o
+*.exe
+*.o
 *.swp
 

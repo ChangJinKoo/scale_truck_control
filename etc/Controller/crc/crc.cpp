@@ -144,9 +144,12 @@ void CentralRC::statusCheck(ZmqData *lv_data, ZmqData *fv1_data, ZmqData *fv2_da
   if (fv1_data->beta && fv1_data->gamma){
     lv_data->send_rear_camera_image = true;
   }
+  else lv_data->send_rear_camera_image = false;
+
   if (fv2_data->beta && fv2_data->gamma){
     fv1_data->send_rear_camera_image = true;
   }
+  else fv1_data->send_rear_camera_image = false;
 
 }
 
