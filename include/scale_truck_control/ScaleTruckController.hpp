@@ -23,16 +23,15 @@
 //ROS
 #include <geometry_msgs/Twist.h>
 #include <ros/ros.h>
-#include <pcl_ros/point_cloud.h>
 #include <std_msgs/Float32.h>
 #include <std_msgs/UInt32.h>
 #include <sensor_msgs/Image.h>
 #include <sensor_msgs/image_encodings.h>
-#include <sensor_msgs/PointCloud.h>
 #include <obstacle_detector/Obstacles.h>
 
 //OpenCV
 #include <cv_bridge/cv_bridge.h>
+#include <opencv2/imgcodecs.hpp>
 
 #include "lane_detect/lane_detect.hpp"
 #include "zmq_class/zmq_class.h"
@@ -40,6 +39,8 @@
 //custom msgs
 #include <scale_truck_control/lrc2xav.h>
 #include <scale_truck_control/xav2lrc.h>
+#include <scale_truck_control/yolo_flag.h>
+#include <yolo_object_detection/bounding_box.h>
 
 namespace scale_truck_control {
 
@@ -55,19 +56,29 @@ class ScaleTruckController {
     void init();
 
     void imageCallback(const sensor_msgs::ImageConstPtr &msg);
+    void rearImageCallback(const sensor_msgs::ImageConstPtr &msg);
     void objectCallback(const obstacle_detector::Obstacles &msg);
-    void clusterCallback(const sensor_msgs::PointCloud &msg);
     void XavSubCallback(const scale_truck_control::lrc2xav &msg);
     void ScanErrorCallback(const std_msgs::UInt32::ConstPtr &msg);
+    void bboxCallback(const yolo_object_detection::bounding_box &msg);
     void recordData(struct timeval startTime);
-
+    void imageCompress(cv::Mat camImage);
+    void reply(ZmqData* zmq_data);
+    void requestImage(ImgData* img_data);
+    void replyImage(); 
+    void displayConsole();
+    void spin();
+    bool getImageStatus(void);	
+    
     ros::NodeHandle nodeHandle_;
-    ros::Publisher XavPublisher_;
     ros::Subscriber imageSubscriber_;
+    ros::Subscriber rearImageSubscriber_;
     ros::Subscriber objectSubscriber_;
-    ros::Subscriber clusterSubscriber_;
     ros::Subscriber XavSubscriber_;
     ros::Subscriber ScanSubError;	
+    ros::Subscriber bboxSubscriber_;	
+    ros::Publisher XavPublisher_;
+    ros::Publisher runYoloPublisher_;
 
     double CycleTime_ = 0.0;
     int index_;
@@ -75,12 +86,14 @@ class ScaleTruckController {
     float RCMDist_;
     bool fi_encoder_ = false;
     bool alpha_ = false;
+    bool send_rear_camera_image_ = false;
     uint8_t lrc_mode_ = 0;
     uint8_t crc_mode_ = 0;
 
     //image
     LaneDetect::LaneDetector laneDetector_;
     bool viewImage_;
+    bool rear_camera_;
     int waitKeyDelay_;
     bool enableConsoleOutput_;
     int sync_flag_;
@@ -105,27 +118,35 @@ class ScaleTruckController {
     uint32_t LdrErrMsg_;
     bool fi_lidar_ = false;
     bool gamma_ = false;
-    float distance_tmp1_ = 0.8f;
-    float distance_tmp2_ = 0.8f;
-    sensor_msgs::PointCloud preceding_truck_point_;
+
+    //bbox
+    uint32_t x_ = 0;
+    uint32_t y_ = 0;
+    uint32_t w_ = 0;
+    uint32_t h_ = 0;
     
     //ZMQ
     ZMQ_CLASS ZMQ_SOCKET_;
     ZmqData* zmq_data_;
+    ImgData* img_data_;
 
     //Thread
     std::thread controlThread_;
     std::thread laneDetectThread_;
     std::thread objectDetectThread_;
     std::thread tcpThread_;
+    std::thread tcpImgReqThread_;
+    std::thread tcpImgRepThread_;
 
     std::mutex image_mutex_;
+    std::mutex rear_image_mutex_;
     std::mutex object_mutex_;
     std::mutex lane_mutex_;
     std::mutex vel_mutex_;
     std::mutex dist_mutex_;
     std::mutex rep_mutex_;
     std::mutex mode_mutex_;
+    std::mutex bbox_mutex_;
 
     std::condition_variable cv_;
 
@@ -135,6 +156,7 @@ class ScaleTruckController {
     bool imageStatus_ = false;
     std_msgs::Header imageHeader_;
     cv::Mat camImageCopy_, camImageTmp_;
+    cv::Mat rearImageCopy_, rearImageTmp_, rearImageJPEG_;
     bool droi_ready_ = false;
 
     bool isNodeRunning_ = true;
@@ -143,12 +165,16 @@ class ScaleTruckController {
     float CurVel_ = 0.0f;
     float RefVel_ = 0.0f;
      
-    bool getImageStatus(void);	
     void* lanedetectInThread();
     void* objectdetectInThread();
-    void reply(ZmqData* zmq_data);
-    void displayConsole();
-    void spin();
+
+    bool run_yolo_ = false;
+    int req_check_ = 0;
+    int rep_check_ = 0;
+    double time_ = 0.0;
+    double DelayTime_ = 0.0;
+    std::vector<uchar> compImageSend_;
+    std::vector<uchar> compImageRecv_;
 };
 
 } /* namespace scale_truck_control */

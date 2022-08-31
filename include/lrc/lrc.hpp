@@ -51,7 +51,7 @@ class LocalRC{
     void radio(ZmqData* zmq_data);
     void dish();
     void request(ZmqData* zmq_data);
-    void velSensorCheck();
+    void encoderCheck();
     void updateMode(uint8_t crc_mode);
     void updateData(ZmqData* zmq_data);
     void recordData(struct timeval *startTime);
@@ -62,16 +62,20 @@ class LocalRC{
     std::string log_path_;
     float a_, b_, l_;
     float epsilon_;
+    float rotation_angle_ = 0.0f;
+    float lateral_offset_ = 0.0f;
     bool fi_encoder_ = false;
     bool fi_camera_ = false;
     bool fi_lidar_ = false;
     bool alpha_ = false;
     bool beta_ = false;
     bool gamma_ = false;
+    bool send_rear_camera_image_ = false;
 
     float angle_degree_ = 0;
     float cur_dist_ = 0.8f;
     float tar_dist_ = 0.8f;
+    float fv1_dist_ = 0.8f;
     float cur_vel_ = 0;
     float tar_vel_ = 0;
     float est_vel_ = 0;

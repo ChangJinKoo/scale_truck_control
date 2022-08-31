@@ -8,7 +8,7 @@ tcp_ip:
 udp_ip:
   ip_addr: "udp://239.255.255.250"
   port: "9090"
-  send_group: "Y"
+  send_group: ""
   recv_group: "FV"
 
 socket:
@@ -16,6 +16,8 @@ socket:
   dsh_flag: true
   req_flag: true 
   rep_flag: false
+  req_img_flag: false
+  rep_img_flag: false
 
 LrcSubPub:
   xavier_to_lrc:

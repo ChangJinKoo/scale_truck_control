@@ -252,7 +252,7 @@ Mat LaneDetector::detect_lines_sliding_window(Mat _frame, bool _view) {
       }
     }
   }  
-  
+ 
   cvtColor(frame, result, COLOR_GRAY2BGR);
 
   int mid_point = width / 2; // 320
@@ -280,6 +280,8 @@ Mat LaneDetector::detect_lines_sliding_window(Mat _frame, bool _view) {
   //int Rlane_base = arrMaxIdx(hist, Rstart - range, Rstart + range, _width);
   int Llane_base = arrMaxIdx(hist, 100, mid_point, width);
   int Rlane_base = arrMaxIdx(hist, mid_point, width - 100, width);
+//  int Llane_base = arrMaxIdx(hist, 30, mid_point, width);
+//  int Rlane_base = arrMaxIdx(hist, mid_point, width - 30, width);
   if (Llane_base == -1 || Rlane_base == -1)
     return result;
 
@@ -796,8 +798,30 @@ void LaneDetector::calc_curv_rad_and_center_dist() {
   }
 }
 
+Mat LaneDetector::drawBox(Mat frame)
+{
+  std::string name = "scale truck";
+  Size text_size = getTextSize(name, FONT_HERSHEY_COMPLEX_SMALL, 1.2, 2, 0);
+  int max_width = (text_size.width > w_ + 2) ? text_size.width : (w_ + 2);
+  Scalar color(150, 0, 150);
+  max_width = max(max_width, (int)w_ + 2);
+  rectangle(frame, Rect(x_, y_, w_, h_), color, 2);
+  rectangle(frame, Point2f(max((int)x_ - 1, 0), max((int)y_ - 35, 0)), Point2f(min((int)x_ + max_width, frame.cols - 1), min((int)y_, frame.rows - 1)), color, -1, 8, 0);
+  putText(frame, name, Point2f(x_, y_-16), FONT_HERSHEY_COMPLEX_SMALL, 1.2, Scalar(0,0,0), 2);
+  return frame;
+}
+
+Point LaneDetector::warpPoint(Point p, Mat trans) {
+  Point dst;
+  float div = trans.at<float>(0,2) * p.x + trans.at<float>(1,2) * p.y + trans.at<float>(2,2);
+  dst = Point(int((trans.at<float>(0,0) * p.x + trans.at<float>(1,0) * p.y + trans.at<float>(2,0)) / div),
+		int((trans.at<float>(0,1) * p.x + trans.at<float>(1,1) * p.y + trans.at<float>(2,1)) / div));
+  return dst;
+}
+
 float LaneDetector::display_img(Mat _frame, int _delay, bool _view) {    
-  Mat new_frame, gray_frame, edge_frame, binary_frame, sliding_frame, resized_frame, hls_frame, test_gray_frame, circle_frame;
+  Mat new_frame, gray_frame, binary_frame, sliding_frame, resized_frame, yolo_frame;
+  cuda::GpuMat gpu_frame, gpu_remap_frame, gpu_warped_frame, gpu_blur_frame, gpu_gray_frame;
 
   if(!_frame.empty()) resize(_frame, new_frame, Size(width_, height_));
   Mat trans = getPerspectiveTransform(corners_, warpCorners_);
@@ -805,25 +829,25 @@ float LaneDetector::display_img(Mat _frame, int _delay, bool _view) {
   cuda::GpuMat gpu_map1, gpu_map2;
   gpu_map1.upload(map1_);
   gpu_map2.upload(map2_);
-
-  cuda::GpuMat gpu_frame, gpu_remap_frame, gpu_warped_frame, gpu_blur_frame, gpu_gray_frame, gpu_binary_frame, gpu_hls_frame;
-
   gpu_frame.upload(new_frame);
   cuda::remap(gpu_frame, gpu_remap_frame, gpu_map1, gpu_map2, INTER_LINEAR);
   gpu_remap_frame.download(new_frame);
+
   cuda::warpPerspective(gpu_remap_frame, gpu_warped_frame, trans, Size(width_, height_));
   static cv::Ptr< cv::cuda::Filter > filters;
   filters = cv::cuda::createGaussianFilter(gpu_warped_frame.type(), gpu_blur_frame.type(), cv::Size(5,5), 0, 0, cv::BORDER_DEFAULT);
   filters->apply(gpu_warped_frame, gpu_blur_frame);
   cuda::cvtColor(gpu_blur_frame, gpu_gray_frame, COLOR_BGR2GRAY);
-  gpu_gray_frame.download(test_gray_frame);
-  adaptiveThreshold(test_gray_frame, gray_frame, 255, ADAPTIVE_THRESH_MEAN_C, THRESH_BINARY, 51, -50);
-  sliding_frame = detect_lines_sliding_window(gray_frame, _view);
+  gpu_gray_frame.download(gray_frame);
+  adaptiveThreshold(gray_frame, binary_frame, 255, ADAPTIVE_THRESH_MEAN_C, THRESH_BINARY, 51, -50);
+
+  sliding_frame = detect_lines_sliding_window(binary_frame, _view);
   calc_curv_rad_and_center_dist();
-  //sliding_frame = estimateDistance(sliding_frame);
+  //sliding_frame = estimateDistance(sliding_frame);  
 
   if (_view) {
     resized_frame = draw_lane(sliding_frame, new_frame);
+    yolo_frame = drawBox(resized_frame);
     
     namedWindow("Window1");
     moveWindow("Window1", 0, 0);
@@ -840,11 +864,13 @@ float LaneDetector::display_img(Mat _frame, int _delay, bool _view) {
       resize(sliding_frame, sliding_frame, Size(640, 480));
       imshow("Window2", sliding_frame);
     }
+//    if(!yolo_frame.empty()){
     if(!resized_frame.empty()){
       resize(resized_frame, resized_frame, Size(640, 480));
       imshow("Window3", resized_frame);
+//      resize(yolo_frame, yolo_frame, Size(640, 480));
+//      imshow("Window3", yolo_frame);
     }
-
 
     waitKey(_delay);
   }

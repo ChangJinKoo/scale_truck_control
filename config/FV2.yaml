@@ -6,17 +6,25 @@ tcp_ip:
   rep_port: "9999"
   zipcode: "00002"
 
+tcpimg_ip:
+  ip_addr_server: "tcp://*"
+  ip_addr_client: "tcp://192.168.0.13"
+  req_port: "6060"
+  rep_port: "5050"
+
 udp_ip:
-  ip_addr: "udp://239.255.255.250"
-  port: "9090"
-  send_group: "FV"
-  recv_group: "LV"
+  ip_addr: "udp://239.255.255.251"
+  port: "9091"
+  send_group: ""
+  recv_group: "FV"
 
 socket:
   rad_flag: false 
   dsh_flag: false
   req_flag: false
   rep_flag: true
+  req_img_flag: false
+  rep_img_flag: false
 
 params:
   index: 2
@@ -73,3 +81,6 @@ ROI:
   extra_b: 8.00
   extra_up: 140
   extra_down: 180
+
+rear_camera_usage:
+  use: false

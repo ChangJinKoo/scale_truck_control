@@ -56,7 +56,6 @@ find_package(catkin REQUIRED
     geometry_msgs
     cv_bridge
     obstacle_detector 
-    pcl_ros
 )
 
 add_message_files(
@@ -67,6 +66,7 @@ add_message_files(
   lrc2xav.msg
   lrc2ocr.msg
   ocr2lrc.msg
+  yolo_flag.msg
 )
 
 generate_messages(

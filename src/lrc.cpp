@@ -114,10 +114,11 @@ void LocalRC::rosPub(){
   scale_truck_control::lrc2ocr ocr;
   { 
     std::scoped_lock lock(data_mutex_, time_mutex_);
-    xav.alpha = alpha_;
     xav.cur_vel = cur_vel_;
     xav.tar_vel = tar_vel_;
     xav.tar_dist = tar_dist_;
+    xav.alpha = alpha_;
+    xav.send_rear_camera_image = send_rear_camera_image_;
     xav.lrc_mode = lrc_mode_;
     xav.crc_mode = crc_mode_;
     ocr.index = index_;
@@ -182,7 +183,7 @@ void LocalRC::request(ZmqData* zmq_data){
   }
 }
 
-void LocalRC::velSensorCheck(){
+void LocalRC::encoderCheck(){
   std::scoped_lock lock(data_mutex_);
   if(!fi_encoder_){
 //    hat_vel_ = a_ * hat_vel_ + b_ * sat_vel_ - l_ * (cur_vel_ - hat_vel_);
@@ -196,11 +197,6 @@ void LocalRC::velSensorCheck(){
       alpha_ = true;
     }
   }
-/*  
-  else{  //Recovery
-    alpha_ = false;
-  }
-*/
 }
 
 void LocalRC::updateMode(uint8_t crc_mode){
@@ -217,10 +213,10 @@ void LocalRC::updateMode(uint8_t crc_mode){
     }
   }
   else{  //FV1, FV2
-    if(gamma_){
+    if(alpha_ && beta_ && gamma_){
       lrc_mode_ = 2;  
     }
-    else if(alpha_ || beta_){
+    else if(alpha_ || beta_ || gamma_){
       lrc_mode_ = 1;  
     }
     else{
@@ -234,6 +230,7 @@ void LocalRC::updateData(ZmqData* zmq_data){
   if(zmq_data->src_index == 30){  //from CRC
     est_vel_ = zmq_data->est_vel;
     crc_mode_ = zmq_data->crc_mode;
+    send_rear_camera_image_ = zmq_data->send_rear_camera_image;
   }
   else if(zmq_data->src_index == 10){  //from LV LRC to FVs LRC
     tar_vel_ = zmq_data->tar_vel;
@@ -301,7 +298,7 @@ void LocalRC::communicate(){
   gettimeofday(&startTime, NULL);
   static int cnt = 0;
   while(ros::ok()){
-    velSensorCheck();
+    encoderCheck();
     updateMode(crc_mode_);
     rosPub();
     printStatus();

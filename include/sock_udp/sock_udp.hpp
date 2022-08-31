@@ -36,6 +36,8 @@ struct UDP_DATA{
     bool gamma;
     uint8_t mode;
     struct lane_coef coef[3];
+    struct timeval startTime;
+    cv::Mat camImageCopy;
 };
 
 class UDPsocket {

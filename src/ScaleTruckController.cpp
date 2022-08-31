@@ -33,6 +33,9 @@ ScaleTruckController::~ScaleTruckController() {
 
   XavPublisher_.publish(msg);
   controlThread_.join();
+  tcpThread_.join();
+  if (send_rear_camera_image_ && (index_ == 0 || index_ == 1)) tcpImgReqThread_.join();
+  if (run_yolo_ && (index_ == 1 || index_ == 2)) tcpImgRepThread_.join();
 
   ROS_INFO("[ScaleTruckController] Stop.");
 }
@@ -44,6 +47,11 @@ bool ScaleTruckController::readParameters() {
   nodeHandle_.param("image_view/enable_opencv", viewImage_, true);
   nodeHandle_.param("image_view/wait_key_delay", waitKeyDelay_, 3);
   nodeHandle_.param("image_view/enable_console_output", enableConsoleOutput_, true);
+
+  /***********************************/
+  /* Rear camera sensor usage Option */
+  /***********************************/
+  nodeHandle_.param("rear_camera_usage/use", rear_camera_, false);
 
   /*******************/
   /* Velocity Option */
@@ -74,45 +82,56 @@ void ScaleTruckController::init() {
   
   std::string imageTopicName;
   int imageQueueSize;
+  std::string rearImageTopicName;
+  int rearImageQueueSize;
   std::string objectTopicName;
   int objectQueueSize; 
-  std::string clusterTopicName;
-  int clusterQueueSize; 
   std::string XavSubTopicName;
   int XavSubQueueSize;
+  std::string bboxTopicName;
+  int bboxQueueSize;
+
   std::string XavPubTopicName;
   int XavPubQueueSize;
+  std::string runYoloTopicName;
+  int runYoloQueueSize;
 
   /******************************/
   /* Ros Topic Subscribe Option */
   /******************************/
   nodeHandle_.param("subscribers/camera_reading/topic", imageTopicName, std::string("/usb_cam/image_raw"));
   nodeHandle_.param("subscribers/camera_reading/queue_size", imageQueueSize, 1);
+  nodeHandle_.param("subscribers/rear_camera_reading/topic", rearImageTopicName, std::string("/rear_cam/image_raw"));
+  nodeHandle_.param("subscribers/rear_camera_reading/queue_size", rearImageQueueSize, 1);
   nodeHandle_.param("subscribers/obstacle_reading/topic", objectTopicName, std::string("/raw_obstacles"));
   nodeHandle_.param("subscribers/obstacle_reading/queue_size", objectQueueSize, 100);
-  nodeHandle_.param("subscribers/cluster_reading/topic", clusterTopicName, std::string("/preceding_truck_points"));
-  nodeHandle_.param("subscribers/cluster_reading/queue_size", clusterQueueSize, 5);
   nodeHandle_.param("subscribers/lrc_to_xavier/topic", XavSubTopicName, std::string("/lrc2xav_msg"));
   nodeHandle_.param("subscribers/lrc_to_xavier/queue_size", XavSubQueueSize, 1);
+  nodeHandle_.param("subscribers/yolo_detector/topic", bboxTopicName, std::string("/yolo_object_detection/bounding_box"));
+  nodeHandle_.param("subscribers/yolo_detector/queue_size", bboxQueueSize, 1);
   
   /****************************/
   /* Ros Topic Publish Option */
   /****************************/
   nodeHandle_.param("publishers/xavier_to_lrc/topic", XavPubTopicName, std::string("/xav2lrc_msg"));
   nodeHandle_.param("publishers/xavier_to_lrc/queue_size", XavPubQueueSize, 1);
+  nodeHandle_.param("publishers/run_yolo/topic", runYoloTopicName, std::string("/run_yolo_flag"));
+  nodeHandle_.param("publishers/run_yolo/queue_size", runYoloQueueSize, 1);
 
   /************************/
   /* Ros Topic Subscriber */
   /************************/
   imageSubscriber_ = nodeHandle_.subscribe(imageTopicName, imageQueueSize, &ScaleTruckController::imageCallback, this);
+  if (rear_camera_) rearImageSubscriber_ = nodeHandle_.subscribe(rearImageTopicName, rearImageQueueSize, &ScaleTruckController::rearImageCallback, this);
   objectSubscriber_ = nodeHandle_.subscribe(objectTopicName, objectQueueSize, &ScaleTruckController::objectCallback, this);
-  clusterSubscriber_ = nodeHandle_.subscribe(clusterTopicName, clusterQueueSize, &ScaleTruckController::clusterCallback, this);
   XavSubscriber_ = nodeHandle_.subscribe(XavSubTopicName, XavSubQueueSize, &ScaleTruckController::XavSubCallback, this);
   ScanSubError = nodeHandle_.subscribe("/scan_error", 1000, &ScaleTruckController::ScanErrorCallback, this);  
+  bboxSubscriber_ = nodeHandle_.subscribe(bboxTopicName, bboxQueueSize, &ScaleTruckController::bboxCallback, this);
 
   /***********************/
   /* Ros Topic Publisher */
   /***********************/
+  runYoloPublisher_ = nodeHandle_.advertise<scale_truck_control::yolo_flag>(runYoloTopicName, runYoloQueueSize);
   XavPublisher_ = nodeHandle_.advertise<scale_truck_control::xav2lrc>(XavPubTopicName, XavPubQueueSize);
 
   /**********************/
@@ -128,11 +147,26 @@ void ScaleTruckController::init() {
   zmq_data_->src_index = index_;
   zmq_data_->tar_index = 20;  //Control center
 
+  img_data_ = new ImgData;
+  img_data_->src_index = index_;
+  img_data_->tar_index = index_+1;
+
+  x_ = 0;
+  y_ = 0;
+  w_ = 0;
+  h_ = 0;
+
   /**********************************/
   /* Control & Communication Thread */
   /**********************************/
   controlThread_ = std::thread(&ScaleTruckController::spin, this);
   tcpThread_ = std::thread(&ScaleTruckController::reply, this, zmq_data_);
+//  if (index_ == 0){
+//    tcpImgThread_ = std::thread(&ScaleTruckController::requestImage, this, img_data_);
+//  }
+//  else if (index_ == 1 || index_ == 2){
+//    tcpImgThread_ = std::thread(&ScaleTruckController::replyImage, this);
+//  }
 }
 
 bool ScaleTruckController::getImageStatus(void){
@@ -169,6 +203,13 @@ void* ScaleTruckController::lanedetectInThread() {
     laneDetector_.get_steer_coef(CurVel_);
   }
   {
+    std::scoped_lock lock(lane_mutex_, bbox_mutex_);
+    laneDetector_.x_ = x_;
+    laneDetector_.y_ = y_;
+    laneDetector_.h_ = h_;
+    laneDetector_.w_ = w_;
+  }
+  {
     std::unique_lock<std::mutex> lock(lane_mutex_);
     cv_.wait(lock, [this] {return droi_ready_; });
 
@@ -192,7 +233,6 @@ void* ScaleTruckController::lanedetectInThread() {
 }
 
 void* ScaleTruckController::objectdetectInThread() {
-  sensor_msgs::PointCloud obstacle;
   float rotation_angle = 0.0f;
   float lateral_offset = 0.0f;
   float dist, angle; 
@@ -201,51 +241,31 @@ void* ScaleTruckController::objectdetectInThread() {
   /**************/
   /* Lidar Data */
   /**************/
-//  {
-//    std::scoped_lock lock(object_mutex_, rep_mutex_);
-//    ObjSegments_ = Obstacle_.segments.size();
-//    ObjCircles_ = Obstacle_.circles.size();
-//  
-//    for(int i = 0; i < ObjCircles_; i++)
-//    {
-//      //dist = sqrt(pow(Obstacle_.circles[i].center.x,2)+pow(Obstacle_.circles[i].center.y,2));
-//      dist = -Obstacle_.circles[i].center.x - Obstacle_.circles[i].true_radius;
-//      angle = atanf(Obstacle_.circles[i].center.y/Obstacle_.circles[i].center.x)*(180.0f/M_PI);
-//      if(dist_tmp >= dist) {
-//        dist_tmp = dist;
-//        angle_tmp = angle;
-//      }
-//    }
-//    if(gamma_ == true){
-//      dist_tmp = laneDetector_.est_dist_;
-//    }
-//  }
-//  if(ObjCircles_ != 0)
-//  {
-//    std::scoped_lock lock(dist_mutex_);
-//    distance_ = dist_tmp;
-//    distAngle_ = angle_tmp;
-//  }
-
-  /******************************************/
-  /* Find distance with point cloud library */
-  /******************************************/ 
   {
-    std::scoped_lock lock(object_mutex_);
-    obstacle = preceding_truck_point_;
+    std::scoped_lock lock(object_mutex_, rep_mutex_);
+    ObjSegments_ = Obstacle_.segments.size();
+    ObjCircles_ = Obstacle_.circles.size();
+  
+    for(int i = 0; i < ObjCircles_; i++)
+    {
+      //dist = sqrt(pow(Obstacle_.circles[i].center.x,2)+pow(Obstacle_.circles[i].center.y,2));
+      dist = -Obstacle_.circles[i].center.x - Obstacle_.circles[i].true_radius;
+      angle = atanf(Obstacle_.circles[i].center.y/Obstacle_.circles[i].center.x)*(180.0f/M_PI);
+      if(dist_tmp >= dist) {
+        dist_tmp = dist;
+        angle_tmp = angle;
+      }
+    }
+    if(gamma_ == true && laneDetector_.est_dist_ != 0){
+      dist_tmp = laneDetector_.est_dist_;
+    }
   }
-  dist = sqrt(pow(obstacle.points[1].x, 2) + pow(obstacle.points[1].y, 2));
-  angle = atanf(obstacle.points[1].y/obstacle.points[1].x) * (180.0f/M_PI);
-  rotation_angle = atan((obstacle.points[2].x - obstacle.points[0].x) / (obstacle.points[2].y - obstacle.points[0].y)) * (180.0f/M_PI);
-  lateral_offset = obstacle.points[1].y;
-  distance_tmp1_ = rotation_angle;
-  distance_tmp2_ = lateral_offset;
-  if (dist_tmp >= dist){
-    dist_tmp = dist;
-    angle_tmp = angle;
+  if(ObjCircles_ != 0)
+  {
+    std::scoped_lock lock(dist_mutex_);
+    distance_ = dist_tmp;
+    distAngle_ = angle_tmp;
   }
-  distance_ = dist_tmp;
-  distAngle_ = angle_tmp;
 
   /*****************************/
   /* Dynamic ROI Distance Data */
@@ -294,6 +314,58 @@ void* ScaleTruckController::objectdetectInThread() {
     else {
       ResultVel_ = TargetVel_;
     }
+  }
+}
+
+void ScaleTruckController::imageCompress(cv::Mat camImage) {
+  std::vector<int> comp;
+  comp.push_back(1); // CV_IMWRITE_JPEG_QUALITY
+  comp.push_back(80); // 0 ~ 100
+  cv::imencode(".jpg", camImage, compImageSend_, comp);
+}
+
+void ScaleTruckController::requestImage(ImgData* img_data)
+{
+  while(isNodeRunning_){
+    {
+      std::scoped_lock lock(rear_image_mutex_);
+      rearImageTmp_ = rearImageCopy_;
+    }
+    if(!rearImageTmp_.empty()){
+      gettimeofday(&img_data->startTime, NULL);
+      imageCompress(rearImageTmp_);
+      if(compImageSend_.size() <= (sizeof(img_data->comp_image) / sizeof(u_char))){
+        std::copy(compImageSend_.begin(), compImageSend_.end(), img_data->comp_image);
+      }
+      img_data->size = compImageSend_.size();
+      ZMQ_SOCKET_.requestImageZMQ(img_data); 
+      req_check_++;
+    }
+    std::this_thread::sleep_for(std::chrono::milliseconds(2));
+  } 
+}
+
+void ScaleTruckController::replyImage()
+{
+  while(isNodeRunning_){
+    struct timeval endTime;
+    ZMQ_SOCKET_.replyImageZMQ();
+    img_data_ = ZMQ_SOCKET_.img_recv_;
+    compImageRecv_.resize(img_data_->size);
+    memcpy(&compImageRecv_[0], &img_data_->comp_image[0], img_data_->size);
+    rearImageJPEG_ = imdecode(Mat(compImageRecv_), IMREAD_COLOR);
+    gettimeofday(&endTime, NULL);
+    rep_check_++;
+    time_ += ((endTime.tv_sec - img_data_->startTime.tv_sec) * 1000.0) + ((endTime.tv_usec - img_data_->startTime.tv_usec)/1000.0);
+
+    DelayTime_ = time_ / (double)rep_check_;
+
+    if (rep_check_ > 3000){
+      time_ = 0.0;
+      rep_check_ = 0;
+    }
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(2));
   }
 }
 
@@ -358,6 +430,7 @@ void ScaleTruckController::reply(ZmqData* zmq_data){
     std::this_thread::sleep_for(std::chrono::milliseconds(2));
   }
 }
+
 void ScaleTruckController::displayConsole() {
   static std::string ipAddr = ZMQ_SOCKET_.getIPAddress();
 
@@ -374,6 +447,7 @@ void ScaleTruckController::displayConsole() {
   printf("\nCRC mode, LRC mode\t: %d / %d", crc_mode_, lrc_mode_);
   printf("\nK1/K2\t\t\t: %3.3f / %3.3f", laneDetector_.K1_, laneDetector_.K2_);
   printf("\nLdrErrMsg\t\t\t: %x", LdrErrMsg_);
+  printf("\nx / y / w / h\t\t: %u / %u / %u / %u", x_, y_, w_, h_);
   if(ObjCircles_ > 0) {
     printf("\nCirs\t\t\t: %d", ObjCircles_);
     printf("\nDistAng\t\t\t: %2.3f degree", distAngle_);
@@ -382,6 +456,7 @@ void ScaleTruckController::displayConsole() {
     printf("\nSegs\t\t\t: %d", ObjSegments_);
   }
   printf("\nCycle Time\t\t: %3.3f ms", CycleTime_);
+  printf("\nREQ Check\t\t: %d", req_check_);
   printf("\n");
 }
 
@@ -415,7 +490,7 @@ void ScaleTruckController::recordData(struct timeval startTime){
     std::scoped_lock lock(dist_mutex_);
     gettimeofday(&currentTime, NULL);
     diff_time = ((currentTime.tv_sec - startTime.tv_sec)) + ((currentTime.tv_usec - startTime.tv_usec)/1000000.0);
-    sprintf(buf, "%.10e,%.3f,%.3f", diff_time, distance_tmp1_, distance_tmp2_);
+    sprintf(buf, "%.10e", diff_time);
     write_file.open(file, std::ios::out | std::ios::app);
     write_file << buf << endl;
   }
@@ -436,7 +511,7 @@ void ScaleTruckController::spin() {
   }
   
   scale_truck_control::xav2lrc msg;
-  scale_truck_control::lane_coef lane;
+  scale_truck_control::yolo_flag y_flag;
   std::thread lanedetect_thread;
   std::thread objectdetect_thread;
   
@@ -454,6 +529,8 @@ void ScaleTruckController::spin() {
     if(enableConsoleOutput_)
       displayConsole();
 
+    if (beta_ && gamma_) run_yolo_ = true;
+
     msg.tar_vel = ResultVel_;  //Xavier to LRC and LRC to OpenCR
     {
       std::scoped_lock lock(dist_mutex_);
@@ -470,8 +547,11 @@ void ScaleTruckController::spin() {
       msg.gamma = gamma_;
     }
 
-    lane = laneDetector_.lane_coef_;
+    if (!run_yolo_) y_flag.run_yolo = false;
+    else y_flag.run_yolo = true;
+
     XavPublisher_.publish(msg);
+    runYoloPublisher_.publish(y_flag);
 
     if(!isNodeRunning_) {
       controlDone_ = true;
@@ -485,13 +565,21 @@ void ScaleTruckController::spin() {
 
     CycleTime_ = diff_time / (double)cnt;
 
-    printf("cnt: %d\n", cnt);
+//    printf("cnt: %d\n", cnt);
     if (cnt > 3000){
       diff_time = 0.0;
       cnt = 0;
     }
 
-    recordData(laneDetector_.start_);
+    //recordData(laneDetector_.start_);
+
+    if (send_rear_camera_image_ && (index_ == 0 || index_ == 1)){
+      tcpImgReqThread_ = std::thread(&ScaleTruckController::requestImage, this, img_data_);
+    }
+
+    if (run_yolo_ && (index_ == 1 || index_ == 2)){
+      tcpImgRepThread_ = std::thread(&ScaleTruckController::replyImage, this);
+    }
   }
 }
 
@@ -515,13 +603,6 @@ void ScaleTruckController::objectCallback(const obstacle_detector::Obstacles &ms
   }
 }
 
-void ScaleTruckController::clusterCallback(const sensor_msgs::PointCloud &msg) {
-  {
-    std::scoped_lock lock(object_mutex_);
-    preceding_truck_point_ = msg;
-  }
-}
-
 void ScaleTruckController::imageCallback(const sensor_msgs::ImageConstPtr &msg) {
   cv_bridge::CvImagePtr cam_image;
   try{
@@ -535,7 +616,23 @@ void ScaleTruckController::imageCallback(const sensor_msgs::ImageConstPtr &msg) 
     if(cam_image && !fi_camera_) {
       imageHeader_ = msg->header;
       camImageCopy_ = cam_image->image.clone();
-      imageStatus_ = true; 
+      imageStatus_ = true;
+    }
+  }
+}
+
+void ScaleTruckController::rearImageCallback(const sensor_msgs::ImageConstPtr &msg) {
+  cv_bridge::CvImagePtr cam_image;
+  try{
+    cam_image = cv_bridge::toCvCopy(msg, sensor_msgs::image_encodings::BGR8);
+  } catch (cv_bridge::Exception& e) {
+    ROS_ERROR("cv_bridge exception : %s", e.what());
+  }
+
+  {
+    std::scoped_lock lock(rear_image_mutex_);
+    if(cam_image) {
+      rearImageCopy_ = cam_image->image.clone();
     }
   }
 }
@@ -555,6 +652,17 @@ void ScaleTruckController::XavSubCallback(const scale_truck_control::lrc2xav &ms
     std::scoped_lock lock(rep_mutex_);
     TargetVel_ = msg.tar_vel;
     TargetDist_ = msg.tar_dist;
+  }
+  send_rear_camera_image_ = msg.send_rear_camera_image;
+}
+
+void ScaleTruckController::bboxCallback(const yolo_object_detection::bounding_box &msg){
+  {
+    std::scoped_lock lock(bbox_mutex_);
+    x_ = msg.x;
+    y_ = msg.y;
+    w_ = msg.w;
+    h_ = msg.h;
   }
 }
 

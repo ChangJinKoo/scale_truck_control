@@ -15,6 +15,7 @@
 #include <scale_truck_control/lane_coef.h>
 #include <time.h>
 
+
 using namespace cv;
 using namespace std;
 
@@ -32,9 +33,14 @@ public:
 	void get_steer_coef(float vel);
 	float K1_, K2_;
 	int distance_ = 0;
-	float est_dist_ = 0;
+	float est_dist_ = 0.0f;
 	scale_truck_control::lane_coef lane_coef_;
 	Mat frame_;
+	float rotation_angle_ = 0.0f;
+	float lateral_offset_ = 0.0f;
+
+	/********** bbox *********/
+	unsigned int x_, y_, w_, h_;
 
 private:
 	void LoadParams(void);
@@ -46,6 +52,8 @@ private:
 	Mat estimateDistance(Mat frame);
 	float lowPassFilter(float sampling_time, float est_dist);
 	Mat draw_lane(Mat _sliding_frame, Mat _frame);
+	Point warpPoint(Point p, Mat trans);
+	Mat drawBox(Mat frame);
 	void calc_curv_rad_and_center_dist();
 	void clear_release();
 	void steer_error_log();
@@ -55,7 +63,11 @@ private:
 	/********** Camera calibration **********/
 	Mat map1_, map2_;
 
-	/********** Lane_detect data ***********/
+	/********** Lane_detect ***********/
+	vector<Point2f> corners_;
+	vector<Point2f> warpCorners_;
+	float wide_extra_upside_, wide_extra_downside_;
+
 	int last_Llane_base_;
 	int last_Rlane_base_;
 
@@ -83,11 +95,6 @@ private:
 	/********** PID control ***********/
 	int prev_lane_, prev_pid_;
 	double Kp_term_, Ki_term_, Kd_term_, err_, prev_err_, I_err_, D_err_, result_;
-	
-	/********** Lane_detect data ***********/
-	vector<Point2f> corners_;
-	vector<Point2f> warpCorners_;
-	float wide_extra_upside_, wide_extra_downside_;
 
 	int width_, height_;
 	bool option_; // dynamic ROI
