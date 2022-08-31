@@ -337,6 +337,7 @@ void ScaleTruckController::requestImage(ImgData* img_data)
       if(compImageSend_.size() <= (sizeof(img_data->comp_image) / sizeof(u_char))){
         std::copy(compImageSend_.begin(), compImageSend_.end(), img_data->comp_image);
       }
+      else printf("Warning !! compressed image size is bigger than comp_img array size in ImgData\n");
       img_data->size = compImageSend_.size();
       req_check_++;
       ZMQ_SOCKET_.requestImageZMQ(img_data); 
@@ -356,7 +357,8 @@ void ScaleTruckController::replyImage()
     rearImageJPEG_ = imdecode(Mat(compImageRecv_), IMREAD_COLOR);
     gettimeofday(&endTime, NULL);
     rep_check_++;
-    time_ += ((endTime.tv_sec - img_data_->startTime.tv_sec) * 1000.0) + ((endTime.tv_usec - img_data_->startTime.tv_usec)/1000.0);
+    if (rep_check_ > 0) time_ += ((endTime.tv_sec - img_data_->startTime.tv_sec) * 1000.0) + ((endTime.tv_usec - img_data_->startTime.tv_usec)/1000.0);
+    else time_ = 0.0;
 
     DelayTime_ = time_ / (double)rep_check_;
 
@@ -455,6 +457,8 @@ void ScaleTruckController::displayConsole() {
   if(ObjSegments_ > 0) {
     printf("\nSegs\t\t\t: %d", ObjSegments_);
   }
+  printf("\nREQ Check\t\t: %d", req_check_);
+  printf("\nREP Check\t\t: %d", rep_check_);
   printf("\nCycle Time\t\t: %3.3f ms", CycleTime_);
   printf("\n");
 }

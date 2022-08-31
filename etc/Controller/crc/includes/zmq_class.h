@@ -32,7 +32,7 @@ typedef struct ImgData{
 
 	struct timeval startTime;
 
-	u_char comp_image[65000] = {0,};
+	u_char comp_image[70000] = {0,};
 	size_t size = 0;
 }ImgData;
 
