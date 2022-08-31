@@ -235,7 +235,8 @@ void* ScaleTruckController::lanedetectInThread() {
 void* ScaleTruckController::objectdetectInThread() {
   float rotation_angle = 0.0f;
   float lateral_offset = 0.0f;
-  float dist, angle; 
+  float Lw = 0.340f; // 0.236 0.288 0.340 
+  float dist, Ld, angle, angle_A;
   float dist_tmp, angle_tmp;
   dist_tmp = 10.f; 
   /**************/
@@ -254,10 +255,16 @@ void* ScaleTruckController::objectdetectInThread() {
       if(dist_tmp >= dist) {
         dist_tmp = dist;
         angle_tmp = angle;
+        Ld = sqrt(pow(Obstacle_.circles[i].center.x-Lw, 2) + pow(Obstacle_.circles[i].center.y, 2));
+        angle_A = atanf(Obstacle_.circles[i].center.y/(Obstacle_.circles[i].center.x-Lw));
+        ampersand_ = -atanf(2*Lw*sin(angle_A)/Ld) * (180.0f/M_PI); // pure pursuit
       }
     }
     if(gamma_ == true && laneDetector_.est_dist_ != 0){
       dist_tmp = laneDetector_.est_dist_;
+    }
+    if(beta_ == true && ampersand_ != 0){
+      dist_tmp = ampersand_;
     }
   }
   if(ObjCircles_ != 0)
