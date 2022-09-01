@@ -28,6 +28,7 @@
 #include <sensor_msgs/Image.h>
 #include <sensor_msgs/image_encodings.h>
 #include <obstacle_detector/Obstacles.h>
+#include <image_transport/image_transport.h>
 
 //OpenCV
 #include <cv_bridge/cv_bridge.h>
@@ -79,6 +80,9 @@ class ScaleTruckController {
     ros::Subscriber bboxSubscriber_;	
     ros::Publisher XavPublisher_;
     ros::Publisher runYoloPublisher_;
+
+    image_transport::ImageTransport imageTransport_;
+    image_transport::Publisher imgPublisher_;
 
     double CycleTime_ = 0.0;
     int index_;

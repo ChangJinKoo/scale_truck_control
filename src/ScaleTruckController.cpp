@@ -3,7 +3,7 @@
 namespace scale_truck_control{
 
 ScaleTruckController::ScaleTruckController(ros::NodeHandle nh)
-    : nodeHandle_(nh), laneDetector_(nodeHandle_), ZMQ_SOCKET_(nh){
+    : nodeHandle_(nh), laneDetector_(nodeHandle_), ZMQ_SOCKET_(nh), imageTransport_(nh){
   if (!readParameters()) {
     ros::requestShutdown();
   }
@@ -131,6 +131,7 @@ void ScaleTruckController::init() {
   /***********************/
   /* Ros Topic Publisher */
   /***********************/
+  imgPublisher_ = imageTransport_.advertise("/preceding_truck_image", 1);
   runYoloPublisher_ = nodeHandle_.advertise<scale_truck_control::yolo_flag>(runYoloTopicName, runYoloQueueSize);
   XavPublisher_ = nodeHandle_.advertise<scale_truck_control::xav2lrc>(XavPubTopicName, XavPubQueueSize);
 
@@ -356,6 +357,13 @@ void ScaleTruckController::replyImage()
     memcpy(&compImageRecv_[0], &img_data_->comp_image[0], img_data_->size);
     rearImageJPEG_ = imdecode(Mat(compImageRecv_), IMREAD_COLOR);
     gettimeofday(&endTime, NULL);
+
+    //image publish
+    sensor_msgs::ImagePtr msg = cv_bridge::CvImage(std_msgs::Header(), "bgr8", rearImageJPEG_).toImageMsg();
+    msg->header.stamp.sec = img_data_->startTime.tv_sec;
+    msg->header.stamp.nsec = img_data_->startTime.tv_usec;
+    imgPublisher_.publish(msg);
+
     rep_check_++;
     if (rep_check_ > 0) time_ += ((endTime.tv_sec - img_data_->startTime.tv_sec) * 1000.0) + ((endTime.tv_usec - img_data_->startTime.tv_usec)/1000.0);
     else time_ = 0.0;
