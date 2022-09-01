@@ -3,7 +3,7 @@
 namespace scale_truck_control{
 
 ScaleTruckController::ScaleTruckController(ros::NodeHandle nh)
-    : nodeHandle_(nh), laneDetector_(nodeHandle_), ZMQ_SOCKET_(nh){
+    : nodeHandle_(nh), laneDetector_(nodeHandle_), ZMQ_SOCKET_(nh), imageTransport_(nh){
   if (!readParameters()) {
     ros::requestShutdown();
   }
@@ -131,6 +131,7 @@ void ScaleTruckController::init() {
   /***********************/
   /* Ros Topic Publisher */
   /***********************/
+  imgPublisher_ = imageTransport_.advertise("/preceding_truck_image", 1);
   runYoloPublisher_ = nodeHandle_.advertise<scale_truck_control::yolo_flag>(runYoloTopicName, runYoloQueueSize);
   XavPublisher_ = nodeHandle_.advertise<scale_truck_control::xav2lrc>(XavPubTopicName, XavPubQueueSize);
 
@@ -344,6 +345,7 @@ void ScaleTruckController::requestImage(ImgData* img_data)
       if(compImageSend_.size() <= (sizeof(img_data->comp_image) / sizeof(u_char))){
         std::copy(compImageSend_.begin(), compImageSend_.end(), img_data->comp_image);
       }
+      else printf("Warning !! compressed image size is bigger than comp_img array size in ImgData\n");
       img_data->size = compImageSend_.size();
       req_check_++;
       ZMQ_SOCKET_.requestImageZMQ(img_data); 
@@ -362,8 +364,16 @@ void ScaleTruckController::replyImage()
     memcpy(&compImageRecv_[0], &img_data_->comp_image[0], img_data_->size);
     rearImageJPEG_ = imdecode(Mat(compImageRecv_), IMREAD_COLOR);
     gettimeofday(&endTime, NULL);
+
+    //image publish
+    sensor_msgs::ImagePtr msg = cv_bridge::CvImage(std_msgs::Header(), "bgr8", rearImageJPEG_).toImageMsg();
+    msg->header.stamp.sec = img_data_->startTime.tv_sec;
+    msg->header.stamp.nsec = img_data_->startTime.tv_usec;
+    imgPublisher_.publish(msg);
+
     rep_check_++;
-    time_ += ((endTime.tv_sec - img_data_->startTime.tv_sec) * 1000.0) + ((endTime.tv_usec - img_data_->startTime.tv_usec)/1000.0);
+    if (rep_check_ > 0) time_ += ((endTime.tv_sec - img_data_->startTime.tv_sec) * 1000.0) + ((endTime.tv_usec - img_data_->startTime.tv_usec)/1000.0);
+    else time_ = 0.0;
 
     DelayTime_ = time_ / (double)rep_check_;
 
@@ -462,6 +472,8 @@ void ScaleTruckController::displayConsole() {
   if(ObjSegments_ > 0) {
     printf("\nSegs\t\t\t: %d", ObjSegments_);
   }
+  printf("\nREQ Check\t\t: %d", req_check_);
+  printf("\nREP Check\t\t: %d", rep_check_);
   printf("\nCycle Time\t\t: %3.3f ms", CycleTime_);
   printf("\n");
 }
