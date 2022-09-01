@@ -236,7 +236,8 @@ void* ScaleTruckController::lanedetectInThread() {
 void* ScaleTruckController::objectdetectInThread() {
   float rotation_angle = 0.0f;
   float lateral_offset = 0.0f;
-  float dist, angle; 
+  float Lw = 0.340f; // 0.236 0.288 0.340 
+  float dist, Ld, angle, angle_A;
   float dist_tmp, angle_tmp;
   dist_tmp = 10.f; 
   /**************/
@@ -255,10 +256,16 @@ void* ScaleTruckController::objectdetectInThread() {
       if(dist_tmp >= dist) {
         dist_tmp = dist;
         angle_tmp = angle;
+        Ld = sqrt(pow(Obstacle_.circles[i].center.x-Lw, 2) + pow(Obstacle_.circles[i].center.y, 2));
+        angle_A = atanf(Obstacle_.circles[i].center.y/(Obstacle_.circles[i].center.x-Lw));
+        ampersand_ = atanf(2*Lw*sin(angle_A)/Ld) * (180.0f/M_PI); // pure pursuit
       }
     }
     if(gamma_ == true && laneDetector_.est_dist_ != 0){
       dist_tmp = laneDetector_.est_dist_;
+    }
+    if(beta_ == true && ampersand_ != 0){
+      dist_tmp = ampersand_;
     }
   }
   if(ObjCircles_ != 0)
@@ -458,16 +465,16 @@ void ScaleTruckController::displayConsole() {
   printf("\nK1/K2\t\t\t: %3.3f / %3.3f", laneDetector_.K1_, laneDetector_.K2_);
   printf("\nLdrErrMsg\t\t\t: %x", LdrErrMsg_);
   printf("\nx / y / w / h\t\t: %u / %u / %u / %u", x_, y_, w_, h_);
+  printf("\nREQ Check\t\t: %d", req_check_);
+  printf("\nREP Check\t\t: %d", rep_check_);
+  if(!compImageSend_.empty()){
+    printf("\nSending image size\t: %zu", compImageSend_.size());
+  }
+  printf("\nCycle Time\t\t: %3.3f ms", CycleTime_);
   if(ObjCircles_ > 0) {
     printf("\nCirs\t\t\t: %d", ObjCircles_);
     printf("\nDistAng\t\t\t: %2.3f degree", distAngle_);
   }
-  if(ObjSegments_ > 0) {
-    printf("\nSegs\t\t\t: %d", ObjSegments_);
-  }
-  printf("\nREQ Check\t\t: %d", req_check_);
-  printf("\nREP Check\t\t: %d", rep_check_);
-  printf("\nCycle Time\t\t: %3.3f ms", CycleTime_);
   printf("\n");
 }
 
