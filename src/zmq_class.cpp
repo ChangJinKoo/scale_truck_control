@@ -75,6 +75,7 @@ void ZMQ_CLASS::init()
     req_img_socket_.connect(tcpreq_img_ip_);
     req_img_socket_.setsockopt(ZMQ_RCVTIMEO, -1);  //timeout (infinite) 
     req_img_socket_.setsockopt(ZMQ_LINGER, 0); 
+    req_img_socket_.setsockopt(ZMQ_TCP_MAXRT, 1);
   }
 
   if(rep_img_flag_)

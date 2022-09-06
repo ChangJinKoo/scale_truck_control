@@ -3,7 +3,7 @@
 namespace scale_truck_control{
 
 ScaleTruckController::ScaleTruckController(ros::NodeHandle nh)
-    : nodeHandle_(nh), laneDetector_(nodeHandle_), ZMQ_SOCKET_(nh){
+    : nodeHandle_(nh), laneDetector_(nodeHandle_), ZMQ_SOCKET_(nh), imageTransport_(nh){
   if (!readParameters()) {
     ros::requestShutdown();
   }
@@ -131,6 +131,7 @@ void ScaleTruckController::init() {
   /***********************/
   /* Ros Topic Publisher */
   /***********************/
+  imgPublisher_ = imageTransport_.advertise("/preceding_truck_image", 1);
   runYoloPublisher_ = nodeHandle_.advertise<scale_truck_control::yolo_flag>(runYoloTopicName, runYoloQueueSize);
   XavPublisher_ = nodeHandle_.advertise<scale_truck_control::xav2lrc>(XavPubTopicName, XavPubQueueSize);
 
@@ -235,7 +236,8 @@ void* ScaleTruckController::lanedetectInThread() {
 void* ScaleTruckController::objectdetectInThread() {
   float rotation_angle = 0.0f;
   float lateral_offset = 0.0f;
-  float dist, angle; 
+  float Lw = 0.340f; // 0.236 0.288 0.340 
+  float dist, Ld, angle, angle_A;
   float dist_tmp, angle_tmp;
   dist_tmp = 10.f; 
   /**************/
@@ -254,10 +256,16 @@ void* ScaleTruckController::objectdetectInThread() {
       if(dist_tmp >= dist) {
         dist_tmp = dist;
         angle_tmp = angle;
+        Ld = sqrt(pow(Obstacle_.circles[i].center.x-Lw, 2) + pow(Obstacle_.circles[i].center.y, 2));
+        angle_A = atanf(Obstacle_.circles[i].center.y/(Obstacle_.circles[i].center.x-Lw));
+        ampersand_ = atanf(2*Lw*sin(angle_A)/Ld) * (180.0f/M_PI); // pure pursuit
       }
     }
     if(gamma_ == true && laneDetector_.est_dist_ != 0){
       dist_tmp = laneDetector_.est_dist_;
+    }
+    if(beta_ == true && ampersand_ != 0){
+      dist_tmp = ampersand_;
     }
   }
   if(ObjCircles_ != 0)
@@ -356,6 +364,13 @@ void ScaleTruckController::replyImage()
     memcpy(&compImageRecv_[0], &img_data_->comp_image[0], img_data_->size);
     rearImageJPEG_ = imdecode(Mat(compImageRecv_), IMREAD_COLOR);
     gettimeofday(&endTime, NULL);
+
+    //image publish
+    sensor_msgs::ImagePtr msg = cv_bridge::CvImage(std_msgs::Header(), "bgr8", rearImageJPEG_).toImageMsg();
+    msg->header.stamp.sec = img_data_->startTime.tv_sec;
+    msg->header.stamp.nsec = img_data_->startTime.tv_usec;
+    imgPublisher_.publish(msg);
+
     rep_check_++;
     if (rep_check_ > 0) time_ += ((endTime.tv_sec - img_data_->startTime.tv_sec) * 1000.0) + ((endTime.tv_usec - img_data_->startTime.tv_usec)/1000.0);
     else time_ = 0.0;
@@ -450,16 +465,16 @@ void ScaleTruckController::displayConsole() {
   printf("\nK1/K2\t\t\t: %3.3f / %3.3f", laneDetector_.K1_, laneDetector_.K2_);
   printf("\nLdrErrMsg\t\t\t: %x", LdrErrMsg_);
   printf("\nx / y / w / h\t\t: %u / %u / %u / %u", x_, y_, w_, h_);
+  printf("\nREQ Check\t\t: %d", req_check_);
+  printf("\nREP Check\t\t: %d", rep_check_);
+  if(!compImageSend_.empty()){
+    printf("\nSending image size\t: %zu", compImageSend_.size());
+  }
+  printf("\nCycle Time\t\t: %3.3f ms", CycleTime_);
   if(ObjCircles_ > 0) {
     printf("\nCirs\t\t\t: %d", ObjCircles_);
     printf("\nDistAng\t\t\t: %2.3f degree", distAngle_);
   }
-  if(ObjSegments_ > 0) {
-    printf("\nSegs\t\t\t: %d", ObjSegments_);
-  }
-  printf("\nREQ Check\t\t: %d", req_check_);
-  printf("\nREP Check\t\t: %d", rep_check_);
-  printf("\nCycle Time\t\t: %3.3f ms", CycleTime_);
   printf("\n");
 }
 

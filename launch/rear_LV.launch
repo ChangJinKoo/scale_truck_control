@@ -1,15 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 
 <launch>
-  <!-- Console launch prefix -->
-  <arg name="image" default="/usb_cam/image_raw" />
-
   <!-- ROS parameter files -->
   <arg name="ros_param_file"             default="$(find scale_truck_control)/config/config.yaml"/>
   <arg name="lrc_param_file"             default="$(find scale_truck_control)/config/lrc_LV.yaml"/>
   <arg name="vehicle_param_file"             default="$(find scale_truck_control)/config/rear_LV.yaml"/>
   <arg name="lidar_param_file"             default="$(find scale_truck_control)/config/laser_filter.yaml"/>
-  <arg name="cluster_param_file"             default="$(find scale_truck_control)/config/laser_cluster.yaml"/>
 
   <!-- Load parameters -->
   <rosparam command="load" ns="scale_truck_control" file="$(arg ros_param_file)"/>
@@ -17,12 +13,12 @@
   <rosparam command="load" ns="LRC" file="$(arg lrc_param_file)"/>
 
   <!-- Start usb_cam -->
-  <node pkg="usb_cam" type="usb_cam_node" name="usb_cam" >
+  <node pkg="usb_cam" type="usb_cam_node" name="rear_cam" >
     <param name="video_device" value="/dev/video0" />
     <param name="image_width" value="640" />
     <param name="image_height" value="480" />
     <param name="pixel_format" value="yuyv" />
-    <param name="camera_frame_id" value="usb_cam" />
+    <param name="camera_frame_id" value="rear_cam" />
     <param name="io_method" value="mmap" />
   </node>
 
@@ -39,11 +35,6 @@
   <!-- Start laser_filters -->
   <node pkg="laser_filters" type="scan_to_scan_filter_chain" output="screen" name="laser_filter" >
     <rosparam command="load" file="$(arg lidar_param_file)"/>
-  </node>
-
-  <!-- Start laser_cluster -->
-  <node pkg="laser_cluster" type="laser_cluster_node" output="screen" name="laser_cluster_node" >
-    <rosparam command="load" file="$(arg cluster_param_file)"/>
   </node>
 
   <!-- obstacle detector node -->
