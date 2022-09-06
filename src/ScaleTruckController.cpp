@@ -236,7 +236,7 @@ void* ScaleTruckController::lanedetectInThread() {
 void* ScaleTruckController::objectdetectInThread() {
   float rotation_angle = 0.0f;
   float lateral_offset = 0.0f;
-  float Lw = 0.340f; // 0.236 0.288 0.340 
+  float Lw = 0.40f; // 0.236 0.288 0.340 
   float dist, Ld, angle, angle_A;
   float dist_tmp, angle_tmp;
   dist_tmp = 10.f; 
@@ -251,6 +251,7 @@ void* ScaleTruckController::objectdetectInThread() {
     for(int i = 0; i < ObjCircles_; i++)
     {
       //dist = sqrt(pow(Obstacle_.circles[i].center.x,2)+pow(Obstacle_.circles[i].center.y,2));
+      Obstacle_.circles[i].center.y += 0.03f;
       dist = -Obstacle_.circles[i].center.x - Obstacle_.circles[i].true_radius;
       angle = atanf(Obstacle_.circles[i].center.y/Obstacle_.circles[i].center.x)*(180.0f/M_PI);
       if(dist_tmp >= dist) {
@@ -258,14 +259,14 @@ void* ScaleTruckController::objectdetectInThread() {
         angle_tmp = angle;
         Ld = sqrt(pow(Obstacle_.circles[i].center.x-Lw, 2) + pow(Obstacle_.circles[i].center.y, 2));
         angle_A = atanf(Obstacle_.circles[i].center.y/(Obstacle_.circles[i].center.x-Lw));
-        ampersand_ = -atanf(2*Lw*sin(angle_A)/Ld) * (180.0f/M_PI); // pure pursuit
+        ampersand_ = atanf(2*Lw*sin(angle_A)/Ld) * (180.0f/M_PI); // pure pursuit
       }
     }
     if(gamma_ == true && laneDetector_.est_dist_ != 0){
       dist_tmp = laneDetector_.est_dist_;
     }
-    if(beta_ == true && ampersand_ != 0){
-      dist_tmp = ampersand_;
+    if(beta_ == true){
+      angle_tmp = ampersand_;
     }
   }
   if(ObjCircles_ != 0)
@@ -340,7 +341,6 @@ void ScaleTruckController::requestImage(ImgData* img_data)
       rearImageTmp_ = rearImageCopy_;
     }
     if(!rearImageTmp_.empty()){
-      gettimeofday(&img_data->startTime, NULL);
       imageCompress(rearImageTmp_);
       if(compImageSend_.size() <= (sizeof(img_data->comp_image) / sizeof(u_char))){
         std::copy(compImageSend_.begin(), compImageSend_.end(), img_data->comp_image);
@@ -348,9 +348,10 @@ void ScaleTruckController::requestImage(ImgData* img_data)
       else printf("Warning !! compressed image size is bigger than comp_img array size in ImgData\n");
       img_data->size = compImageSend_.size();
       req_check_++;
+      gettimeofday(&img_data->startTime, NULL);
       ZMQ_SOCKET_.requestImageZMQ(img_data); 
     }
-    std::this_thread::sleep_for(std::chrono::milliseconds(2));
+    std::this_thread::sleep_for(std::chrono::milliseconds(15));
   } 
 }
 
@@ -381,8 +382,7 @@ void ScaleTruckController::replyImage()
       time_ = 0.0;
       rep_check_ = 0;
     }
-
-    std::this_thread::sleep_for(std::chrono::milliseconds(2));
+    std::this_thread::sleep_for(std::chrono::milliseconds(15));
   }
 }
 
@@ -501,10 +501,10 @@ void ScaleTruckController::recordData(struct timeval startTime){
       }
       read_file.close();
     }
-    write_file << "time,networkDelay" << endl; //seconds
+    write_file << "time,imgCommDelay" << endl; //seconds
     flag = true;
   }
-  else{
+  if(flag){
     std::scoped_lock lock(dist_mutex_);
     gettimeofday(&currentTime, NULL);
     diff_time = ((currentTime.tv_sec - startTime.tv_sec)) + ((currentTime.tv_usec - startTime.tv_usec)/1000000.0);
@@ -547,7 +547,9 @@ void ScaleTruckController::spin() {
     if(enableConsoleOutput_)
       displayConsole();
 
-    if (beta_ && gamma_) run_yolo_ = true;
+    if (beta_ && gamma_ && !run_yolo_){
+      run_yolo_ = true;
+    }
 
     msg.tar_vel = ResultVel_;  //Xavier to LRC and LRC to OpenCR
     {
