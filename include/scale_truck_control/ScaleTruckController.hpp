@@ -123,8 +123,10 @@ class ScaleTruckController {
     uint32_t LdrErrMsg_;
     bool fi_lidar_ = false;
     bool gamma_ = false;
+    float log_est_dist_ = 0.0f;
 
     //bbox
+    std::string name_;
     uint32_t x_ = 0;
     uint32_t y_ = 0;
     uint32_t w_ = 0;
@@ -173,6 +175,7 @@ class ScaleTruckController {
     void* lanedetectInThread();
     void* objectdetectInThread();
 
+    bool req_lv_ = false;
     bool run_yolo_ = false;
     bool tcp_img_req_ = false;
     bool tcp_img_rep_ = false;

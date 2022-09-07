@@ -489,12 +489,11 @@ Mat LaneDetector::detect_lines_sliding_window(Mat _frame, bool _view) {
   return result;
 }
 
-Mat LaneDetector::estimateDistance(Mat frame){
-  Mat rect_frame;
-  frame.copyTo(rect_frame);
-  static struct timeval start_time, end_time;
-  double diff_time;
-  static bool flag = false;
+Mat LaneDetector::estimateDistance(Mat frame, cv::Point prec_truck_center){
+  Mat res_frame;
+
+/* Estimation by sliding window 
+  frame.copyTo(res_frame);
   int n_rect = 4;
   int height = frame.rows / n_rect;
   int width = height * n_rect / 4;
@@ -512,46 +511,93 @@ Mat LaneDetector::estimateDistance(Mat frame){
     float p_x2 = center_p_x + width / 2;    
     for (int h = p_y1; h < p_y2; h++){
       for (int w = p_x1; w < p_x2; w++){
-        if ((rect_frame.at<Vec3b>(Point(w,h))[0] == 255) && \
-		(rect_frame.at<Vec3b>(Point(w,h))[1] == 255) && \
-		(rect_frame.at<Vec3b>(Point(w,h))[2] == 255)){
+        if ((res_frame.at<Vec3b>(Point(w,h))[0] == 255) && \
+		(res_frame.at<Vec3b>(Point(w,h))[1] == 255) && \
+		(res_frame.at<Vec3b>(Point(w,h))[2] == 255)){
           if (cnt > min_pixel) dist_pixel = h;
           cnt++;
 	}
       }
     }
     if (cnt < min_pixel) break;
-    rectangle(rect_frame, Point(p_x1, p_y1), Point(p_x2, p_y2), Scalar(0,255,0), 1, 8, 0);
+    rectangle(res_frame, Point(p_x1, p_y1), Point(p_x2, p_y2), Scalar(0,255,0), 1, 8, 0);
     cnt = 0;
   }
 
-  line(rect_frame, Point(180, dist_pixel), Point(460, dist_pixel), Scalar::all(255), 1, 8, 0);
+  line(res_frame, Point(180, dist_pixel), Point(460, dist_pixel), Scalar::all(255), 1, 8, 0);
 
   // Convert pixel to distance (1 m = 490 px, Max distance in ROI is 1.24 m)
   //est_dist = 1.24f - (dist_pixel/490.0f);
   est_dist = 1.2f - (dist_pixel/500.0f);
-  gettimeofday(&end_time, NULL);
-  if (!flag){
-    diff_time = (end_time.tv_sec - start_.tv_sec) + (end_time.tv_usec - start_.tv_usec)/1000000.0;
-    flag = true;
-  }
-  else{
-    diff_time = (end_time.tv_sec - start_time.tv_sec) + (end_time.tv_usec - start_time.tv_usec)/1000000.0;
-    start_time = end_time;
-  }
-  est_dist = lowPassFilter(diff_time, est_dist);
   est_dist_ = est_dist;
+*/
+  
+  frame.copyTo(res_frame);
+  int dist_pixel = 0;
+  float est_dist = 0.f;
+  dist_pixel = prec_truck_center.y;
+  line(res_frame, Point(180, dist_pixel), Point(460, dist_pixel), Scalar::all(255), 1, 8, 0);
+  //est_dist = 1.24f - (dist_pixel/490.0f);
+  est_dist = 1.2f - (dist_pixel/500.0f);
+  if (est_dist > 0.3f && est_dist < 1.24f) est_dist_ = est_dist;
 
-  return rect_frame;
+  return res_frame;
 }
 
-float LaneDetector::lowPassFilter(float sampling_time, float est_dist){
-  float res = 0.f;
-  float tau = 0.5f;
-  static float prev_res_ = 0.f;
-  res = (tau * prev_res_ + sampling_time*est_dist)/(tau+sampling_time);
-  prev_res_ = res;
+unsigned int LaneDetector::lowPassFilter(double sampling_time, unsigned int est_value, int seq){
+  unsigned int res = 0;
+  unsigned int prev_res = 0;
+  float tau = 0.1f;
+  if (seq == 0){
+    res = (tau * prev_x_ + sampling_time*est_value)/(tau+sampling_time);
+    prev_x_ = res;
+  }
+  else if (seq == 1){
+    res = (tau * prev_y_ + sampling_time*est_value)/(tau+sampling_time);
+    prev_y_ = res;
+  }
+  else if (seq == 2){
+    res = (tau * prev_w_ + sampling_time*est_value)/(tau+sampling_time);
+    prev_w_ = res;
+  }
+  else if (seq == 3){
+    res = (tau * prev_h_ + sampling_time*est_value)/(tau+sampling_time);
+    prev_h_ = res;
+  }
   return res;
+}
+
+Point LaneDetector::warpPoint(Point center, Mat trans){
+  static Point prev_center;
+  static int cnt = 0;
+  Point warp_center, avg_center;
+
+//  if (cnt > 1000){
+//    prev_center = (Point)0;
+//    cnt = 0;
+//  }
+
+//  if(center.x > 0 && center.y > 0){
+//    prev_center.x += center.x;
+//    prev_center.y += center.y;
+//    cnt++;
+//  }
+
+//  avg_center.x = prev_center.x / cnt;
+//  avg_center.y = prev_center.y / cnt;
+
+//  warp_center.x = (trans.at<double>(0,0)*avg_center.x + trans.at<double>(0,1)*avg_center.y + trans.at<double>(0,2)) / (trans.at<double>(2,0)*avg_center.x + trans.at<double>(2,1)*avg_center.y + trans.at<double>(2,2));
+//  warp_center.y = (trans.at<double>(1,0)*avg_center.x + trans.at<double>(1,1)*avg_center.y + trans.at<double>(1,2)) / (trans.at<double>(2,0)*avg_center.x + trans.at<double>(2,1)*avg_center.y + trans.at<double>(2,2));
+
+  warp_center.x = (trans.at<double>(0,0)*center.x + trans.at<double>(0,1)*center.y + trans.at<double>(0,2)) / (trans.at<double>(2,0)*center.x + trans.at<double>(2,1)*center.y + trans.at<double>(2,2));
+  warp_center.y = (trans.at<double>(1,0)*center.x + trans.at<double>(1,1)*center.y + trans.at<double>(1,2)) / (trans.at<double>(2,0)*center.x + trans.at<double>(2,1)*center.y + trans.at<double>(2,2));
+
+//  printf("\nbbox_center :[%d, %d] \n", center.x, center.y);
+//  printf("\nwrap_bbox_center :[%d, %d] \n", warp_center.x, warp_center.y);
+//  printf("\nprev_bbox_center :[%d, %d] \n",prev_center.x, prev_center.y);
+//  printf("\ncnt:%d : avg_bbox_center :[%d, %d] \n", cnt, avg_center.x, avg_center.y);
+
+  return warp_center;
 }
 
 Mat LaneDetector::draw_lane(Mat _sliding_frame, Mat _frame) {
@@ -800,7 +846,7 @@ void LaneDetector::calc_curv_rad_and_center_dist() {
 
 Mat LaneDetector::drawBox(Mat frame)
 {
-  std::string name = "scale truck";
+  std::string name = name_;
   Size text_size = getTextSize(name, FONT_HERSHEY_COMPLEX_SMALL, 1.2, 2, 0);
   int max_width = (text_size.width > w_ + 2) ? text_size.width : (w_ + 2);
   Scalar color(150, 0, 150);
@@ -811,17 +857,27 @@ Mat LaneDetector::drawBox(Mat frame)
   return frame;
 }
 
-Point LaneDetector::warpPoint(Point p, Mat trans) {
-  Point dst;
-  float div = trans.at<float>(0,2) * p.x + trans.at<float>(1,2) * p.y + trans.at<float>(2,2);
-  dst = Point(int((trans.at<float>(0,0) * p.x + trans.at<float>(1,0) * p.y + trans.at<float>(2,0)) / div),
-		int((trans.at<float>(0,1) * p.x + trans.at<float>(1,1) * p.y + trans.at<float>(2,1)) / div));
-  return dst;
-}
-
 float LaneDetector::display_img(Mat _frame, int _delay, bool _view) {    
   Mat new_frame, gray_frame, binary_frame, sliding_frame, resized_frame, yolo_frame;
   cuda::GpuMat gpu_frame, gpu_remap_frame, gpu_warped_frame, gpu_blur_frame, gpu_gray_frame;
+  cv::Point center, warp_center;
+  static struct timeval startTime, endTime;
+  static bool flag = false;
+  double diffTime = 0.0;
+  gettimeofday(&endTime, NULL);
+  if (!flag){
+    diffTime = (endTime.tv_sec - start_.tv_sec) + (endTime.tv_usec - start_.tv_usec)/1000000.0;
+    flag = true;
+  }
+  else{
+    diffTime = (endTime.tv_sec - startTime.tv_sec) + (endTime.tv_usec - startTime.tv_usec)/1000000.0;
+    startTime = endTime;
+  }
+  x_ = lowPassFilter(diffTime, x_, 0);
+  y_ = lowPassFilter(diffTime, y_, 1);
+  w_ = lowPassFilter(diffTime, w_, 2);
+  h_ = lowPassFilter(diffTime, h_, 3);
+  center = Point(x_ + w_ / 2, y_ + h_);
 
   if(!_frame.empty()) resize(_frame, new_frame, Size(width_, height_));
   Mat trans = getPerspectiveTransform(corners_, warpCorners_);
@@ -843,11 +899,15 @@ float LaneDetector::display_img(Mat _frame, int _delay, bool _view) {
 
   sliding_frame = detect_lines_sliding_window(binary_frame, _view);
   calc_curv_rad_and_center_dist();
-  //sliding_frame = estimateDistance(sliding_frame);  
+  warp_center = warpPoint(center, trans);
+  cv::circle(sliding_frame, warp_center, 5, Scalar(255, 0, 255), 2, -1);
+  sliding_frame = estimateDistance(sliding_frame, warp_center);  
 
   if (_view) {
     resized_frame = draw_lane(sliding_frame, new_frame);
-    yolo_frame = drawBox(resized_frame);
+    cv::circle(new_frame, Point(x_ + w_ / 2, y_ + h_), 5, Scalar(255, 0, 255), 2, -1);
+    yolo_frame = resized_frame.clone();
+    drawBox(yolo_frame);
     
     namedWindow("Window1");
     moveWindow("Window1", 0, 0);
@@ -855,6 +915,8 @@ float LaneDetector::display_img(Mat _frame, int _delay, bool _view) {
     moveWindow("Window2", 640, 0);
     namedWindow("Window3");
     moveWindow("Window3", 1280, 0);
+    namedWindow("Window4");
+    moveWindow("Window4", 640, 520);
       
     if(!new_frame.empty()) {
       resize(new_frame, new_frame, Size(640, 480));
@@ -864,13 +926,14 @@ float LaneDetector::display_img(Mat _frame, int _delay, bool _view) {
       resize(sliding_frame, sliding_frame, Size(640, 480));
       imshow("Window2", sliding_frame);
     }
+//    if(!resized_frame.empty()){
+//      resize(resized_frame, resized_frame, Size(640, 480));
+//      imshow("Window3", resized_frame);
+//    }
 //    if(!yolo_frame.empty()){
-    if(!resized_frame.empty()){
-      resize(resized_frame, resized_frame, Size(640, 480));
-      imshow("Window3", resized_frame);
 //      resize(yolo_frame, yolo_frame, Size(640, 480));
-//      imshow("Window3", yolo_frame);
-    }
+//      imshow("Window4", yolo_frame);
+//    }
 
     waitKey(_delay);
   }

@@ -9,6 +9,7 @@
 #include <opencv2/cudawarping.hpp>
 #include <opencv2/cudafilters.hpp>
 #include <iostream>
+#include <string>
 #include <cmath>
 #include <fstream>
 #include <ros/ros.h>
@@ -40,7 +41,9 @@ public:
 	float lateral_offset_ = 0.0f;
 
 	/********** bbox *********/
+	std::string name_;
 	unsigned int x_, y_, w_, h_;
+	unsigned int prev_x_, prev_y_, prev_w_, prev_h_;
 
 private:
 	void LoadParams(void);
@@ -49,10 +52,10 @@ private:
 	Mat warped_back_img(Mat _frame);
 	Mat warped_img(Mat _frame);
 	Mat detect_lines_sliding_window(Mat _frame, bool _view);
-	Mat estimateDistance(Mat frame);
-	float lowPassFilter(float sampling_time, float est_dist);
+	Mat estimateDistance(Mat frame, cv::Point prec_truck_center);
+	unsigned int lowPassFilter(double sampling_time, unsigned int est_value, int seq);
 	Mat draw_lane(Mat _sliding_frame, Mat _frame);
-	Point warpPoint(Point p, Mat trans);
+	Point warpPoint(Point center, Mat trans);
 	Mat drawBox(Mat frame);
 	void calc_curv_rad_and_center_dist();
 	void clear_release();
