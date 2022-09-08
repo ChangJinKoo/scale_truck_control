@@ -358,7 +358,7 @@ void ScaleTruckController::requestImage(ImgData* img_data)
       gettimeofday(&img_data->startTime, NULL);
       ZMQ_SOCKET_.requestImageZMQ(img_data); 
     }
-    std::this_thread::sleep_for(std::chrono::milliseconds(15));
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
   } 
 }
 
