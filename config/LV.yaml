@@ -55,7 +55,7 @@ params:
     e: 1.6722
 
 Calibration:
-  matrix:
+  f_matrix:
     a: 329.10805843346054
     b: 0.
     c: 320. 
@@ -65,24 +65,52 @@ Calibration:
     g: 0. 
     h: 0. 
     i: 1.
-  dist_coef:
+  f_dist_coef:
     a: -0.34335984453339752
     b: 0.14676511736197059
     c: 0.
     d: 0. 
     e: -0.032260115806245951
+  r_matrix:
+    a: 326.31389227574556
+    b: 0.
+    c: 320. 
+    d: 0. 
+    e: 326.31389227574556
+    f: 240. 
+    g: 0. 
+    h: 0. 
+    i: 1.
+  r_dist_coef:
+    a: -0.33295846454356126
+    b: 0.12386827336557986
+    c: 0.
+    d: 0. 
+    e: -0.022565312043601477
 
 ROI:
-  width: 640
-  height: 480
-  top_gap: 0.416
-  bot_gap: 0.185
-  top_height: 0.99
-  bot_height: 0.47
-  extra_f: 0.00
-  extra_b: 0.00
-  extra_up: 140
-  extra_down: 180
+  front_cam:
+    width: 640
+    height: 480
+    top_gap: 0.416
+    bot_gap: 0.185
+    top_height: 0.99
+    bot_height: 0.47
+    extra_f: 0.00
+    extra_b: 0.00
+    extra_up: 140
+    extra_down: 180
+  rear_cam:
+    width: 640
+    height: 480
+    top_gap: 0.416
+    bot_gap: 0.185
+    top_height: 0.99
+    bot_height: 0.47
+    extra_f: 0.00
+    extra_b: 0.00
+    extra_up: 140
+    extra_down: 180
 
 rear_camera_usage:
   use: true

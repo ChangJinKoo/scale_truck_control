@@ -13,28 +13,53 @@ LaneDetector::LaneDetector(ros::NodeHandle nh)
   gettimeofday(&start_, NULL);
 
       /******* Camera  calibration *******/
-  double matrix[9], dist_coef[5];
-  nodeHandle_.param("Calibration/matrix/a",matrix[0], 3.2918100682757097e+02);
-  nodeHandle_.param("Calibration/matrix/b",matrix[1], 0.);
-  nodeHandle_.param("Calibration/matrix/c",matrix[2], 320.);
-  nodeHandle_.param("Calibration/matrix/d",matrix[3], 0.);
-  nodeHandle_.param("Calibration/matrix/e",matrix[4], 3.2918100682757097e+02);
-  nodeHandle_.param("Calibration/matrix/f",matrix[5], 240.);
-  nodeHandle_.param("Calibration/matrix/g",matrix[6], 0.);
-  nodeHandle_.param("Calibration/matrix/h",matrix[7], 0.);
-  nodeHandle_.param("Calibration/matrix/i",matrix[8], 1.);
+  double f_matrix[9], f_dist_coef[5], r_matrix[9], r_dist_coef[5];
+  nodeHandle_.param("Calibration/f_matrix/a",f_matrix[0], 3.2918100682757097e+02);
+  nodeHandle_.param("Calibration/f_matrix/b",f_matrix[1], 0.);
+  nodeHandle_.param("Calibration/f_matrix/c",f_matrix[2], 320.);
+  nodeHandle_.param("Calibration/f_matrix/d",f_matrix[3], 0.);
+  nodeHandle_.param("Calibration/f_matrix/e",f_matrix[4], 3.2918100682757097e+02);
+  nodeHandle_.param("Calibration/f_matrix/f",f_matrix[5], 240.);
+  nodeHandle_.param("Calibration/f_matrix/g",f_matrix[6], 0.);
+  nodeHandle_.param("Calibration/f_matrix/h",f_matrix[7], 0.);
+  nodeHandle_.param("Calibration/f_matrix/i",f_matrix[8], 1.);
 
-  nodeHandle_.param("Calibration/dist_coef/a",dist_coef[0], -3.2566540239089398e-01);
-  nodeHandle_.param("Calibration/dist_coef/b",dist_coef[1], 1.1504807178349362e-01);
-  nodeHandle_.param("Calibration/dist_coef/c",dist_coef[2], 0.);
-  nodeHandle_.param("Calibration/dist_coef/d",dist_coef[3], 0.);
-  nodeHandle_.param("Calibration/dist_coef/e",dist_coef[4], -2.1908791800876997e-02);
+  nodeHandle_.param("Calibration/f_dist_coef/a",f_dist_coef[0], -3.2566540239089398e-01);
+  nodeHandle_.param("Calibration/f_dist_coef/b",f_dist_coef[1], 1.1504807178349362e-01);
+  nodeHandle_.param("Calibration/f_dist_coef/c",f_dist_coef[2], 0.);
+  nodeHandle_.param("Calibration/f_dist_coef/d",f_dist_coef[3], 0.);
+  nodeHandle_.param("Calibration/f_dist_coef/e",f_dist_coef[4], -2.1908791800876997e-02);
 
-  Mat camera_matrix = Mat::eye(3, 3, CV_64FC1);
-  Mat dist_coeffs = Mat::zeros(1, 5, CV_64FC1);
-  camera_matrix = (Mat1d(3, 3) << matrix[0], matrix[1], matrix[2], matrix[3], matrix[4], matrix[5], matrix[6], matrix[7], matrix[8]);
-  dist_coeffs = (Mat1d(1, 5) << dist_coef[0], dist_coef[1], dist_coef[2], dist_coef[3], dist_coef[4]);
-  initUndistortRectifyMap(camera_matrix, dist_coeffs, Mat(), camera_matrix, Size(640, 480), CV_32FC1, map1_, map2_);
+  nodeHandle_.param("Calibration/r_matrix/a",r_matrix[0], 3.2918100682757097e+02);
+  nodeHandle_.param("Calibration/r_matrix/b",r_matrix[1], 0.);
+  nodeHandle_.param("Calibration/r_matrix/c",r_matrix[2], 320.);
+  nodeHandle_.param("Calibration/r_matrix/d",r_matrix[3], 0.);
+  nodeHandle_.param("Calibration/r_matrix/e",r_matrix[4], 3.2918100682757097e+02);
+  nodeHandle_.param("Calibration/r_matrix/f",r_matrix[5], 240.);
+  nodeHandle_.param("Calibration/r_matrix/g",r_matrix[6], 0.);
+  nodeHandle_.param("Calibration/r_matrix/h",r_matrix[7], 0.);
+  nodeHandle_.param("Calibration/r_matrix/i",r_matrix[8], 1.);
+
+  nodeHandle_.param("Calibration/r_dist_coef/a",r_dist_coef[0], -3.2566540239089398e-01);
+  nodeHandle_.param("Calibration/r_dist_coef/b",r_dist_coef[1], 1.1504807178349362e-01);
+  nodeHandle_.param("Calibration/r_dist_coef/c",r_dist_coef[2], 0.);
+  nodeHandle_.param("Calibration/r_dist_coef/d",r_dist_coef[3], 0.);
+  nodeHandle_.param("Calibration/r_dist_coef/e",r_dist_coef[4], -2.1908791800876997e-02);
+
+  Mat f_camera_matrix = Mat::eye(3, 3, CV_64FC1);
+  Mat f_dist_coeffs = Mat::zeros(1, 5, CV_64FC1);
+  f_camera_matrix = (Mat1d(3, 3) << f_matrix[0], f_matrix[1], f_matrix[2], f_matrix[3], f_matrix[4], f_matrix[5], f_matrix[6], f_matrix[7], f_matrix[8]);
+  f_dist_coeffs = (Mat1d(1, 5) << f_dist_coef[0], f_dist_coef[1], f_dist_coef[2], f_dist_coef[3], f_dist_coef[4]);
+  initUndistortRectifyMap(f_camera_matrix, f_dist_coeffs, Mat(), f_camera_matrix, Size(640, 480), CV_32FC1, f_map1_, f_map2_);
+
+  Mat r_camera_matrix = Mat::eye(3, 3, CV_64FC1);
+  Mat r_dist_coeffs = Mat::zeros(1, 5, CV_64FC1);
+  r_camera_matrix = (Mat1d(3, 3) << r_matrix[0], r_matrix[1], r_matrix[2], r_matrix[3], r_matrix[4], r_matrix[5], r_matrix[6], r_matrix[7], r_matrix[8]);
+  r_dist_coeffs = (Mat1d(1, 5) << r_dist_coef[0], r_dist_coef[1], r_dist_coef[2], r_dist_coef[3], r_dist_coef[4]);
+  initUndistortRectifyMap(r_camera_matrix, r_dist_coeffs, Mat(), r_camera_matrix, Size(640, 480), CV_32FC1, r_map1_, r_map2_);
+
+  map1_ = f_map1_.clone();
+  map2_ = f_map2_.clone();
 
   /********** PID control ***********/
   prev_err_ = 0;
@@ -51,41 +76,83 @@ LaneDetector::LaneDetector(ros::NodeHandle nh)
 
   e_values_.resize(3);
 
+  float t_gap[2], b_gap[2], t_height[2], b_height[2], f_extra[2], b_extra[2];
+  int top_gap[2], bot_gap[2], top_height[2], bot_height[2], extra_up[2], extra_down[2];
+
+  nodeHandle_.param("ROI/dynamic_roi",option_, true);
+  nodeHandle_.param("ROI/threshold",threshold_, 128);
+
+  nodeHandle_.param("ROI/front_cam/top_gap",t_gap[0], 0.336f);
+  nodeHandle_.param("ROI/front_cam/bot_gap",b_gap[0], 0.078f);
+  nodeHandle_.param("ROI/front_cam/top_height",t_height[0], 0.903f);
+  nodeHandle_.param("ROI/front_cam/bot_height",b_height[0], 0.528f);
+  nodeHandle_.param("ROI/front_cam/extra_f",f_extra[0], 0.0f);
+  nodeHandle_.param("ROI/front_cam/extra_b",b_extra[0], 0.0f);
+  nodeHandle_.param("ROI/front_cam/extra_up",extra_up[0], 0);
+  nodeHandle_.param("ROI/front_cam/extra_down",extra_down[0], 0);
+
+  nodeHandle_.param("ROI/rear_cam/top_gap",t_gap[1], 0.886f);
+  nodeHandle_.param("ROI/rear_cam/bot_gap",b_gap[1], 0.078f);
+  nodeHandle_.param("ROI/rear_cam/top_height",t_height[1], 0.903f);
+  nodeHandle_.param("ROI/rear_cam/bot_height",b_height[1], 0.528f);
+  nodeHandle_.param("ROI/rear_cam/extra_f",f_extra[1], 0.0f);
+  nodeHandle_.param("ROI/rear_cam/extra_b",b_extra[1], 0.0f);
+  nodeHandle_.param("ROI/rear_cam/extra_up",extra_up[1], 0);
+  nodeHandle_.param("ROI/rear_cam/extra_down",extra_down[1], 0);
+
+  distance_ = 0;
+
   corners_.resize(4);
   warpCorners_.resize(4);
 
-  float t_gap, b_gap, t_height, b_height, f_extra, b_extra;
-  int top_gap, bot_gap, top_height, bot_height, extra, extra_up, extra_down;
-  nodeHandle_.param("ROI/top_gap",t_gap, 0.336f);
-  nodeHandle_.param("ROI/bot_gap",b_gap, 0.078f);
-  nodeHandle_.param("ROI/top_height",t_height, 0.903f);
-  nodeHandle_.param("ROI/bot_height",b_height, 0.528f);
-  nodeHandle_.param("ROI/extra_f",f_extra, 0.0f);
-  nodeHandle_.param("ROI/extra_b",b_extra, 0.0f);
-  nodeHandle_.param("ROI/extra_up",extra_up, 0);
-  nodeHandle_.param("ROI/extra_down",extra_down, 0);
-  nodeHandle_.param("ROI/dynamic_roi",option_, true);
-  nodeHandle_.param("ROI/threshold",threshold_, 128);
-  distance_ = 0;
-  top_gap = width_ * t_gap; 
-  bot_gap = width_ * b_gap;
-  top_height = height_ * t_height;
-  bot_height = height_ * b_height;
+  /*** front cam ROI setting ***/
+  fROIcorners_.resize(4);
+  fROIwarpCorners_.resize(4);
 
-  /* ROI corner points  */
-  corners_[0] = Point2f(top_gap+f_extra, bot_height);
-  corners_[1] = Point2f((width_ - top_gap)+f_extra, bot_height);
-  corners_[2] = Point2f(bot_gap+b_extra, top_height);
-  corners_[3] = Point2f((width_ - bot_gap)+b_extra, top_height);
+  top_gap[0] = width_ * t_gap[0]; 
+  bot_gap[0] = width_ * b_gap[0];
+  top_height[0] = height_ * t_height[0];
+  bot_height[0] = height_ * b_height[0];
+
+  fROIcorners_[0] = Point2f(top_gap[0]+f_extra[0], bot_height[0]);
+  fROIcorners_[1] = Point2f((width_ - top_gap[0])+f_extra[0], bot_height[0]);
+  fROIcorners_[2] = Point2f(bot_gap[0]+b_extra[0], top_height[0]);
+  fROIcorners_[3] = Point2f((width_ - bot_gap[0])+b_extra[0], top_height[0]);
   
-  wide_extra_upside_ = extra_up;
-  wide_extra_downside_ = extra_down;
+  wide_extra_upside_[0] = extra_up[0];
+  wide_extra_downside_[0] = extra_down[0];
   
-  /* Spread of ROI corner points */
-  warpCorners_[0] = Point2f(wide_extra_upside_, 0.0);
-  warpCorners_[1] = Point2f(width_ - wide_extra_upside_, 0.0);
-  warpCorners_[2] = Point2f(wide_extra_downside_, height_);
-  warpCorners_[3] = Point2f(width_ - wide_extra_downside_, height_);
+  fROIwarpCorners_[0] = Point2f(wide_extra_upside_[0], 0.0);
+  fROIwarpCorners_[1] = Point2f(width_ - wide_extra_upside_[0], 0.0);
+  fROIwarpCorners_[2] = Point2f(wide_extra_downside_[0], height_);
+  fROIwarpCorners_[3] = Point2f(width_ - wide_extra_downside_[0], height_);
+  /*** front cam ROI setting ***/
+
+  /*** rear cam ROI setting ***/
+  rROIcorners_.resize(4);
+  rROIwarpCorners_.resize(4);
+
+  top_gap[1] = width_ * t_gap[1]; 
+  bot_gap[1] = width_ * b_gap[1];
+  top_height[1] = height_ * t_height[1];
+  bot_height[1] = height_ * b_height[1];
+
+  rROIcorners_[0] = Point2f(top_gap[1]+f_extra[1], bot_height[1]);
+  rROIcorners_[1] = Point2f((width_ - top_gap[1])+f_extra[1], bot_height[1]);
+  rROIcorners_[2] = Point2f(bot_gap[1]+b_extra[1], top_height[1]);
+  rROIcorners_[3] = Point2f((width_ - bot_gap[1])+b_extra[1], top_height[1]);
+  
+  wide_extra_upside_[1] = extra_up[1];
+  wide_extra_downside_[1] = extra_down[1];
+  
+  rROIwarpCorners_[0] = Point2f(wide_extra_upside_[1], 0.0);
+  rROIwarpCorners_[1] = Point2f(width_ - wide_extra_upside_[1], 0.0);
+  rROIwarpCorners_[2] = Point2f(wide_extra_downside_[1], height_);
+  rROIwarpCorners_[3] = Point2f(width_ - wide_extra_downside_[1], height_);
+  /*** rear cam ROI setting ***/
+   
+  std::copy(fROIcorners_.begin(), fROIcorners_.end(), corners_.begin());
+  std::copy(fROIwarpCorners_.begin(), fROIwarpCorners_.end(), warpCorners_.begin());
 
   /* Lateral Control coefficient */
   nodeHandle_.param("params/K", K_, 0.15f);
@@ -113,22 +180,6 @@ void LaneDetector::LoadParams(void){
   nodeHandle_.param("LaneDetector/trust_height",trust_height_, 1.0f);  
   nodeHandle_.param("LaneDetector/lp",lp_, 756.0f);  
   nodeHandle_.param("LaneDetector/steer_angle",SteerAngle_, 0.0f);
-}
-
-Mat LaneDetector::warped_img(Mat _frame) {
-  Mat result, trans;
-  trans = getPerspectiveTransform(corners_, warpCorners_);
-  warpPerspective(_frame, result, trans, Size(width_, height_));
-
-  return result;
-}
-
-Mat LaneDetector::warped_back_img(Mat _frame) {
-  Mat result, trans;
-  trans = getPerspectiveTransform(warpCorners_, corners_);
-  warpPerspective(_frame, result, trans, Size(width_, height_));
-
-  return result;
 }
 
 int LaneDetector::arrMaxIdx(int hist[], int start, int end, int Max) {
@@ -564,7 +615,10 @@ unsigned int LaneDetector::lowPassFilter(double sampling_time, unsigned int est_
     res = (tau * prev_h_ + sampling_time*est_value)/(tau+sampling_time);
     prev_h_ = res;
   }
-  return res;
+  if (res > 0 && res < 640)
+    return res;
+  else
+    return est_value;
 }
 
 Point LaneDetector::warpPoint(Point center, Mat trans){
@@ -602,7 +656,7 @@ Point LaneDetector::warpPoint(Point center, Mat trans){
 
 Mat LaneDetector::draw_lane(Mat _sliding_frame, Mat _frame) {
   Mat new_frame, left_coef(left_coef_), right_coef(right_coef_), center_coef(center_coef_), trans;
-  trans = getPerspectiveTransform(warpCorners_, corners_);
+  trans = getPerspectiveTransform(fROIwarpCorners_, fROIcorners_);
   _frame.copyTo(new_frame);
 
   vector<Point> left_point;
@@ -858,12 +912,16 @@ Mat LaneDetector::drawBox(Mat frame)
 }
 
 float LaneDetector::display_img(Mat _frame, int _delay, bool _view) {    
-  Mat new_frame, gray_frame, binary_frame, sliding_frame, resized_frame, yolo_frame;
+  Mat new_frame, gray_frame, binary_frame, sliding_frame, resized_frame, yolo_frame, truck_frame;
   cuda::GpuMat gpu_frame, gpu_remap_frame, gpu_warped_frame, gpu_blur_frame, gpu_gray_frame;
-  cv::Point center, warp_center;
+  cv::Point center, warp_center, p1, p2, p3, p4, warp_p1, warp_p2, warp_p3, warp_p4;
   static struct timeval startTime, endTime;
   static bool flag = false;
   double diffTime = 0.0;
+
+  if(!_frame.empty()) resize(_frame, new_frame, Size(width_, height_));
+  Mat trans = getPerspectiveTransform(corners_, warpCorners_);
+
   gettimeofday(&endTime, NULL);
   if (!flag){
     diffTime = (endTime.tv_sec - start_.tv_sec) + (endTime.tv_usec - start_.tv_usec)/1000000.0;
@@ -878,9 +936,7 @@ float LaneDetector::display_img(Mat _frame, int _delay, bool _view) {
   w_ = lowPassFilter(diffTime, w_, 2);
   h_ = lowPassFilter(diffTime, h_, 3);
   center = Point(x_ + w_ / 2, y_ + h_);
-
-  if(!_frame.empty()) resize(_frame, new_frame, Size(width_, height_));
-  Mat trans = getPerspectiveTransform(corners_, warpCorners_);
+  warp_center = warpPoint(center, trans);
 
   cuda::GpuMat gpu_map1, gpu_map2;
   gpu_map1.upload(map1_);
@@ -897,9 +953,18 @@ float LaneDetector::display_img(Mat _frame, int _delay, bool _view) {
   gpu_gray_frame.download(gray_frame);
   adaptiveThreshold(gray_frame, binary_frame, 255, ADAPTIVE_THRESH_MEAN_C, THRESH_BINARY, 51, -50);
 
+  Rect rect(200, 0, 320, 240);
+  truck_frame = binary_frame(rect);
+  
+
+//  for (int u = warp_p1.x; u < warp_p2.x; u++){
+//    for (int v = warp_p1.y; v < warp_p2.y; v++){
+//      truck_frame
+//    }
+//  }
+
   sliding_frame = detect_lines_sliding_window(binary_frame, _view);
   calc_curv_rad_and_center_dist();
-  warp_center = warpPoint(center, trans);
   cv::circle(sliding_frame, warp_center, 5, Scalar(255, 0, 255), 2, -1);
   sliding_frame = estimateDistance(sliding_frame, warp_center);  
 
@@ -925,6 +990,10 @@ float LaneDetector::display_img(Mat _frame, int _delay, bool _view) {
     if(!sliding_frame.empty()) {
       resize(sliding_frame, sliding_frame, Size(640, 480));
       imshow("Window2", sliding_frame);
+    }
+    if(!truck_frame.empty()){
+      //resize(truck_frame, truck_frame, Size(640, 480));
+      imshow("Window3", truck_frame);
     }
 //    if(!resized_frame.empty()){
 //      resize(resized_frame, resized_frame, Size(640, 480));

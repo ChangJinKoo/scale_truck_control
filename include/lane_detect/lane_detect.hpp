@@ -42,15 +42,13 @@ public:
 
 	/********** bbox *********/
 	std::string name_;
-	unsigned int x_, y_, w_, h_;
-	unsigned int prev_x_, prev_y_, prev_w_, prev_h_;
+	unsigned int x_ = 0, y_ = 0, w_ = 0, h_ = 0;
+	unsigned int prev_x_ = 0, prev_y_ = 0, prev_w_ = 0, prev_h_ = 0;
 
 private:
 	void LoadParams(void);
 	int arrMaxIdx(int hist[], int start, int end, int Max);
 	Mat polyfit(vector<int> x_val, vector<int> y_val);
-	Mat warped_back_img(Mat _frame);
-	Mat warped_img(Mat _frame);
 	Mat detect_lines_sliding_window(Mat _frame, bool _view);
 	Mat estimateDistance(Mat frame, cv::Point prec_truck_center);
 	unsigned int lowPassFilter(double sampling_time, unsigned int est_value, int seq);
@@ -64,12 +62,12 @@ private:
 	ros::NodeHandle nodeHandle_;
 
 	/********** Camera calibration **********/
-	Mat map1_, map2_;
+	Mat map1_, map2_, f_map1_, f_map2_, r_map1_, r_map2_;
 
 	/********** Lane_detect ***********/
-	vector<Point2f> corners_;
-	vector<Point2f> warpCorners_;
-	float wide_extra_upside_, wide_extra_downside_;
+	vector<Point2f> corners_, fROIcorners_, rROIcorners_;
+	vector<Point2f> warpCorners_, fROIwarpCorners_, rROIwarpCorners_;
+	float wide_extra_upside_[2], wide_extra_downside_[2];
 
 	int last_Llane_base_;
 	int last_Rlane_base_;

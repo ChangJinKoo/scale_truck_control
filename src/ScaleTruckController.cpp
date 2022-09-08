@@ -690,7 +690,10 @@ void ScaleTruckController::bboxCallback(const yolo_object_detection::bounding_bo
   {
     std::scoped_lock lock(bbox_mutex_);
     name_ = msg.name;
-    if (msg.x < 640 && msg.y < 480 && msg.w < 640 && msg.h < 480){
+    if ((msg.x > 0 && msg.x < 640) && \
+        (msg.y > 0 && msg.y < 480) && \
+	(msg.w > 0 && msg.w < 640) && \
+	(msg.h > 0 && msg.h < 480)){
       x_ = msg.x;
       y_ = msg.y;
       w_ = msg.w;
