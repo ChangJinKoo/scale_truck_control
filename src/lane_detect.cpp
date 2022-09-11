@@ -81,6 +81,8 @@ LaneDetector::LaneDetector(ros::NodeHandle nh)
 
   nodeHandle_.param("ROI/dynamic_roi",option_, true);
   nodeHandle_.param("ROI/threshold",threshold_, 128);
+  nodeHandle_.param("ROI/canny/thresh1",canny_thresh1_, 100);
+  nodeHandle_.param("ROI/canny/thresh2",canny_thresh2_, 200);
 
   nodeHandle_.param("ROI/front_cam/top_gap",t_gap[0], 0.336f);
   nodeHandle_.param("ROI/front_cam/bot_gap",b_gap[0], 0.078f);
@@ -99,6 +101,11 @@ LaneDetector::LaneDetector(ros::NodeHandle nh)
   nodeHandle_.param("ROI/rear_cam/extra_b",b_extra[1], 0.0f);
   nodeHandle_.param("ROI/rear_cam/extra_up",extra_up[1], 0);
   nodeHandle_.param("ROI/rear_cam/extra_down",extra_down[1], 0);
+
+  nodeHandle_.param("crop/x", crop_x_, 100);
+  nodeHandle_.param("crop/y", crop_y_, 0);
+  nodeHandle_.param("crop/width", crop_width_, 0);
+  nodeHandle_.param("crop/height", crop_height_, 0);
 
   distance_ = 0;
 
@@ -166,6 +173,8 @@ LaneDetector::LaneDetector(ros::NodeHandle nh)
   nodeHandle_.param("params/b/c", b_[2], 5.0931);
   nodeHandle_.param("params/b/d", b_[3], -4.9047);
   nodeHandle_.param("params/b/e", b_[4], 1.6722);
+  nodeHandle_.param("params/K3", K3_, 0.01f);
+  nodeHandle_.param("params/K4", K4_, 0.01f);
 
   LoadParams();
 }
@@ -180,6 +189,7 @@ void LaneDetector::LoadParams(void){
   nodeHandle_.param("LaneDetector/trust_height",trust_height_, 1.0f);  
   nodeHandle_.param("LaneDetector/lp",lp_, 756.0f);  
   nodeHandle_.param("LaneDetector/steer_angle",SteerAngle_, 0.0f);
+  nodeHandle_.param("LaneDetector/eL_height2",eL_height2_, 1.0f);  
 }
 
 int LaneDetector::arrMaxIdx(int hist[], int start, int end, int Max) {
@@ -508,148 +518,57 @@ Mat LaneDetector::detect_lines_sliding_window(Mat _frame, bool _view) {
 
   if (left_x_.size() != 0) {
     left_coef_ = polyfit(left_y_, left_x_);
-    
     for(int i = 0; i < 480; i++){
       left_lane_value[i] = left_coef_.at<float>(2,0) * pow(i,2) + left_coef_.at<float>(1,0) * i + left_coef_.at<float>(0,0);
     }
-    
   }
   if (right_x_.size() != 0) {
     right_coef_ = polyfit(right_y_, right_x_);
-    
     for(int i = 0; i < 480; i++){
       right_lane_value[i] = right_coef_.at<float>(2,0) * pow(i,2) + right_coef_.at<float>(1,0) * i + right_coef_.at<float>(0,0);
     }
-    
   }
   
   for (int i = 0; i < 480; i++){
     float center_x_value = (left_lane_value[i] + right_lane_value[i]) / 2;
     center_y_.push_back(i);
     center_x_.push_back(center_x_value);
-//    printf("Desired Points : (%d, %.3f)\n", i, center_x_value);
   }
   
-//  if ((left_x_.size() != 0) && (right_x_.size() != 0)) {
   if (center_x_.size() != 0){
     center_coef_ = polyfit(center_y_, center_x_);
   }
-//  }  
+
+  for(int i = 0; i < 480; i++){
+    Point left_tmp(left_lane_value[i], i);
+    Point right_tmp(right_lane_value[i], i);
+    left_lane_.push_back(left_tmp);
+    right_lane_.push_back(right_tmp);
+  }
+
   delete[] hist;
 
   return result;
 }
 
-Mat LaneDetector::estimateDistance(Mat frame, cv::Point prec_truck_center){
-  Mat res_frame;
 
-/* Estimation by sliding window 
-  frame.copyTo(res_frame);
-  int n_rect = 4;
-  int height = frame.rows / n_rect;
-  int width = height * n_rect / 4;
-  int dist_pixel = 0;
-  int cnt = 0;
-  int min_pixel = 20;
-  float est_dist = 0;
+float LaneDetector::lowPassFilter(double sampling_time, float est_value, float prev_res){
+  float res = 0;
+  float tau = 0.15f;
+  double st = 0.0;
 
-  for (int i = 0; i < n_rect; i++){
-    float center_p_y = (i*2+1) * height / 2; 
-    float center_p_x = center_coef_.at<float>(2,0) * pow(center_p_y,2) + center_coef_.at<float>(1,0) * center_p_y + center_coef_.at<float>(0,0);
-    float p_y1 = center_p_y - height / 2; 
-    float p_x1 = center_p_x - width / 2;
-    float p_y2 = center_p_y + height / 2; 
-    float p_x2 = center_p_x + width / 2;    
-    for (int h = p_y1; h < p_y2; h++){
-      for (int w = p_x1; w < p_x2; w++){
-        if ((res_frame.at<Vec3b>(Point(w,h))[0] == 255) && \
-		(res_frame.at<Vec3b>(Point(w,h))[1] == 255) && \
-		(res_frame.at<Vec3b>(Point(w,h))[2] == 255)){
-          if (cnt > min_pixel) dist_pixel = h;
-          cnt++;
-	}
-      }
-    }
-    if (cnt < min_pixel) break;
-    rectangle(res_frame, Point(p_x1, p_y1), Point(p_x2, p_y2), Scalar(0,255,0), 1, 8, 0);
-    cnt = 0;
-  }
+  if (sampling_time > 1.0) st = 1.0;
+  else st = sampling_time;
+  res = ((tau * prev_res) + (st * est_value)) / (tau + st);
 
-  line(res_frame, Point(180, dist_pixel), Point(460, dist_pixel), Scalar::all(255), 1, 8, 0);
-
-  // Convert pixel to distance (1 m = 490 px, Max distance in ROI is 1.24 m)
-  //est_dist = 1.24f - (dist_pixel/490.0f);
-  est_dist = 1.2f - (dist_pixel/500.0f);
-  est_dist_ = est_dist;
-*/
-  
-  frame.copyTo(res_frame);
-  int dist_pixel = 0;
-  float est_dist = 0.f;
-  dist_pixel = prec_truck_center.y;
-  line(res_frame, Point(180, dist_pixel), Point(460, dist_pixel), Scalar::all(255), 1, 8, 0);
-  //est_dist = 1.24f - (dist_pixel/490.0f);
-  est_dist = 1.2f - (dist_pixel/500.0f);
-  if (est_dist > 0.3f && est_dist < 1.24f) est_dist_ = est_dist;
-
-  return res_frame;
-}
-
-unsigned int LaneDetector::lowPassFilter(double sampling_time, unsigned int est_value, int seq){
-  unsigned int res = 0;
-  unsigned int prev_res = 0;
-  float tau = 0.1f;
-  if (seq == 0){
-    res = (tau * prev_x_ + sampling_time*est_value)/(tau+sampling_time);
-    prev_x_ = res;
-  }
-  else if (seq == 1){
-    res = (tau * prev_y_ + sampling_time*est_value)/(tau+sampling_time);
-    prev_y_ = res;
-  }
-  else if (seq == 2){
-    res = (tau * prev_w_ + sampling_time*est_value)/(tau+sampling_time);
-    prev_w_ = res;
-  }
-  else if (seq == 3){
-    res = (tau * prev_h_ + sampling_time*est_value)/(tau+sampling_time);
-    prev_h_ = res;
-  }
-  if (res > 0 && res < 640)
-    return res;
-  else
-    return est_value;
+  return res;
 }
 
 Point LaneDetector::warpPoint(Point center, Mat trans){
-  static Point prev_center;
-  static int cnt = 0;
   Point warp_center, avg_center;
-
-//  if (cnt > 1000){
-//    prev_center = (Point)0;
-//    cnt = 0;
-//  }
-
-//  if(center.x > 0 && center.y > 0){
-//    prev_center.x += center.x;
-//    prev_center.y += center.y;
-//    cnt++;
-//  }
-
-//  avg_center.x = prev_center.x / cnt;
-//  avg_center.y = prev_center.y / cnt;
-
-//  warp_center.x = (trans.at<double>(0,0)*avg_center.x + trans.at<double>(0,1)*avg_center.y + trans.at<double>(0,2)) / (trans.at<double>(2,0)*avg_center.x + trans.at<double>(2,1)*avg_center.y + trans.at<double>(2,2));
-//  warp_center.y = (trans.at<double>(1,0)*avg_center.x + trans.at<double>(1,1)*avg_center.y + trans.at<double>(1,2)) / (trans.at<double>(2,0)*avg_center.x + trans.at<double>(2,1)*avg_center.y + trans.at<double>(2,2));
 
   warp_center.x = (trans.at<double>(0,0)*center.x + trans.at<double>(0,1)*center.y + trans.at<double>(0,2)) / (trans.at<double>(2,0)*center.x + trans.at<double>(2,1)*center.y + trans.at<double>(2,2));
   warp_center.y = (trans.at<double>(1,0)*center.x + trans.at<double>(1,1)*center.y + trans.at<double>(1,2)) / (trans.at<double>(2,0)*center.x + trans.at<double>(2,1)*center.y + trans.at<double>(2,2));
-
-//  printf("\nbbox_center :[%d, %d] \n", center.x, center.y);
-//  printf("\nwrap_bbox_center :[%d, %d] \n", warp_center.x, warp_center.y);
-//  printf("\nprev_bbox_center :[%d, %d] \n",prev_center.x, prev_center.y);
-//  printf("\ncnt:%d : avg_bbox_center :[%d, %d] \n", cnt, avg_center.x, avg_center.y);
 
   return warp_center;
 }
@@ -808,43 +727,8 @@ void LaneDetector::clear_release() {
   right_y_.clear();
   center_x_.clear();
   center_y_.clear();
-}
-
-void LaneDetector::steer_error_log(){
-  double time;
-  float data;
-  char fname[] = "SteerError00.csv";
-  static char file[128] = {0x00, };
-  static bool flag = false;
-  ofstream writeFile;
-  ifstream readFile;
-
-  if(!flag) {
-    for(int i = 0; i<100; i++)
-    {
-      fname[10] = i/10 + '0';
-      fname[11] = i%10 + '0';
-      sprintf(file, "%s%s", PATH, fname);
-      readFile.open(file);
-      if(readFile.fail()) {
-        readFile.close();
-        writeFile.open(file);
-        break;
-      }
-      readFile.close();
-    }
-    writeFile << "time[s],e1[m]" << endl;
-    flag = true;
-  }
-  else {
-    writeFile.open(file, fstream::out | fstream::app);
-    gettimeofday(&end_, NULL);
-    time = (end_.tv_sec - start_.tv_sec) + ((end_.tv_usec - start_.tv_usec)/1000000.0);
-    data = (e_values_[2]/831.17f);
-    writeFile << time << ", " << data << endl;
-  }
-
-  writeFile.close();
+  left_lane_.clear();
+  right_lane_.clear();
 }
 
 void LaneDetector::get_steer_coef(float vel){
@@ -864,10 +748,11 @@ void LaneDetector::get_steer_coef(float vel){
   
 }
 
-void LaneDetector::calc_curv_rad_and_center_dist() {
+void LaneDetector::controlSteer() {
   Mat l_fit(left_coef_), r_fit(right_coef_), c_fit(center_coef_);
   float car_position = width_ / 2;
-  float l1, l2;
+  float l1 = 0, l2 = 0;
+  float l3 = 0, l4 = 0, l5 = 0, l6 = 0;
 
   if (!l_fit.empty() && !r_fit.empty()) {
     lane_coef_.right.a = r_fit.at<float>(2, 0);
@@ -894,7 +779,17 @@ void LaneDetector::calc_curv_rad_and_center_dist() {
     e_values_[2] = ((lane_coef_.center.a * pow(k, 2)) + (lane_coef_.center.b * k) + lane_coef_.center.c) - car_position;  //e1
     SteerAngle_ = ((-1.0f * K1_) * e_values_[1]) + ((-1.0f * K2_) * e_values_[0]);
 
-    //steer_error_log();
+    float p = (float)center_.y;
+    float q = ((float)height_) * eL_height2_;
+    float est_pose = est_pose_ * (M_PI/180.0f);
+    l3 = ((lane_coef_.center.a * pow(p, 2)) + (lane_coef_.center.b * p) + lane_coef_.center.c) - center_.x;
+    l4 = q - p;
+    l5 = l4 * tan(est_pose);
+    l6 = ((lane_coef_.center.a * pow(q, 2)) + (lane_coef_.center.b * q) + lane_coef_.center.c) - (center_.x - l5);
+
+    e_values_[0] = l6 * cos(est_pose); //eL
+    e_values_[1] = l3 * cos(est_pose); //e1
+    SteerAngle2_ = (K3_ * e_values_[1]) + (K4_ * e_values_[0]);
   }
 }
 
@@ -911,32 +806,171 @@ Mat LaneDetector::drawBox(Mat frame)
   return frame;
 }
 
+Mat LaneDetector::estimateDistance(Mat frame, Mat trans, double cycle_time, bool _view){
+  Mat res_frame;
+  Point center_, warp_center;
+  static Point prev_warp_center;
+  int dist_pixel = 0;
+  float est_dist = 0.f;
+
+  frame.copyTo(res_frame);
+  center_ = Point(x_ + w_ / 2, y_ + h_);
+  warp_center = warpPoint(center_, trans);
+  warp_center.x = lowPassFilter(cycle_time, warp_center.x, prev_warp_center.x);
+  warp_center.y = lowPassFilter(cycle_time, warp_center.y, prev_warp_center.y);
+  prev_warp_center = warp_center;
+  dist_pixel = warp_center.y;
+
+  if (_view){
+    circle(res_frame, warp_center, 5, Scalar(255, 0, 255), 2, -1);
+    line(res_frame, Point(180, dist_pixel), Point(460, dist_pixel), Scalar::all(255), 1, 8, 0);
+  }
+
+  if (!beta_){
+    //est_dist = 1.24f - (dist_pixel/490.0f);
+    est_dist = 1.2f - (dist_pixel/500.0f); //front-facing camera
+    if (est_dist > 0.3f && est_dist < 1.24f) est_dist_ = est_dist;
+  }
+  else{
+    est_dist = 1.08f - (dist_pixel/571.0f); //rear camera
+    if (est_dist > 0.24f && est_dist < 1.08f) est_dist_ = est_dist;
+  }
+
+  return res_frame;
+
+/* Estimation by sliding window 
+  frame.copyTo(res_frame);
+  int n_rect = 4;
+  int height = frame.rows / n_rect;
+  int width = height * n_rect / 4;
+  int dist_pixel = 0;
+  int cnt = 0;
+  int min_pixel = 20;
+  float est_dist = 0;
+
+  for (int i = 0; i < n_rect; i++){
+    float center_p_y = (i*2+1) * height / 2; 
+    float center_p_x = center_coef_.at<float>(2,0) * pow(center_p_y,2) + center_coef_.at<float>(1,0) * center_p_y + center_coef_.at<float>(0,0);
+    float p_y1 = center_p_y - height / 2; 
+    float p_x1 = center_p_x - width / 2;
+    float p_y2 = center_p_y + height / 2; 
+    float p_x2 = center_p_x + width / 2;    
+    for (int h = p_y1; h < p_y2; h++){
+      for (int w = p_x1; w < p_x2; w++){
+        if ((res_frame.at<Vec3b>(Point(w,h))[0] == 255) && \
+		(res_frame.at<Vec3b>(Point(w,h))[1] == 255) && \
+		(res_frame.at<Vec3b>(Point(w,h))[2] == 255)){
+          if (cnt > min_pixel) dist_pixel = h;
+          cnt++;
+	}
+      }
+    }
+    if (cnt < min_pixel) break;
+    if (_view){
+      rectangle(res_frame, Point(p_x1, p_y1), Point(p_x2, p_y2), Scalar(0,255,0), 1, 8, 0);
+    }
+    cnt = 0;
+  }
+
+  if (_view){
+    line(res_frame, Point(180, dist_pixel), Point(460, dist_pixel), Scalar::all(255), 1, 8, 0);
+  }
+
+  // Convert pixel to distance (1 m = 490 px, Max distance in ROI is 1.24 m)
+  //est_dist = 1.24f - (dist_pixel/490.0f);
+  est_dist = 1.2f - (dist_pixel/500.0f);
+  est_dist_ = est_dist;
+
+  return res_frame;
+*/  
+}
+
+Mat LaneDetector::estimatePose(Mat frame, double cycle_time, bool _view){ 
+  Mat crop_frame;
+  int crop_x = crop_x_;
+  int crop_y = crop_y_;
+  int crop_width = crop_width_;
+  int crop_height = crop_height_;
+  Rect rect(crop_x, crop_y, crop_width, crop_height);
+  Point left_down(0, crop_height), right_down(crop_width, crop_height);
+  Point left, right;
+  static Point prev_left, prev_right;
+  float min_dist = FLT_MAX;
+  float est_pose = 0; //degree
+
+  crop_frame = frame(rect);
+  cv::Canny(crop_frame, crop_frame, canny_thresh1_, canny_thresh2_);
+
+  for (int i = 0; i < crop_height; i++){
+    int x1 = left_lane_[i].x - crop_x;
+    int x2 = right_lane_[i].x - crop_x;
+    int y = left_lane_[i].y;
+    for (int x = 0; x <= x1+30; x++){
+      if ((x >= 0) && (x <= crop_width)) crop_frame.at<uchar>(y,x) = 0;
+    }
+    for (int x = x2-30; x <= crop_width; x++){
+      if ((x >= 0) && (x <= crop_width)) crop_frame.at<uchar>(y,x) = 0;
+    }
+  }
+
+  for (int j = crop_height-5; j > 5; j--){
+    for (int i = 5; i < crop_width-5; i++){
+      if (crop_frame.at<uchar>(j,i) != 0){
+        float dist = sqrt(pow((left_down.x - i), 2) + pow((left_down.y - j), 2));
+        if (dist < min_dist){
+          min_dist = dist;
+	  left.x = i;
+	  left.y = j;
+	}
+      }
+    }
+  }
+
+  min_dist = FLT_MAX;
+  for (int j = crop_height-5; j > 5; j--){
+    for (int i = 5; i < crop_width-5; i++){
+      if (crop_frame.at<uchar>(j,i) != 0){
+        float dist = sqrt(pow((right_down.x - i), 2) + pow((right_down.y - j), 2));
+        if (dist < min_dist){
+          min_dist = dist;
+	  right.x = i;
+	  right.y = j;
+	}
+      }
+    }
+  }
+
+  left.x = lowPassFilter(cycle_time, left.x, prev_left.x);
+  left.y = lowPassFilter(cycle_time, left.y, prev_left.y);
+  right.x = lowPassFilter(cycle_time, right.x, prev_right.x);
+  right.y = lowPassFilter(cycle_time, right.y, prev_right.y);
+
+  left_ = left;
+  right_ = right;
+  prev_left = left;
+  prev_right = right;
+
+  est_pose_ = atanf((float)(right.y - left.y) / (float)(right.x - left.x)) * (180.0f/M_PI);
+
+  return crop_frame;
+}
+
 float LaneDetector::display_img(Mat _frame, int _delay, bool _view) {    
-  Mat new_frame, gray_frame, binary_frame, sliding_frame, resized_frame, yolo_frame, truck_frame;
+  Mat new_frame, gray_frame, binary_frame, sliding_frame, resized_frame, crop_frame;
   cuda::GpuMat gpu_frame, gpu_remap_frame, gpu_warped_frame, gpu_blur_frame, gpu_gray_frame;
-  cv::Point center, warp_center, p1, p2, p3, p4, warp_p1, warp_p2, warp_p3, warp_p4;
   static struct timeval startTime, endTime;
   static bool flag = false;
   double diffTime = 0.0;
 
+  if (beta_ && gamma_){
+    map1_ = r_map1_.clone();
+    map2_ = r_map2_.clone();
+    std::copy(rROIcorners_.begin(), rROIcorners_.end(), corners_.begin());
+    std::copy(rROIwarpCorners_.begin(), rROIwarpCorners_.end(), warpCorners_.begin());
+  }
+
   if(!_frame.empty()) resize(_frame, new_frame, Size(width_, height_));
   Mat trans = getPerspectiveTransform(corners_, warpCorners_);
-
-  gettimeofday(&endTime, NULL);
-  if (!flag){
-    diffTime = (endTime.tv_sec - start_.tv_sec) + (endTime.tv_usec - start_.tv_usec)/1000000.0;
-    flag = true;
-  }
-  else{
-    diffTime = (endTime.tv_sec - startTime.tv_sec) + (endTime.tv_usec - startTime.tv_usec)/1000000.0;
-    startTime = endTime;
-  }
-  x_ = lowPassFilter(diffTime, x_, 0);
-  y_ = lowPassFilter(diffTime, y_, 1);
-  w_ = lowPassFilter(diffTime, w_, 2);
-  h_ = lowPassFilter(diffTime, h_, 3);
-  center = Point(x_ + w_ / 2, y_ + h_);
-  warp_center = warpPoint(center, trans);
 
   cuda::GpuMat gpu_map1, gpu_map2;
   gpu_map1.upload(map1_);
@@ -953,26 +987,29 @@ float LaneDetector::display_img(Mat _frame, int _delay, bool _view) {
   gpu_gray_frame.download(gray_frame);
   adaptiveThreshold(gray_frame, binary_frame, 255, ADAPTIVE_THRESH_MEAN_C, THRESH_BINARY, 51, -50);
 
-  Rect rect(200, 0, 320, 240);
-  truck_frame = binary_frame(rect);
-  
-
-//  for (int u = warp_p1.x; u < warp_p2.x; u++){
-//    for (int v = warp_p1.y; v < warp_p2.y; v++){
-//      truck_frame
-//    }
-//  }
-
   sliding_frame = detect_lines_sliding_window(binary_frame, _view);
-  calc_curv_rad_and_center_dist();
-  cv::circle(sliding_frame, warp_center, 5, Scalar(255, 0, 255), 2, -1);
-  sliding_frame = estimateDistance(sliding_frame, warp_center);  
+  controlSteer();
+
+  //estimate Distance
+  if (gamma_ && (x_!=0 && y_!=0 && w_!=0 && h_!=0)){
+    gettimeofday(&endTime, NULL);
+    if (!flag){
+      diffTime = (endTime.tv_sec - start_.tv_sec) + (endTime.tv_usec - start_.tv_usec)/1000000.0;
+      flag = true;
+    }
+    else{
+      diffTime = (endTime.tv_sec - startTime.tv_sec) + (endTime.tv_usec - startTime.tv_usec)/1000000.0;
+      startTime = endTime;
+    }
+    sliding_frame = estimateDistance(sliding_frame, trans, diffTime, _view);
+    if (beta_){
+      crop_frame = estimatePose(binary_frame, diffTime, _view);
+    }
+  }
 
   if (_view) {
     resized_frame = draw_lane(sliding_frame, new_frame);
-    cv::circle(new_frame, Point(x_ + w_ / 2, y_ + h_), 5, Scalar(255, 0, 255), 2, -1);
-    yolo_frame = resized_frame.clone();
-    drawBox(yolo_frame);
+    cv::circle(new_frame, center_, 5, Scalar(255, 0, 255), 2, -1);
     
     namedWindow("Window1");
     moveWindow("Window1", 0, 0);
@@ -991,18 +1028,16 @@ float LaneDetector::display_img(Mat _frame, int _delay, bool _view) {
       resize(sliding_frame, sliding_frame, Size(640, 480));
       imshow("Window2", sliding_frame);
     }
-    if(!truck_frame.empty()){
-      //resize(truck_frame, truck_frame, Size(640, 480));
-      imshow("Window3", truck_frame);
+    if(!resized_frame.empty()){
+      resize(resized_frame, resized_frame, Size(640, 480));
+      imshow("Window3", resized_frame);
     }
-//    if(!resized_frame.empty()){
-//      resize(resized_frame, resized_frame, Size(640, 480));
-//      imshow("Window3", resized_frame);
-//    }
-//    if(!yolo_frame.empty()){
-//      resize(yolo_frame, yolo_frame, Size(640, 480));
-//      imshow("Window4", yolo_frame);
-//    }
+    if(!crop_frame.empty()){
+      cv::circle(crop_frame, left_, 10, Scalar::all(255), cv::FILLED, 8,0);
+      cv::circle(crop_frame, right_, 10, Scalar::all(255), cv::FILLED, 8,0);
+      cv::line(crop_frame, left_, right_, Scalar::all(255), 5, 8, 0);
+      imshow("Window4", crop_frame);
+    }
 
     waitKey(_delay);
   }

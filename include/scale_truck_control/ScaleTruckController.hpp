@@ -124,6 +124,7 @@ class ScaleTruckController {
     bool fi_lidar_ = false;
     bool gamma_ = false;
     float log_est_dist_ = 0.0f;
+    float AngleDegree2_ = 0.0f;
 
     //bbox
     std::string name_;

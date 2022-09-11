@@ -26,10 +26,20 @@ LaneDetector:
   e1_height: 1.2563
   trust_height: 0.6667
   lp: 609.3 
+  eL_height2: 1.0
 
 ROI:
   dynamic_roi: true
   threshold: 128
+  canny:
+    thresh1: 100
+    thresh2: 200
+
+crop:
+  x: 100
+  y: 0
+  width: 440
+  height: 380
   
 image_view:
   enable_opencv: false

@@ -177,6 +177,7 @@ bool ScaleTruckController::getImageStatus(void){
 
 void* ScaleTruckController::lanedetectInThread() {
   static int cnt = 10;
+  static bool beta_flag = false;
   Mat dst;
   std::vector<Mat>channels;
   int count = 0;
@@ -199,30 +200,33 @@ void* ScaleTruckController::lanedetectInThread() {
     }
     camImageTmp_ = camImageCopy_.clone();
   }
+
   {
-    std::scoped_lock lock(lane_mutex_, vel_mutex_);
-    laneDetector_.get_steer_coef(CurVel_);
-  }
-  {
-    std::scoped_lock lock(lane_mutex_, bbox_mutex_);
+    std::unique_lock<std::mutex> lock(lane_mutex_);
+    std::scoped_lock(bbox_mutex_, vel_mutex_, rear_image_mutex_);
+    cv_.wait(lock, [this] {return droi_ready_; });
+
     laneDetector_.name_ = name_;
     laneDetector_.x_ = x_;
     laneDetector_.y_ = y_;
     laneDetector_.h_ = h_;
     laneDetector_.w_ = w_;
-  }
-  {
-    std::unique_lock<std::mutex> lock(lane_mutex_);
-    std::scoped_lock(bbox_mutex_);
-    cv_.wait(lock, [this] {return droi_ready_; });
+
+    laneDetector_.get_steer_coef(CurVel_);
+
+    if(!rearImageJPEG_.empty()) camImageTmp_ = rearImageJPEG_.clone();
 
     AngleDegree = laneDetector_.display_img(camImageTmp_, waitKeyDelay_, viewImage_);
+    AngleDegree2_ = laneDetector_.SteerAngle2_;
     droi_ready_ = false;
   }
+
   if(cnt == 0){
-    {
-      std::scoped_lock lock(rep_mutex_);
+    if (!beta_flag) {
+      std::scoped_lock lock(rep_mutex_, lane_mutex_);
       beta_ = true;
+      laneDetector_.beta_ = true;
+      beta_flag = true;
     }
     {
       std::scoped_lock lock(dist_mutex_);
@@ -246,7 +250,7 @@ void* ScaleTruckController::objectdetectInThread() {
   /* Lidar Data */
   /**************/
   {
-    std::scoped_lock lock(object_mutex_, rep_mutex_);
+    std::scoped_lock lock(object_mutex_);
     ObjSegments_ = Obstacle_.segments.size();
     ObjCircles_ = Obstacle_.circles.size();
   
@@ -264,13 +268,11 @@ void* ScaleTruckController::objectdetectInThread() {
         ampersand_ = atanf(2*Lw*sin(angle_A)/Ld) * (180.0f/M_PI); // pure pursuit
       }
     }
-    
-    {
-      std::scoped_lock lock(lane_mutex_);
-      log_est_dist_ = laneDetector_.est_dist_;
-      if(gamma_ == true && laneDetector_.est_dist_ != 0){
-        dist_tmp = laneDetector_.est_dist_;
-      }
+  } 
+  {
+    std::scoped_lock lock(rep_mutex_, lane_mutex_);
+    if(gamma_ == true && laneDetector_.est_dist_ != 0){
+      dist_tmp = laneDetector_.est_dist_;
     }
     if(beta_ == true){
       angle_tmp = ampersand_;
@@ -301,7 +303,7 @@ void* ScaleTruckController::objectdetectInThread() {
     }
     droi_ready_ = true;
     cv_.notify_one();
-  }  
+  }
   if(index_ == 0){  //LV
     std::scoped_lock lock(rep_mutex_, dist_mutex_);
     if(distance_ <= LVstopDist_) {
@@ -370,15 +372,18 @@ void ScaleTruckController::replyImage()
     img_data_ = ZMQ_SOCKET_.img_recv_;
     compImageRecv_.resize(img_data_->size);
     memcpy(&compImageRecv_[0], &img_data_->comp_image[0], img_data_->size);
-    rearImageJPEG_ = imdecode(Mat(compImageRecv_), IMREAD_COLOR);
+
+    {
+      std::scoped_lock lock(rear_image_mutex_);
+      rearImageJPEG_ = imdecode(Mat(compImageRecv_), IMREAD_COLOR);
+      //image publish
+      sensor_msgs::ImagePtr msg = cv_bridge::CvImage(std_msgs::Header(), "bgr8", rearImageJPEG_).toImageMsg();
+      msg->header.stamp.sec = img_data_->startTime.tv_sec;
+      msg->header.stamp.nsec = img_data_->startTime.tv_usec;
+      imgPublisher_.publish(msg);
+    }
+
     gettimeofday(&endTime, NULL);
-
-    //image publish
-    sensor_msgs::ImagePtr msg = cv_bridge::CvImage(std_msgs::Header(), "bgr8", rearImageJPEG_).toImageMsg();
-    msg->header.stamp.sec = img_data_->startTime.tv_sec;
-    msg->header.stamp.nsec = img_data_->startTime.tv_usec;
-    imgPublisher_.publish(msg);
-
     rep_check_++;
     if (rep_check_ > 0) time_ += ((endTime.tv_sec - img_data_->startTime.tv_sec) * 1000.0) + ((endTime.tv_usec - img_data_->startTime.tv_usec)/1000.0);
     else time_ = 0.0;
@@ -508,14 +513,14 @@ void ScaleTruckController::recordData(struct timeval startTime){
       }
       read_file.close();
     }
-    write_file << "time,measured_dist,estimated_dist" << endl; //seconds
+    write_file << "time,measured_sa,estimated_sa" << endl; //seconds
     flag = true;
   }
   if(flag){
     std::scoped_lock lock(dist_mutex_);
     gettimeofday(&currentTime, NULL);
     diff_time = ((currentTime.tv_sec - startTime.tv_sec)) + ((currentTime.tv_usec - startTime.tv_usec)/1000000.0);
-    sprintf(buf, "%.10e, %.3f, %.3f", diff_time, distance_, log_est_dist_);
+    sprintf(buf, "%.10e, %.3f, %.3f", diff_time, AngleDegree_, AngleDegree2_);
     write_file.open(file, std::ios::out | std::ios::app);
     write_file << buf << endl;
   }
@@ -545,24 +550,26 @@ void ScaleTruckController::spin() {
   while(!controlDone_ && ros::ok()) {
     struct timeval start_time, end_time;
     gettimeofday(&start_time, NULL);
+
+    {
+      std::scoped_lock lock(rep_mutex_);
+      if (gamma_ && !run_yolo_){
+        run_yolo_ = true;
+        yolo_flag_msg.run_yolo = true;
+        runYoloPublisher_.publish(yolo_flag_msg);
+      }
+  
+      if (gamma_ && beta_ && !req_lv_){
+        req_lv_ = true;
+      }
+    }
+
     lanedetect_thread = std::thread(&ScaleTruckController::lanedetectInThread, this);
     objectdetect_thread = std::thread(&ScaleTruckController::objectdetectInThread, this);
     
     lanedetect_thread.join();
     objectdetect_thread.join();    
 
-    if(enableConsoleOutput_)
-      displayConsole();
-
-    if (gamma_ && !run_yolo_){
-      run_yolo_ = true;
-      yolo_flag_msg.run_yolo = true;
-      runYoloPublisher_.publish(yolo_flag_msg);
-    }
-
-    if (gamma_ && beta_ && !req_lv_){
-      req_lv_ = true;
-    }
 
     msg.tar_vel = ResultVel_;  //Xavier to LRC and LRC to OpenCR
     {
@@ -587,6 +594,23 @@ void ScaleTruckController::spin() {
       ros::requestShutdown();
     }
 
+
+
+    if (!tcp_img_req_ && send_rear_camera_image_ && (index_ == 0 || index_ == 1)){
+      tcpImgReqThread_ = std::thread(&ScaleTruckController::requestImage, this, img_data_);
+      tcp_img_req_ = true;
+    }
+
+    if (!tcp_img_rep_ && req_lv_ && (index_ == 1 || index_ == 2)){
+      tcpImgRepThread_ = std::thread(&ScaleTruckController::replyImage, this);
+      tcp_img_rep_ = true;
+    }
+
+    recordData(laneDetector_.start_);
+
+    if(enableConsoleOutput_)
+      displayConsole();
+
     gettimeofday(&end_time, NULL);
     diff_time += ((end_time.tv_sec - start_time.tv_sec) * 1000.0) + ((end_time.tv_usec - start_time.tv_usec) / 1000.0);
     cnt++;
@@ -598,32 +622,20 @@ void ScaleTruckController::spin() {
       diff_time = 0.0;
       cnt = 0;
     }
-
-    recordData(laneDetector_.start_);
-
-    if (!tcp_img_req_ && send_rear_camera_image_ && (index_ == 0 || index_ == 1)){
-      tcpImgReqThread_ = std::thread(&ScaleTruckController::requestImage, this, img_data_);
-      tcp_img_req_ = true;
-    }
-
-    if (!tcp_img_rep_ && req_lv_ && (index_ == 1 || index_ == 2)){
-      tcpImgRepThread_ = std::thread(&ScaleTruckController::replyImage, this);
-      tcp_img_rep_ = true;
-    }
   }
 }
 
 void ScaleTruckController::ScanErrorCallback(const std_msgs::UInt32::ConstPtr &msg) {
-   LdrErrMsg_ = msg->data;
-   if(fi_lidar_) {
-     LdrErrMsg_ = 0x80008002;
-   }
-   {
-     std::scoped_lock lock(rep_mutex_);
-     if(LdrErrMsg_){
-       gamma_ = true;
-     }
-   }
+  static bool gamma_flag = false;
+  LdrErrMsg_ = msg->data;
+  if(fi_lidar_) {
+    LdrErrMsg_ = 0x80008002;
+  }
+  if(LdrErrMsg_ && !gamma_flag){
+    std::scoped_lock lock(rep_mutex_, lane_mutex_);
+    gamma_ = true;
+    laneDetector_.gamma_ = true;
+  }
 }
 
 void ScaleTruckController::objectCallback(const obstacle_detector::Obstacles &msg) {
