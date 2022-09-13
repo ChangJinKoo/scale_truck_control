@@ -289,7 +289,7 @@ void CentralRC::communicate(){
   estimateVelocity(11);
   estimateVelocity(12);
   
-  //recordData(&launch_time_);
+  recordData(&launch_time_);
 
   {
     std::scoped_lock lock(data_mutex_);
