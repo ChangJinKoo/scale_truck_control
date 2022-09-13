@@ -45,7 +45,7 @@ public:
 	/********** bbox *********/
 	std::string name_;
 	unsigned int x_ = 0, y_ = 0, w_ = 0, h_ = 0;
-	Point center_;
+	Point center_, warp_center_;
 	float SteerAngle2_ = 0.0f;
 
 	/***** fault signal *****/

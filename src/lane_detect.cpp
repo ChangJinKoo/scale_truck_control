@@ -781,7 +781,7 @@ void LaneDetector::controlSteer() {
 
     float p = (float)center_.y;
     float q = ((float)height_) * eL_height2_;
-    float est_pose = est_pose_ * (M_PI/180.0f);
+    float est_pose = est_pose_;
     l3 = ((lane_coef_.center.a * pow(p, 2)) + (lane_coef_.center.b * p) + lane_coef_.center.c) - center_.x;
     l4 = q - p;
     l5 = l4 * tan(est_pose);
@@ -808,7 +808,7 @@ Mat LaneDetector::drawBox(Mat frame)
 
 Mat LaneDetector::estimateDistance(Mat frame, Mat trans, double cycle_time, bool _view){
   Mat res_frame;
-  Point center_, warp_center;
+  Point warp_center;
   static Point prev_warp_center;
   int dist_pixel = 0;
   float est_dist = 0.f;
@@ -819,6 +819,7 @@ Mat LaneDetector::estimateDistance(Mat frame, Mat trans, double cycle_time, bool
   warp_center.x = lowPassFilter(cycle_time, warp_center.x, prev_warp_center.x);
   warp_center.y = lowPassFilter(cycle_time, warp_center.y, prev_warp_center.y);
   prev_warp_center = warp_center;
+  warp_center_ = warp_center;
   dist_pixel = warp_center.y;
 
   if (_view){
@@ -826,14 +827,14 @@ Mat LaneDetector::estimateDistance(Mat frame, Mat trans, double cycle_time, bool
     line(res_frame, Point(180, dist_pixel), Point(460, dist_pixel), Scalar::all(255), 1, 8, 0);
   }
 
-  if (!beta_){
+  if (name_ == "tail"){
     //est_dist = 1.24f - (dist_pixel/490.0f);
     est_dist = 1.2f - (dist_pixel/500.0f); //front-facing camera
     if (est_dist > 0.3f && est_dist < 1.24f) est_dist_ = est_dist;
   }
   else{
-    est_dist = 1.08f - (dist_pixel/571.0f); //rear camera
-    if (est_dist > 0.24f && est_dist < 1.08f) est_dist_ = est_dist;
+    est_dist = 1.25f - (dist_pixel/480.0f); //rear camera
+    if (est_dist > 0.26f && est_dist < 1.24f) est_dist_ = est_dist;
   }
 
   return res_frame;
@@ -896,15 +897,20 @@ Mat LaneDetector::estimatePose(Mat frame, double cycle_time, bool _view){
   Point left, right;
   static Point prev_left, prev_right;
   float min_dist = FLT_MAX;
-  float est_pose = 0; //degree
+  float est_pose = 0; 
 
   crop_frame = frame(rect);
   cv::Canny(crop_frame, crop_frame, canny_thresh1_, canny_thresh2_);
 
-  for (int i = 0; i < crop_height; i++){
-    int x1 = left_lane_[i].x - crop_x;
-    int x2 = right_lane_[i].x - crop_x;
-    int y = left_lane_[i].y;
+  for (int y = warp_center_.y+20; y < crop_height; y++){
+    for (int x = 0; x < crop_width; x++){
+      crop_frame.at<uchar>(y,x) = 0;
+    }
+  }
+
+  for (int y = warp_center_.y+20; y >= 0; y--){
+    int x1 = left_lane_[y].x - crop_x;
+    int x2 = right_lane_[y].x - crop_x;
     for (int x = 0; x <= x1+30; x++){
       if ((x >= 0) && (x <= crop_width)) crop_frame.at<uchar>(y,x) = 0;
     }
@@ -950,7 +956,12 @@ Mat LaneDetector::estimatePose(Mat frame, double cycle_time, bool _view){
   prev_left = left;
   prev_right = right;
 
-  est_pose_ = atanf((float)(right.y - left.y) / (float)(right.x - left.x)) * (180.0f/M_PI);
+  est_pose = atanf((float)(right.y - left.y) / (float)(right.x - left.x));
+
+  if (fabs(est_pose * (180.0f/M_PI)) < 10.0f){
+  //need measuring est_pose boundary
+    est_pose_ = est_pose;
+  }
 
   return crop_frame;
 }
@@ -962,7 +973,7 @@ float LaneDetector::display_img(Mat _frame, int _delay, bool _view) {
   static bool flag = false;
   double diffTime = 0.0;
 
-  if (beta_ && gamma_){
+  if (beta_ && gamma_ && name_ == "head"){
     map1_ = r_map1_.clone();
     map2_ = r_map2_.clone();
     std::copy(rROIcorners_.begin(), rROIcorners_.end(), corners_.begin());
@@ -988,7 +999,6 @@ float LaneDetector::display_img(Mat _frame, int _delay, bool _view) {
   adaptiveThreshold(gray_frame, binary_frame, 255, ADAPTIVE_THRESH_MEAN_C, THRESH_BINARY, 51, -50);
 
   sliding_frame = detect_lines_sliding_window(binary_frame, _view);
-  controlSteer();
 
   //estimate Distance
   if (gamma_ && (x_!=0 && y_!=0 && w_!=0 && h_!=0)){
@@ -1002,10 +1012,12 @@ float LaneDetector::display_img(Mat _frame, int _delay, bool _view) {
       startTime = endTime;
     }
     sliding_frame = estimateDistance(sliding_frame, trans, diffTime, _view);
-    if (beta_){
+    if (beta_ && name_ == "head"){
       crop_frame = estimatePose(binary_frame, diffTime, _view);
     }
   }
+
+  controlSteer();
 
   if (_view) {
     resized_frame = draw_lane(sliding_frame, new_frame);

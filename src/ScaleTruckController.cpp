@@ -72,6 +72,8 @@ bool ScaleTruckController::readParameters() {
   nodeHandle_.param("params/target_dist", TargetDist_, 0.8f); // m
   nodeHandle_.param("params/rcm_dist", RCMDist_, 0.8f);
 
+  nodeHandle_.param("params/LdOffset", Ld_offset_, 0.0f);
+
   return true;
 }
 
@@ -178,6 +180,7 @@ bool ScaleTruckController::getImageStatus(void){
 void* ScaleTruckController::lanedetectInThread() {
   static int cnt = 10;
   static bool beta_flag = false;
+  static bool _beta = false;
   Mat dst;
   std::vector<Mat>channels;
   int count = 0;
@@ -227,22 +230,28 @@ void* ScaleTruckController::lanedetectInThread() {
       beta_ = true;
       laneDetector_.beta_ = true;
       beta_flag = true;
+      _beta = beta_;
     }
-    {
-      std::scoped_lock lock(dist_mutex_);
+  }
+  {
+    std::scoped_lock lock(rep_mutex_, dist_mutex_);
+    if (!_beta) {
+      AngleDegree_ = AngleDegree;
+    }
+    else if (_beta && gamma_ && name_ == "head"){
+      AngleDegree_ = AngleDegree2_;
+    }
+    else { //pure pursuit angle
       AngleDegree_ = -distAngle_;
     }
   }
-  else{
-    std::scoped_lock lock(dist_mutex_);
-    AngleDegree_ = AngleDegree;
-  }
+
 }
 
 void* ScaleTruckController::objectdetectInThread() {
   float rotation_angle = 0.0f;
   float lateral_offset = 0.0f;
-  float Lw = 0.40f; // 0.236 0.288 0.340 
+  float Lw = 0.34f; // 0.236 0.288 0.340 
   float dist, Ld, angle, angle_A;
   float dist_tmp, angle_tmp;
   dist_tmp = 10.f; 
@@ -257,13 +266,13 @@ void* ScaleTruckController::objectdetectInThread() {
     for(int i = 0; i < ObjCircles_; i++)
     {
       //dist = sqrt(pow(Obstacle_.circles[i].center.x,2)+pow(Obstacle_.circles[i].center.y,2));
-      Obstacle_.circles[i].center.y += 0.03f;
+      Obstacle_.circles[i].center.y += 0.05f;
       dist = -Obstacle_.circles[i].center.x - Obstacle_.circles[i].true_radius;
       angle = atanf(Obstacle_.circles[i].center.y/Obstacle_.circles[i].center.x)*(180.0f/M_PI);
       if(dist_tmp >= dist) {
         dist_tmp = dist;
         angle_tmp = angle;
-        Ld = sqrt(pow(Obstacle_.circles[i].center.x-Lw, 2) + pow(Obstacle_.circles[i].center.y, 2));
+        Ld = sqrt(pow(Obstacle_.circles[i].center.x-Lw, 2) + pow(Obstacle_.circles[i].center.y, 2)) + Ld_offset_;
         angle_A = atanf(Obstacle_.circles[i].center.y/(Obstacle_.circles[i].center.x-Lw));
         ampersand_ = atanf(2*Lw*sin(angle_A)/Ld) * (180.0f/M_PI); // pure pursuit
       }
