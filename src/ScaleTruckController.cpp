@@ -35,7 +35,7 @@ ScaleTruckController::~ScaleTruckController() {
   controlThread_.join();
   tcpThread_.join();
   if (send_rear_camera_image_ && (index_ == 0 || index_ == 1)) tcpImgReqThread_.join();
-  if (run_yolo_ && (index_ == 1 || index_ == 2)) tcpImgRepThread_.join();
+  if (req_lv_ && (index_ == 1 || index_ == 2)) tcpImgRepThread_.join();
 
   ROS_INFO("[ScaleTruckController] Stop.");
 }
@@ -71,6 +71,8 @@ bool ScaleTruckController::readParameters() {
   nodeHandle_.param("params/safety_dist", SafetyDist_, 1.5f); // m
   nodeHandle_.param("params/target_dist", TargetDist_, 0.8f); // m
   nodeHandle_.param("params/rcm_dist", RCMDist_, 0.8f);
+
+  nodeHandle_.param("params/LdOffset", Ld_offset_, 0.0f);
 
   return true;
 }
@@ -177,6 +179,8 @@ bool ScaleTruckController::getImageStatus(void){
 
 void* ScaleTruckController::lanedetectInThread() {
   static int cnt = 10;
+  static bool beta_flag = false;
+  static bool _beta = false;
   Mat dst;
   std::vector<Mat>channels;
   int count = 0;
@@ -199,44 +203,55 @@ void* ScaleTruckController::lanedetectInThread() {
     }
     camImageTmp_ = camImageCopy_.clone();
   }
+
   {
-    std::scoped_lock lock(vel_mutex_);
-    laneDetector_.get_steer_coef(CurVel_);
-  }
-  {
-    std::scoped_lock lock(lane_mutex_, bbox_mutex_);
+    std::unique_lock<std::mutex> lock(lane_mutex_);
+    std::scoped_lock(bbox_mutex_, vel_mutex_, rear_image_mutex_);
+    cv_.wait(lock, [this] {return droi_ready_; });
+
+    laneDetector_.name_ = name_;
     laneDetector_.x_ = x_;
     laneDetector_.y_ = y_;
     laneDetector_.h_ = h_;
     laneDetector_.w_ = w_;
-  }
-  {
-    std::unique_lock<std::mutex> lock(lane_mutex_);
-    cv_.wait(lock, [this] {return droi_ready_; });
+
+    laneDetector_.get_steer_coef(CurVel_);
+
+    if(!rearImageJPEG_.empty()) camImageTmp_ = rearImageJPEG_.clone();
 
     AngleDegree = laneDetector_.display_img(camImageTmp_, waitKeyDelay_, viewImage_);
+    AngleDegree2_ = laneDetector_.SteerAngle2_;
     droi_ready_ = false;
   }
+
   if(cnt == 0){
-    {
-      std::scoped_lock lock(rep_mutex_);
+    if (!beta_flag) {
+      std::scoped_lock lock(rep_mutex_, lane_mutex_);
       beta_ = true;
+      laneDetector_.beta_ = true;
+      beta_flag = true;
+      _beta = beta_;
     }
-    {
-      std::scoped_lock lock(dist_mutex_);
+  }
+  {
+    std::scoped_lock lock(rep_mutex_, dist_mutex_);
+    if (!_beta) {
+      AngleDegree_ = AngleDegree;
+    }
+    else if (_beta && gamma_ && name_ == "head"){
+      AngleDegree_ = AngleDegree2_;
+    }
+    else { //pure pursuit angle
       AngleDegree_ = -distAngle_;
     }
   }
-  else{
-    std::scoped_lock lock(dist_mutex_);
-    AngleDegree_ = AngleDegree;
-  }
+
 }
 
 void* ScaleTruckController::objectdetectInThread() {
   float rotation_angle = 0.0f;
   float lateral_offset = 0.0f;
-  float Lw = 0.340f; // 0.236 0.288 0.340 
+  float Lw = 0.34f; // 0.236 0.288 0.340 
   float dist, Ld, angle, angle_A;
   float dist_tmp, angle_tmp;
   dist_tmp = 10.f; 
@@ -244,28 +259,32 @@ void* ScaleTruckController::objectdetectInThread() {
   /* Lidar Data */
   /**************/
   {
-    std::scoped_lock lock(object_mutex_, rep_mutex_);
+    std::scoped_lock lock(object_mutex_);
     ObjSegments_ = Obstacle_.segments.size();
     ObjCircles_ = Obstacle_.circles.size();
   
     for(int i = 0; i < ObjCircles_; i++)
     {
       //dist = sqrt(pow(Obstacle_.circles[i].center.x,2)+pow(Obstacle_.circles[i].center.y,2));
+      Obstacle_.circles[i].center.y += 0.05f;
       dist = -Obstacle_.circles[i].center.x - Obstacle_.circles[i].true_radius;
       angle = atanf(Obstacle_.circles[i].center.y/Obstacle_.circles[i].center.x)*(180.0f/M_PI);
       if(dist_tmp >= dist) {
         dist_tmp = dist;
         angle_tmp = angle;
-        Ld = sqrt(pow(Obstacle_.circles[i].center.x-Lw, 2) + pow(Obstacle_.circles[i].center.y, 2));
+        Ld = sqrt(pow(Obstacle_.circles[i].center.x-Lw, 2) + pow(Obstacle_.circles[i].center.y, 2)) + Ld_offset_;
         angle_A = atanf(Obstacle_.circles[i].center.y/(Obstacle_.circles[i].center.x-Lw));
         ampersand_ = atanf(2*Lw*sin(angle_A)/Ld) * (180.0f/M_PI); // pure pursuit
       }
     }
+  } 
+  {
+    std::scoped_lock lock(rep_mutex_, lane_mutex_);
     if(gamma_ == true && laneDetector_.est_dist_ != 0){
       dist_tmp = laneDetector_.est_dist_;
     }
-    if(beta_ == true && ampersand_ != 0){
-      dist_tmp = ampersand_;
+    if(beta_ == true){
+      angle_tmp = ampersand_;
     }
   }
   if(ObjCircles_ != 0)
@@ -282,7 +301,7 @@ void* ScaleTruckController::objectdetectInThread() {
     std::scoped_lock lock(lane_mutex_);
     if(dist_tmp < 1.24 && dist_tmp > 0.30) // 1.26 ~ 0.28
     {
-      laneDetector_.distance_ = (int)((1.24 - dist_tmp)*490.0) + 70;
+      laneDetector_.distance_ = (int)((1.24 - dist_tmp)*490.0);
     }
 //    if(dist_tmp < 1.2 && dist_tmp > 0.24) // 1.26 ~ 0.28
 //    {
@@ -293,7 +312,7 @@ void* ScaleTruckController::objectdetectInThread() {
     }
     droi_ready_ = true;
     cv_.notify_one();
-  }  
+  }
   if(index_ == 0){  //LV
     std::scoped_lock lock(rep_mutex_, dist_mutex_);
     if(distance_ <= LVstopDist_) {
@@ -340,7 +359,6 @@ void ScaleTruckController::requestImage(ImgData* img_data)
       rearImageTmp_ = rearImageCopy_;
     }
     if(!rearImageTmp_.empty()){
-      gettimeofday(&img_data->startTime, NULL);
       imageCompress(rearImageTmp_);
       if(compImageSend_.size() <= (sizeof(img_data->comp_image) / sizeof(u_char))){
         std::copy(compImageSend_.begin(), compImageSend_.end(), img_data->comp_image);
@@ -348,9 +366,10 @@ void ScaleTruckController::requestImage(ImgData* img_data)
       else printf("Warning !! compressed image size is bigger than comp_img array size in ImgData\n");
       img_data->size = compImageSend_.size();
       req_check_++;
+      gettimeofday(&img_data->startTime, NULL);
       ZMQ_SOCKET_.requestImageZMQ(img_data); 
     }
-    std::this_thread::sleep_for(std::chrono::milliseconds(2));
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
   } 
 }
 
@@ -362,15 +381,18 @@ void ScaleTruckController::replyImage()
     img_data_ = ZMQ_SOCKET_.img_recv_;
     compImageRecv_.resize(img_data_->size);
     memcpy(&compImageRecv_[0], &img_data_->comp_image[0], img_data_->size);
-    rearImageJPEG_ = imdecode(Mat(compImageRecv_), IMREAD_COLOR);
+
+    {
+      std::scoped_lock lock(rear_image_mutex_);
+      rearImageJPEG_ = imdecode(Mat(compImageRecv_), IMREAD_COLOR);
+      //image publish
+      sensor_msgs::ImagePtr msg = cv_bridge::CvImage(std_msgs::Header(), "bgr8", rearImageJPEG_).toImageMsg();
+      msg->header.stamp.sec = img_data_->startTime.tv_sec;
+      msg->header.stamp.nsec = img_data_->startTime.tv_usec;
+      imgPublisher_.publish(msg);
+    }
+
     gettimeofday(&endTime, NULL);
-
-    //image publish
-    sensor_msgs::ImagePtr msg = cv_bridge::CvImage(std_msgs::Header(), "bgr8", rearImageJPEG_).toImageMsg();
-    msg->header.stamp.sec = img_data_->startTime.tv_sec;
-    msg->header.stamp.nsec = img_data_->startTime.tv_usec;
-    imgPublisher_.publish(msg);
-
     rep_check_++;
     if (rep_check_ > 0) time_ += ((endTime.tv_sec - img_data_->startTime.tv_sec) * 1000.0) + ((endTime.tv_usec - img_data_->startTime.tv_usec)/1000.0);
     else time_ = 0.0;
@@ -381,8 +403,7 @@ void ScaleTruckController::replyImage()
       time_ = 0.0;
       rep_check_ = 0;
     }
-
-    std::this_thread::sleep_for(std::chrono::milliseconds(2));
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
   }
 }
 
@@ -501,14 +522,14 @@ void ScaleTruckController::recordData(struct timeval startTime){
       }
       read_file.close();
     }
-    write_file << "time,networkDelay" << endl; //seconds
+    write_file << "time,measured_sa,estimated_sa" << endl; //seconds
     flag = true;
   }
-  else{
+  if(flag){
     std::scoped_lock lock(dist_mutex_);
     gettimeofday(&currentTime, NULL);
     diff_time = ((currentTime.tv_sec - startTime.tv_sec)) + ((currentTime.tv_usec - startTime.tv_usec)/1000000.0);
-    sprintf(buf, "%.10e, %.10e", diff_time, DelayTime_);
+    sprintf(buf, "%.10e, %.3f, %.3f", diff_time, AngleDegree_, AngleDegree2_);
     write_file.open(file, std::ios::out | std::ios::app);
     write_file << buf << endl;
   }
@@ -529,7 +550,7 @@ void ScaleTruckController::spin() {
   }
   
   scale_truck_control::xav2lrc msg;
-  scale_truck_control::yolo_flag y_flag;
+  scale_truck_control::yolo_flag yolo_flag_msg;
   std::thread lanedetect_thread;
   std::thread objectdetect_thread;
   
@@ -538,16 +559,26 @@ void ScaleTruckController::spin() {
   while(!controlDone_ && ros::ok()) {
     struct timeval start_time, end_time;
     gettimeofday(&start_time, NULL);
+
+    {
+      std::scoped_lock lock(rep_mutex_);
+      if (gamma_ && !run_yolo_){
+        run_yolo_ = true;
+        yolo_flag_msg.run_yolo = true;
+        runYoloPublisher_.publish(yolo_flag_msg);
+      }
+  
+      if (gamma_ && beta_ && !req_lv_){
+        req_lv_ = true;
+      }
+    }
+
     lanedetect_thread = std::thread(&ScaleTruckController::lanedetectInThread, this);
     objectdetect_thread = std::thread(&ScaleTruckController::objectdetectInThread, this);
     
     lanedetect_thread.join();
     objectdetect_thread.join();    
 
-    if(enableConsoleOutput_)
-      displayConsole();
-
-    if (beta_ && gamma_) run_yolo_ = true;
 
     msg.tar_vel = ResultVel_;  //Xavier to LRC and LRC to OpenCR
     {
@@ -564,18 +595,30 @@ void ScaleTruckController::spin() {
       msg.beta = beta_;
       msg.gamma = gamma_;
     }
-
-    if (!run_yolo_) y_flag.run_yolo = false;
-    else y_flag.run_yolo = true;
-
     XavPublisher_.publish(msg);
-    runYoloPublisher_.publish(y_flag);
 
     if(!isNodeRunning_) {
       controlDone_ = true;
       ZMQ_SOCKET_.controlDone_ = true;
       ros::requestShutdown();
     }
+
+
+
+    if (!tcp_img_req_ && send_rear_camera_image_ && (index_ == 0 || index_ == 1)){
+      tcpImgReqThread_ = std::thread(&ScaleTruckController::requestImage, this, img_data_);
+      tcp_img_req_ = true;
+    }
+
+    if (!tcp_img_rep_ && req_lv_ && (index_ == 1 || index_ == 2)){
+      tcpImgRepThread_ = std::thread(&ScaleTruckController::replyImage, this);
+      tcp_img_rep_ = true;
+    }
+
+    recordData(laneDetector_.start_);
+
+    if(enableConsoleOutput_)
+      displayConsole();
 
     gettimeofday(&end_time, NULL);
     diff_time += ((end_time.tv_sec - start_time.tv_sec) * 1000.0) + ((end_time.tv_usec - start_time.tv_usec) / 1000.0);
@@ -588,32 +631,20 @@ void ScaleTruckController::spin() {
       diff_time = 0.0;
       cnt = 0;
     }
-
-    recordData(laneDetector_.start_);
-
-    if (!tcp_img_req_ && send_rear_camera_image_ && (index_ == 0 || index_ == 1)){
-      tcpImgReqThread_ = std::thread(&ScaleTruckController::requestImage, this, img_data_);
-      tcp_img_req_ = true;
-    }
-
-    if (!tcp_img_rep_ && run_yolo_ && (index_ == 1 || index_ == 2)){
-      tcpImgRepThread_ = std::thread(&ScaleTruckController::replyImage, this);
-      tcp_img_rep_ = true;
-    }
   }
 }
 
 void ScaleTruckController::ScanErrorCallback(const std_msgs::UInt32::ConstPtr &msg) {
-   LdrErrMsg_ = msg->data;
-   if(fi_lidar_) {
-     LdrErrMsg_ = 0x80008002;
-   }
-   {
-     std::scoped_lock lock(rep_mutex_);
-     if(LdrErrMsg_){
-       gamma_ = true;
-     }
-   }
+  static bool gamma_flag = false;
+  LdrErrMsg_ = msg->data;
+  if(fi_lidar_) {
+    LdrErrMsg_ = 0x80008002;
+  }
+  if(LdrErrMsg_ && !gamma_flag){
+    std::scoped_lock lock(rep_mutex_, lane_mutex_);
+    gamma_ = true;
+    laneDetector_.gamma_ = true;
+  }
 }
 
 void ScaleTruckController::objectCallback(const obstacle_detector::Obstacles &msg) {
@@ -679,10 +710,16 @@ void ScaleTruckController::XavSubCallback(const scale_truck_control::lrc2xav &ms
 void ScaleTruckController::bboxCallback(const yolo_object_detection::bounding_box &msg){
   {
     std::scoped_lock lock(bbox_mutex_);
-    x_ = msg.x;
-    y_ = msg.y;
-    w_ = msg.w;
-    h_ = msg.h;
+    name_ = msg.name;
+    if ((msg.x > 0 && msg.x < 640) && \
+        (msg.y > 0 && msg.y < 480) && \
+	(msg.w > 0 && msg.w < 640) && \
+	(msg.h > 0 && msg.h < 480)){
+      x_ = msg.x;
+      y_ = msg.y;
+      w_ = msg.w;
+      h_ = msg.h;
+    }
   }
 }
 

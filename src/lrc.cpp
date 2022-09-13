@@ -302,9 +302,9 @@ void LocalRC::communicate(){
     updateMode(crc_mode_);
     rosPub();
     printStatus();
-    recordData(&startTime);
+    //recordData(&startTime);
 
-    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    std::this_thread::sleep_for(std::chrono::milliseconds(5));
 
     if(!isNodeRunning()){
       ros::requestShutdown();
