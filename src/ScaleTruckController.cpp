@@ -299,14 +299,10 @@ void* ScaleTruckController::objectdetectInThread() {
   /*****************************/
   {
     std::scoped_lock lock(lane_mutex_);
-    if(dist_tmp < 1.24 && dist_tmp > 0.30) // 1.26 ~ 0.28
+    if(dist_tmp < 1.24f && dist_tmp > 0.30f) // 1.26 ~ 0.28
     {
-      laneDetector_.distance_ = (int)((1.24 - dist_tmp)*490.0);
+      laneDetector_.distance_ = (int)((1.24f - dist_tmp)*490.0f);
     }
-//    if(dist_tmp < 1.2 && dist_tmp > 0.24) // 1.26 ~ 0.28
-//    {
-//      laneDetector_.distance_ = (int)((1.2 - dist_tmp)*500.0);
-//    }
     else {
       laneDetector_.distance_ = 0;
     }
@@ -615,7 +611,7 @@ void ScaleTruckController::spin() {
       tcp_img_rep_ = true;
     }
 
-    recordData(laneDetector_.start_);
+    //recordData(laneDetector_.start_);
 
     if(enableConsoleOutput_)
       displayConsole();
