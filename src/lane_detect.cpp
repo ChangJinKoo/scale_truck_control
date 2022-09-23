@@ -554,7 +554,7 @@ Mat LaneDetector::detect_lines_sliding_window(Mat _frame, bool _view) {
 
 float LaneDetector::lowPassFilter(double sampling_time, float est_value, float prev_res){
   float res = 0;
-  float tau = 0.15f;
+  float tau = 0.10f;
   double st = 0.0;
 
   if (sampling_time > 1.0) st = 1.0;
@@ -830,7 +830,7 @@ Mat LaneDetector::estimateDistance(Mat frame, Mat trans, double cycle_time, bool
   if (name_ == "tail"){
     //est_dist = 1.24f - (dist_pixel/490.0f);
     est_dist = 1.2f - (dist_pixel/500.0f); //front-facing camera
-    if (est_dist > 0.3f && est_dist < 1.24f) est_dist_ = est_dist;
+    if (est_dist > 0.26f && est_dist < 1.24f) est_dist_ = est_dist;
   }
   else{
     est_dist = 1.25f - (dist_pixel/480.0f); //rear camera
@@ -902,7 +902,7 @@ Mat LaneDetector::estimatePose(Mat frame, double cycle_time, bool _view){
   crop_frame = frame(rect);
   cv::Canny(crop_frame, crop_frame, canny_thresh1_, canny_thresh2_);
 
-  for (int y = warp_center_.y+20; y < crop_height; y++){
+  for (int y = warp_center_.y+10; y < crop_height; y++){
     for (int x = 0; x < crop_width; x++){
       crop_frame.at<uchar>(y,x) = 0;
     }
@@ -957,8 +957,9 @@ Mat LaneDetector::estimatePose(Mat frame, double cycle_time, bool _view){
   prev_right = right;
 
   est_pose = atanf((float)(right.y - left.y) / (float)(right.x - left.x));
+  printf("est_pose: %.3f degree\n", est_pose * (180.0f/M_PI));
 
-  if (fabs(est_pose * (180.0f/M_PI)) < 10.0f){
+  if (fabs(est_pose * (180.0f/M_PI)) < 18.0f){
   //need measuring est_pose boundary
     est_pose_ = est_pose;
   }
@@ -1002,6 +1003,7 @@ float LaneDetector::display_img(Mat _frame, int _delay, bool _view) {
 
   //estimate Distance
   if (gamma_ && (x_!=0 && y_!=0 && w_!=0 && h_!=0)){
+  //if ((x_!=0 && y_!=0 && w_!=0 && h_!=0)){
     gettimeofday(&endTime, NULL);
     if (!flag){
       diffTime = (endTime.tv_sec - start_.tv_sec) + (endTime.tv_usec - start_.tv_usec)/1000000.0;

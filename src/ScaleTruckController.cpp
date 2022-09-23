@@ -61,7 +61,7 @@ bool ScaleTruckController::readParameters() {
   nodeHandle_.param("params/safety_vel", SafetyVel_, 0.3f); // m/s
   nodeHandle_.param("params/fv_max_vel", FVmaxVel_, 0.8f); // m/s
   nodeHandle_.param("params/ref_vel", RefVel_, 0.0f); // m/s
-  nodeHandle_.param("params/rcm_vel", RCMVel_, 0.8f);
+  nodeHandle_.param("params/rcm_vel", RCMVel_, 0.6f);
   
   /*******************/
   /* Distance Option */
@@ -158,6 +158,8 @@ void ScaleTruckController::init() {
   y_ = 0;
   w_ = 0;
   h_ = 0;
+
+  EstimatedDist_ = TargetDist_;
 
   /**********************************/
   /* Control & Communication Thread */
@@ -275,9 +277,11 @@ void* ScaleTruckController::objectdetectInThread() {
         Ld = sqrt(pow(Obstacle_.circles[i].center.x-Lw, 2) + pow(Obstacle_.circles[i].center.y, 2)) + Ld_offset_;
         angle_A = atanf(Obstacle_.circles[i].center.y/(Obstacle_.circles[i].center.x-Lw));
         ampersand_ = atanf(2*Lw*sin(angle_A)/Ld) * (180.0f/M_PI); // pure pursuit
+	ppAngle_ = (-1.0f) * ampersand_;
       }
     }
   } 
+  actDist_ = dist_tmp;
   {
     std::scoped_lock lock(rep_mutex_, lane_mutex_);
     if(gamma_ == true && laneDetector_.est_dist_ != 0){
@@ -293,20 +297,19 @@ void* ScaleTruckController::objectdetectInThread() {
     distance_ = dist_tmp;
     distAngle_ = angle_tmp;
   }
+  EstimatedDist_ = laneDetector_.est_dist_;
+//  dist_tmp = laneDetector_.est_dist_; //Play LV rear cam rosbag file in FV1
 
   /*****************************/
   /* Dynamic ROI Distance Data */
   /*****************************/
   {
     std::scoped_lock lock(lane_mutex_);
-    if(dist_tmp < 1.24 && dist_tmp > 0.30) // 1.26 ~ 0.28
+    if(dist_tmp < 1.24f && dist_tmp > 0.30f) // 1.26 ~ 0.28
     {
-      laneDetector_.distance_ = (int)((1.24 - dist_tmp)*490.0);
+      laneDetector_.distance_ = (int)((1.24f - dist_tmp)*490.0f);
+//      laneDetector_.distance_ = (int)((1.25f - dist_tmp)*480.0f); //Play LV rear cam rosbag file in FV1
     }
-//    if(dist_tmp < 1.2 && dist_tmp > 0.24) // 1.26 ~ 0.28
-//    {
-//      laneDetector_.distance_ = (int)((1.2 - dist_tmp)*500.0);
-//    }
     else {
       laneDetector_.distance_ = 0;
     }
@@ -522,14 +525,14 @@ void ScaleTruckController::recordData(struct timeval startTime){
       }
       read_file.close();
     }
-    write_file << "time,measured_sa,estimated_sa" << endl; //seconds
+    write_file << "time,target_vel,act_steer_angle,est_steer_angle,act_dist,est_dist" << endl; //seconds
     flag = true;
   }
   if(flag){
     std::scoped_lock lock(dist_mutex_);
     gettimeofday(&currentTime, NULL);
     diff_time = ((currentTime.tv_sec - startTime.tv_sec)) + ((currentTime.tv_usec - startTime.tv_usec)/1000000.0);
-    sprintf(buf, "%.10e, %.3f, %.3f", diff_time, AngleDegree_, AngleDegree2_);
+    sprintf(buf, "%.10e, %.3f, %.3f, %.3f,%.3f,%.3f", diff_time,TargetVel_,AngleDegree_, AngleDegree2_,actDist_,EstimatedDist_);
     write_file.open(file, std::ios::out | std::ios::app);
     write_file << buf << endl;
   }
