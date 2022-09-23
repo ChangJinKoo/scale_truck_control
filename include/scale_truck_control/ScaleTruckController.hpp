@@ -126,6 +126,9 @@ class ScaleTruckController {
     float log_est_dist_ = 0.0f;
     float AngleDegree2_ = 0.0f;
     float Ld_offset_ = 0.0f;
+    float actDist_;
+    float EstimatedDist_;
+    float ppAngle_ = 0.0f;
 
     //bbox
     std::string name_;

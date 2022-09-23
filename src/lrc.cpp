@@ -202,15 +202,15 @@ void LocalRC::encoderCheck(){
 void LocalRC::updateMode(uint8_t crc_mode){
   std::scoped_lock lock(data_mutex_);
   if(index_ == 10){  //LV
-    if(beta_ || gamma_){  //Camera sensor failure
-      lrc_mode_ = 2;  //GDM
-    }
-    else if(alpha_){
-      lrc_mode_ = 1;  //RCM
-    }
-    else{
+//    if(beta_ || gamma_){  //Camera sensor failure
+//      lrc_mode_ = 2;  //GDM
+//    }
+//    else if(alpha_){
+//      lrc_mode_ = 1;  //RCM
+//    }
+//    else{
       lrc_mode_ = 0;  //TM
-    }
+//    }
   }
   else{  //FV1, FV2
     if(alpha_ && beta_ && gamma_){
