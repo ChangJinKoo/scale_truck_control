@@ -28,8 +28,8 @@
 #define TICK2CYCLE    (60) // (65) // 65 ticks(EN_pos_) = 1 wheel cycle
 #define WHEEL_DIM     (0.085) // m
 #define MAX_SPEED     (2)  // m/s
-#define MAX_PWM       (2000)
-#define MIN_PWM       (1600)
+#define MAX_PWM       (1940)
+#define MIN_PWM       (1590)
 #define ZERO_PWM      (1500)
 #define MAX_STEER     (1800)
 #define MIN_STEER     (1200)
@@ -77,14 +77,17 @@ void LrcCallback(const scale_truck_control::lrc2ocr &msg) {
 /*
    SPEED to RPM
 */
-float Kp_dist_ = 1.2; // 1.2;
-float Kd_dist_ = 0.01; // 0.01;
-float Kp_ = 0.4; // 2.0; //0.8;
-float Ki_ = 1.3; // 0.4; //10.0;
-float Ka_ = 0.01;
-float Kf_ = 0.8;  // feed forward const.
+float Kp_dist_ = 0.9; // 1.2;
+float Kd_dist_ = 0.08; // 0.01;
+float Kp_ = 0.65; // 2.0; //0.8;
+float Ki_ = 1.9; // 0.4; //10.0;
+float Ka_ = 0.02;
+float Kf_ = 0.9;  // feed forward const.
 float dt_ = 0.1;
 float circ_ = WHEEL_DIM * M_PI;
+float a_ = -6.063e-06;
+float b_ = 0.0269;
+float c_ = -27.327;
 scale_truck_control::ocr2lrc pub_msg_;
 sensor_msgs::Imu imu_msg_;
 float setSPEED(float tar_vel, float current_vel) { 
@@ -98,13 +101,13 @@ float setSPEED(float tar_vel, float current_vel) {
   pub_msg_.cur_vel = cur_vel;
   //if(fi_encoder_) cur_vel = 0;
   if(Alpha_){
-    Kp_dist_ = 0.7;
-    Kd_dist_ = 0.5;
+    Kp_dist_ = 0.33; //0.46
+    Kd_dist_ = 0.555;  
     cur_vel = est_vel_;
   }
   else{
-    Kp_dist_ = 1.2;
-    Kd_dist_ = 0.01;
+    Kp_dist_ = 0.9;
+    Kd_dist_ = 0.08;
   }
   //if(tar_vel <= 0 ) {
     //output = ZERO_PWM;
@@ -151,7 +154,7 @@ float setSPEED(float tar_vel, float current_vel) {
       output = ZERO_PWM;
     }
     else{    // inverse function 
-      output = (-0.0184 + sqrt(pow(0.0184,2)-4*(-3.5470e-6)*(-20.1675-u_k)))/(2*(-3.5470e-6));
+      output = ((-1.0f)*b_ + sqrt(pow(b_,2)-4*a_*(c_-u_k)))/(2*a_);
     }
     //output = tx_throttle_;
     
@@ -242,53 +245,75 @@ void CheckEN() {
   output_angle = IMU.rpy[2];
   if(DATA_LOG)
   {
-    Serial.print(target_vel);
-    Serial.print(" m/s | ");
-    Serial.print(cur_vel);
-    Serial.print(" m/s | ");
-    Serial.print(output_vel);
-    Serial.println(" signal | ");
-    Serial.print(EN_pos_);
-    Serial.print(" count | ");
-    Serial.print(cumCountT_);
-    Serial.print(" count | ");
-    Serial.print(output_vel);
-    Serial.print(" us | ");
-    Serial.print(target_ANGLE);
-    Serial.print(" deg | ");
-    Serial.print(output_angle);
-    Serial.println(" deg");
+//    Serial.print(target_vel);
+//    Serial.print(" m/s | ");
+//    Serial.print(cur_vel);
+//    Serial.print(" m/s | ");
+//    Serial.print(output_vel);
+//    Serial.println(" signal | ");
+//    Serial.print(EN_pos_);
+//    Serial.print(" count | ");
+//    Serial.print(cumCountT_);
+//    Serial.print(" count | ");
+//    Serial.print(output_vel);
+//    Serial.print(" us | ");
+//    Serial.print(target_ANGLE);
+//    Serial.print(" deg | ");
+//    Serial.print(output_angle);
+//    Serial.print(" deg");
+//    Serial.print(" |PIN A");
+//    Serial.print(digitalRead(EN_PINA));
+//    Serial.print(" |PIN B");
+//    Serial.println(digitalRead(EN_PINB));
+/*
+    if(!flag && tx_throttle_ != 0.0){
+      start_time = millis();
+      flag = true;
+    }
+    if(flag){
+      cur_time = millis();
+      diff_time = ((double)(cur_time - start_time)) / 1000.0;
+      Serial.print(diff_time);
+      Serial.print(",");
+      Serial.print(tx_throttle_);
+      Serial.print(",");
+      Serial.println(cur_vel);
+      if (tx_throttle_ == 0.0){
+        flag = false;
+      }
+    }
+*/    
   }
-  if(!flag){
-    logfile_ = SD.open(filename_, FILE_WRITE);
-    logfile_.println("Time,Tar_vel,Cur_vel,Sat_vel,Est_vel,Fi_Encoder,Alpha,output,Tar_dist,Cur_dist");
-    logfile_.close();
-    start_time = millis();
-    flag = true;
-  }
-  logfile_ = SD.open(filename_, FILE_WRITE);
-  cur_time = millis();
-  diff_time = ((double)(cur_time - start_time)) / 1000.0;
-  logfile_.print(diff_time);
-  logfile_.print(",");
-  logfile_.print(target_vel);
-  logfile_.print(",");
-  logfile_.print(cur_vel);
-  logfile_.print(",");
-  logfile_.print(u_k_);
-  logfile_.print(",");
-  logfile_.print(est_vel_);
-  logfile_.print(",");
-  logfile_.print(fi_encoder_);
-  logfile_.print(",");
-  logfile_.print(Alpha_);
-  logfile_.print(",");
-  logfile_.print(output_vel);
-  logfile_.print(",");
-  logfile_.print(tx_tdist_);
-  logfile_.print(",");
-  logfile_.println(tx_dist_);
-  logfile_.close();
+//  if(!flag){
+//    logfile_ = SD.open(filename_, FILE_WRITE);
+//    logfile_.println("Time,Tar_vel,Cur_vel,Sat_vel,Est_vel,Fi_Encoder,Alpha,output,Tar_dist,Cur_dist");
+//    logfile_.close();
+//    start_time = millis();
+//    flag = true;
+//  }
+//  logfile_ = SD.open(filename_, FILE_WRITE);
+//  cur_time = millis();
+//  diff_time = ((double)(cur_time - start_time)) / 1000.0;
+//  logfile_.print(diff_time);
+//  logfile_.print(",");
+//  logfile_.print(target_vel);
+//  logfile_.print(",");
+//  logfile_.print(cur_vel);
+//  logfile_.print(",");
+//  logfile_.print(u_k_);
+//  logfile_.print(",");
+//  logfile_.print(est_vel_);
+//  logfile_.print(",");
+//  logfile_.print(fi_encoder_);
+//  logfile_.print(",");
+//  logfile_.print(Alpha_);
+//  logfile_.print(",");
+//  logfile_.print(output_vel);
+//  logfile_.print(",");
+//  logfile_.print(tx_tdist_);
+//  logfile_.print(",");
+//  logfile_.println(tx_dist_);
+//  logfile_.close();
   // CLEAR counter
   ClearT();
 }
@@ -372,8 +397,8 @@ void loop() {
 //    if(flag_) {
 //      delay(1000);
 //      tx_throttle_ = speed_vel;
-//      delay(5000);
-//      tx_throttle_ = 0;
+//      delay(7000);
+//      tx_throttle_ = 0.0;
 //      flag_ = false;
 //    }
 //  }
