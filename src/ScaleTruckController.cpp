@@ -159,7 +159,7 @@ void ScaleTruckController::init() {
   w_ = 0;
   h_ = 0;
 
-  EstimatedDist_ = TargetDist_;
+  estimatedDist_ = TargetDist_;
 
   /**********************************/
   /* Control & Communication Thread */
@@ -297,7 +297,7 @@ void* ScaleTruckController::objectdetectInThread() {
     distance_ = dist_tmp;
     distAngle_ = angle_tmp;
   }
-  EstimatedDist_ = laneDetector_.est_dist_;
+  estimatedDist_ = laneDetector_.est_dist_;
 //  dist_tmp = laneDetector_.est_dist_; //Play LV rear cam rosbag file in FV1
 
   /*****************************/
@@ -525,14 +525,14 @@ void ScaleTruckController::recordData(struct timeval startTime){
       }
       read_file.close();
     }
-    write_file << "time,target_vel,act_steer_angle,est_steer_angle,act_dist,est_dist" << endl; //seconds
+    write_file << "time,tar_vel,cur_dist,est_dist" << endl; //seconds
     flag = true;
   }
   if(flag){
     std::scoped_lock lock(dist_mutex_);
     gettimeofday(&currentTime, NULL);
     diff_time = ((currentTime.tv_sec - startTime.tv_sec)) + ((currentTime.tv_usec - startTime.tv_usec)/1000000.0);
-    sprintf(buf, "%.10e, %.3f, %.3f, %.3f,%.3f,%.3f", diff_time,TargetVel_,AngleDegree_, AngleDegree2_,actDist_,EstimatedDist_);
+    sprintf(buf, "%.10e,%.3f,%.3f,%.3f", diff_time, TargetVel_, actDist_, estimatedDist_);
     write_file.open(file, std::ios::out | std::ios::app);
     write_file << buf << endl;
   }

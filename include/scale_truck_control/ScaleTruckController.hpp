@@ -127,7 +127,7 @@ class ScaleTruckController {
     float AngleDegree2_ = 0.0f;
     float Ld_offset_ = 0.0f;
     float actDist_;
-    float EstimatedDist_;
+    float estimatedDist_;
     float ppAngle_ = 0.0f;
 
     //bbox
