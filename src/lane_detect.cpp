@@ -957,7 +957,6 @@ Mat LaneDetector::estimatePose(Mat frame, double cycle_time, bool _view){
   prev_right = right;
 
   est_pose = atanf((float)(right.y - left.y) / (float)(right.x - left.x));
-  printf("est_pose: %.3f degree\n", est_pose * (180.0f/M_PI));
 
   if (fabs(est_pose * (180.0f/M_PI)) < 18.0f){
   //need measuring est_pose boundary
