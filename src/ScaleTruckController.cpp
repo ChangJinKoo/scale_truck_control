@@ -34,6 +34,11 @@ ScaleTruckController::~ScaleTruckController() {
   XavPublisher_.publish(msg);
   controlThread_.join();
   tcpThread_.join();
+
+  delete zmq_data_;
+  delete img_data_;
+
+  if (rear_camera_) delete backup_data_;
   if (send_rear_camera_image_ && (index_ == 0 || index_ == 1)) tcpImgReqThread_.join();
   if (req_lv_ && (index_ == 1 || index_ == 2)) tcpImgRepThread_.join();
 
@@ -124,7 +129,12 @@ void ScaleTruckController::init() {
   /* Ros Topic Subscriber */
   /************************/
   imageSubscriber_ = nodeHandle_.subscribe(imageTopicName, imageQueueSize, &ScaleTruckController::imageCallback, this);
-  if (rear_camera_) rearImageSubscriber_ = nodeHandle_.subscribe(rearImageTopicName, rearImageQueueSize, &ScaleTruckController::rearImageCallback, this);
+  if (rear_camera_) {
+    rearImageSubscriber_ = nodeHandle_.subscribe(rearImageTopicName, rearImageQueueSize, &ScaleTruckController::rearImageCallback, this);
+    backup_data_ = new ImgData;
+    backup_data_->src_index = index_;
+    backup_data_->tar_index = index_+1;
+  }
   objectSubscriber_ = nodeHandle_.subscribe(objectTopicName, objectQueueSize, &ScaleTruckController::objectCallback, this);
   XavSubscriber_ = nodeHandle_.subscribe(XavSubTopicName, XavSubQueueSize, &ScaleTruckController::XavSubCallback, this);
   ScanSubError = nodeHandle_.subscribe("/scan_error", 1000, &ScaleTruckController::ScanErrorCallback, this);  
@@ -268,7 +278,7 @@ void* ScaleTruckController::objectdetectInThread() {
     for(int i = 0; i < ObjCircles_; i++)
     {
       //dist = sqrt(pow(Obstacle_.circles[i].center.x,2)+pow(Obstacle_.circles[i].center.y,2));
-      Obstacle_.circles[i].center.y += 0.05f;
+      Obstacle_.circles[i].center.y += 0.035f;
       dist = -Obstacle_.circles[i].center.x - Obstacle_.circles[i].true_radius;
       angle = atanf(Obstacle_.circles[i].center.y/Obstacle_.circles[i].center.x)*(180.0f/M_PI);
       if(dist_tmp >= dist) {
@@ -298,7 +308,14 @@ void* ScaleTruckController::objectdetectInThread() {
     distAngle_ = angle_tmp;
   }
   estimatedDist_ = laneDetector_.est_dist_;
-//  dist_tmp = laneDetector_.est_dist_; //Play LV rear cam rosbag file in FV1
+
+/* //Play LV rear cam rosbag file in FV1
+ * {
+ *   std::scoped_lock lock(dist_mutex_);
+ *   dist_tmp = laneDetector_.est_dist_;
+ *   distance_ = dist_tmp;
+ * }
+*/
 
   /*****************************/
   /* Dynamic ROI Distance Data */
@@ -347,11 +364,11 @@ void* ScaleTruckController::objectdetectInThread() {
   }
 }
 
-void ScaleTruckController::imageCompress(cv::Mat camImage) {
+void ScaleTruckController::imageCompress(cv::Mat camImage, std::vector<uchar> *compImage) {
   std::vector<int> comp;
   comp.push_back(1); // CV_IMWRITE_JPEG_QUALITY
   comp.push_back(80); // 0 ~ 100
-  cv::imencode(".jpg", camImage, compImageSend_, comp);
+  cv::imencode(".jpg", camImage, *compImage, comp);
 }
 
 void ScaleTruckController::requestImage(ImgData* img_data)
@@ -362,7 +379,7 @@ void ScaleTruckController::requestImage(ImgData* img_data)
       rearImageTmp_ = rearImageCopy_;
     }
     if(!rearImageTmp_.empty()){
-      imageCompress(rearImageTmp_);
+      imageCompress(rearImageTmp_, &compImageSend_);
       if(compImageSend_.size() <= (sizeof(img_data->comp_image) / sizeof(u_char))){
         std::copy(compImageSend_.begin(), compImageSend_.end(), img_data->comp_image);
       }
@@ -370,8 +387,9 @@ void ScaleTruckController::requestImage(ImgData* img_data)
       img_data->size = compImageSend_.size();
       req_check_++;
       gettimeofday(&img_data->startTime, NULL);
-      ZMQ_SOCKET_.requestImageZMQ(img_data); 
+      ZMQ_SOCKET_.requestImageZMQ(img_data, backup_data_); 
     }
+    printf("image request socket change count: %d\n", ZMQ_SOCKET_.img_socket_change_count_);
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
   } 
 }
@@ -525,7 +543,7 @@ void ScaleTruckController::recordData(struct timeval startTime){
       }
       read_file.close();
     }
-    write_file << "time,tar_vel,cur_dist,est_dist" << endl; //seconds
+    write_file << "time,tar_vel,act_dist,est_dist" << endl; //seconds
     flag = true;
   }
   if(flag){
@@ -606,8 +624,6 @@ void ScaleTruckController::spin() {
       ros::requestShutdown();
     }
 
-
-
     if (!tcp_img_req_ && send_rear_camera_image_ && (index_ == 0 || index_ == 1)){
       tcpImgReqThread_ = std::thread(&ScaleTruckController::requestImage, this, img_data_);
       tcp_img_req_ = true;
@@ -633,6 +649,18 @@ void ScaleTruckController::spin() {
     if (cnt > 3000){
       diff_time = 0.0;
       cnt = 0;
+    }
+
+    {
+      std::scoped_lock lock(rear_image_mutex_);
+      rearImageBackup_ = rearImageCopy_;
+    }
+    if(!rearImageBackup_.empty()){
+      imageCompress(rearImageBackup_, &compImageBackup_);
+      if(compImageBackup_.size() <= (sizeof(backup_data_->comp_image) / sizeof(uchar))){
+        std::copy(compImageBackup_.begin(), compImageBackup_.end(), backup_data_->comp_image);
+      }
+      backup_data_->size = compImageBackup_.size();
     }
   }
 }
