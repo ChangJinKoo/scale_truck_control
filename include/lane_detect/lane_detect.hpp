@@ -47,6 +47,9 @@ public:
 	unsigned int x_ = 0, y_ = 0, w_ = 0, h_ = 0;
 	Point center_, warp_center_;
 	float SteerAngle2_ = 0.0f;
+	float log_e1_ = 0.0f;
+	float log_el_ = 0.0f;
+	float vel_ = 0.0f;
 
 	/***** fault signal *****/
 	bool beta_ = false, gamma_ = false;
