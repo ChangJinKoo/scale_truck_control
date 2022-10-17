@@ -9,7 +9,7 @@ tcp_ip:
 tcpimg_ip:
   ip_addr_server: "tcp://*"
   ip_addr_client: "tcp://192.168.0.11"
-  req_port: "4040"
+  req_port: "50000"
   rep_port: ""
 
 udp_ip:
@@ -31,7 +31,7 @@ params:
   target_vel: 0.00
   safety_vel: 0.45
   fv_max_vel: 1.20
-  rcm_vel: 0.8
+  rcm_vel: 0.6
   lv_stop_dist: 0.5
   fv_stop_dist: 0.3
   safety_dist: 1.5
@@ -107,8 +107,8 @@ ROI:
     bot_gap: 0.17
     top_height: 0.99
     bot_height: 0.47
-    extra_f: 0
-    extra_b: -3
+    extra_f: 1
+    extra_b: 10
     extra_up: 140
     extra_down: 180
 

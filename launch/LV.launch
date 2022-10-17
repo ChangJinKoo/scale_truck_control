@@ -25,6 +25,16 @@
     <param name="io_method" value="mmap" />
   </node>
 
+  <!-- Start rear_cam -->
+  <node pkg="usb_cam" type="usb_cam_node" name="rear_cam" >
+    <param name="video_device" value="/dev/video2" />
+    <param name="image_width" value="640" />
+    <param name="image_height" value="480" />
+    <param name="pixel_format" value="yuyv" />
+    <param name="camera_frame_id" value="rear_cam" />
+    <param name="io_method" value="mmap" />
+  </node>
+
   <!-- Start rplidar_ros -->
   <node name="rplidarNode"          pkg="rplidar_ros"  type="rplidarNode" output="screen">
     <param name="serial_port"         type="string" value="/dev/ttyUSB0"/>  
