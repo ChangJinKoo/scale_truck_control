@@ -9,8 +9,8 @@ tcp_ip:
 tcpimg_ip:
   ip_addr_server: "tcp://*"
   ip_addr_client: "tcp://192.168.0.12"
-  req_port: "5050"
-  rep_port: "4040"
+  req_port: ""
+  rep_port: "50000"
 
 udp_ip:
   ip_addr: "udp://239.255.255.251"

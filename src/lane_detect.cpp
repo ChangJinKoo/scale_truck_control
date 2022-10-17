@@ -1008,8 +1008,8 @@ float LaneDetector::display_img(Mat _frame, int _delay, bool _view) {
   sliding_frame = detect_lines_sliding_window(binary_frame, _view);
 
   //estimate Distance
-  //if (gamma_ && (x_!=0 && y_!=0 && w_!=0 && h_!=0)){
-  if ((x_!=0 && y_!=0 && w_!=0 && h_!=0)){
+  if (gamma_ && (x_!=0 && y_!=0 && w_!=0 && h_!=0)){
+  //if ((x_!=0 && y_!=0 && w_!=0 && h_!=0)){
     gettimeofday(&endTime, NULL);
     if (!flag){
       diffTime = (endTime.tv_sec - start_.tv_sec) + (endTime.tv_usec - start_.tv_usec)/1000000.0;
@@ -1026,7 +1026,7 @@ float LaneDetector::display_img(Mat _frame, int _delay, bool _view) {
   }
 
   controlSteer();
-  printf("SteerAngle2 = K3 * e1 + K4 * eL -> %.2f = %.2f * %.2f + %.2f * %.2f\n", SteerAngle2_, K3_, log_e1_, K4_, log_el_);
+  //printf("SteerAngle2 = K3 * e1 + K4 * eL -> %.2f = %.2f * %.2f + %.2f * %.2f\n", SteerAngle2_, K3_, log_e1_, K4_, log_el_);
 
   if (_view) {
     resized_frame = draw_lane(sliding_frame, new_frame);
