@@ -130,6 +130,8 @@ float setSPEED(float tar_vel, float current_vel) {
       ref_vel = tar_vel;
     }
     
+    pub_msg_.ref_vel = ref_vel;
+    
     err = ref_vel - cur_vel;
     P_err = Kp_ * err;
     I_err += Ki_ * err * dt_;

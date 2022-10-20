@@ -21,8 +21,8 @@
 //OpenCV
 #include <cv_bridge/cv_bridge.h>
 
-#define DATASIZE 76  // size of ZmqData 
-#define REQUEST_TIMEOUT 100 // milliseconds
+#define DATASIZE 80  // size of ZmqData 
+#define REQUEST_TIMEOUT 150 // milliseconds
 
 typedef struct LaneCoef{
 	float a = 0.0f;
@@ -56,6 +56,7 @@ typedef struct ZmqData{
 	//flag to send rear camera sensor image
 	bool send_rear_camera_image = false;
 
+	float ref_vel = 0.0f;
 	float cur_vel = 0.0f;
 	float cur_dist = 0.0f;
 	float cur_angle = 0.0f;

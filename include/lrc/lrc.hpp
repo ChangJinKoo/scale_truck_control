@@ -76,6 +76,7 @@ class LocalRC{
     float cur_dist_ = 0.8f;
     float tar_dist_ = 0.8f;
     float fv1_dist_ = 0.8f;
+    float ref_vel_ = 0;
     float cur_vel_ = 0;
     float tar_vel_ = 0;
     float est_vel_ = 0;

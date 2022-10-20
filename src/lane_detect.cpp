@@ -575,7 +575,8 @@ Point LaneDetector::warpPoint(Point center, Mat trans){
 
 Mat LaneDetector::draw_lane(Mat _sliding_frame, Mat _frame) {
   Mat new_frame, left_coef(left_coef_), right_coef(right_coef_), center_coef(center_coef_), trans;
-  trans = getPerspectiveTransform(fROIwarpCorners_, fROIcorners_);
+  //trans = getPerspectiveTransform(fROIwarpCorners_, fROIcorners_);
+  trans = getPerspectiveTransform(warpCorners_, corners_);
   _frame.copyTo(new_frame);
 
   vector<Point> left_point;
@@ -835,9 +836,8 @@ Mat LaneDetector::estimateDistance(Mat frame, Mat trans, double cycle_time, bool
     if (est_dist > 0.26f && est_dist < 1.24f) est_dist_ = est_dist;
   }
   else{
-    est_dist = 1.25f - (dist_pixel/480.0f); //rear camera
+    est_dist = 1.35f - (dist_pixel/480.0f); //rear camera
     if (est_dist > 0.26f && est_dist < 1.24f) est_dist_ = est_dist;
-    cout << "est_dist: " << est_dist_ << endl;
   }
 
   return res_frame;
@@ -919,10 +919,10 @@ Mat LaneDetector::estimatePose(Mat frame, double cycle_time, bool _view){
   for (int y = warp_center_.y+20; y >= 0; y--){
     int x1 = left_lane_[y].x - crop_x;
     int x2 = right_lane_[y].x - crop_x;
-    for (int x = 0; x <= x1+30; x++){
+    for (int x = 0; x <= x1+40; x++){
       if ((x >= 0) && (x <= crop_width)) crop_frame.at<uchar>(y,x) = 0;
     }
-    for (int x = x2-30; x <= crop_width; x++){
+    for (int x = x2-40; x <= crop_width; x++){
       if ((x >= 0) && (x <= crop_width)) crop_frame.at<uchar>(y,x) = 0;
     }
   }
@@ -983,7 +983,25 @@ float LaneDetector::display_img(Mat _frame, int _delay, bool _view) {
   if (beta_ && gamma_ && name_ == "head"){
     map1_ = r_map1_.clone();
     map2_ = r_map2_.clone();
-    std::copy(rROIcorners_.begin(), rROIcorners_.end(), corners_.begin());
+
+    std::vector<Point2f> rROIcorners(4);
+    int lv_rear_camera_offset = (int)(center_coef_.at<float>(2,0) * pow(480,2) + center_coef_.at<float>(1,0) * 480 + center_coef_.at<float>(0,0)) - ((rROIcorners_.at(2).x + rROIcorners_.at(3).x)/2); // move ROI to center of lane
+    int f_extra = lv_rear_camera_offset*4/13;
+    int b_extra = lv_rear_camera_offset;
+
+    std::copy(rROIcorners_.begin(), rROIcorners_.end(), rROIcorners.begin());
+
+    if (lv_rear_camera_offset < 55) {  // bigger than 55 might be error image
+      rROIcorners.at(0).x += f_extra;
+      rROIcorners.at(1).x += f_extra;
+      rROIcorners.at(2).x += b_extra;
+      rROIcorners.at(3).x += b_extra;
+
+      std::copy(rROIcorners.begin(), rROIcorners.end(), corners_.begin());
+    }
+    else {
+      std::copy(rROIcorners_.begin(), rROIcorners_.end(), corners_.begin());
+    }
     std::copy(rROIwarpCorners_.begin(), rROIwarpCorners_.end(), warpCorners_.begin());
   }
 
@@ -1026,7 +1044,7 @@ float LaneDetector::display_img(Mat _frame, int _delay, bool _view) {
   }
 
   controlSteer();
-  //printf("SteerAngle2 = K3 * e1 + K4 * eL -> %.2f = %.2f * %.2f + %.2f * %.2f\n", SteerAngle2_, K3_, log_e1_, K4_, log_el_);
+  printf("SteerAngle2 = K3 * e1 + K4 * eL -> %.2f = %.2f * %.2f + %.2f * %.2f\n", SteerAngle2_, K3_, log_e1_, K4_, log_el_);
 
   if (_view) {
     resized_frame = draw_lane(sliding_frame, new_frame);
