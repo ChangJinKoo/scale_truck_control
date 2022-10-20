@@ -105,6 +105,7 @@ void LocalRC::XavCallback(const scale_truck_control::xav2lrc &msg){
 
 void LocalRC::OcrCallback(const scale_truck_control::ocr2lrc &msg){
   std::scoped_lock lock(data_mutex_);
+  ref_vel_ = msg.ref_vel;
   cur_vel_ = msg.cur_vel;
   sat_vel_ = msg.u_k;  //saturated velocity
 }
@@ -163,21 +164,16 @@ void LocalRC::request(ZmqData* zmq_data){
     {
       std::scoped_lock lock(data_mutex_, time_mutex_);
       zmq_data->tar_vel = tar_vel_;
+      zmq_data->ref_vel = ref_vel_;
       zmq_data->cur_vel = cur_vel_;
-      zmq_data->tar_dist = tar_dist_; //because of CRC logging
+      zmq_data->tar_dist = tar_dist_;
       zmq_data->cur_dist = cur_dist_;
       zmq_data->alpha = alpha_;
       zmq_data->beta = beta_;
       zmq_data->gamma = gamma_;
       zmq_data->lrc_mode = lrc_mode_;
     }
-    gettimeofday(&startTime, NULL);
     ZMQ_SOCKET_.requestZMQ(zmq_data);
-    gettimeofday(&endTime, NULL);
-    {
-      std::scoped_lock lock(time_mutex_);
-      req_time_ = ((endTime.tv_sec - startTime.tv_sec)* 1000.0) + ((endTime.tv_usec - startTime.tv_usec)/1000.0);
-    }
     updateData(ZMQ_SOCKET_.req_recv_);
     std::this_thread::sleep_for(std::chrono::milliseconds(2));
   }
@@ -260,16 +256,14 @@ void LocalRC::recordData(struct timeval *startTime){
       }
       read_file.close();
     }
-//    write_file << "Time,Request_time,Tar_dist,Cur_dist,Tar_vel,Cur_vel,Est_vel,Sat_vel,Hat_vel,Steer_angle,Fi_encoder,Alpha,Fi_camera,Beta,Fi_lidar,Gamma,LRC_mode,CRC_mode" << endl; //seconds
-    write_file << "Time,Tar_dist,Cur_dist,Tar_vel,Cur_vel" << endl; //seconds
+    write_file << "Time,Tar_dist,Cur_dist,Tar_vel,Ref_vel,Cur_vel" << endl; //seconds
     flag = true;
   }
   else{
     std::scoped_lock lock(data_mutex_, time_mutex_);
     gettimeofday(&currentTime, NULL);
     time_ = ((currentTime.tv_sec - startTime->tv_sec)) + ((currentTime.tv_usec - startTime->tv_usec)/1000000.0);
-//    sprintf(buf, "%.10e,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%d,%d,%d,%d,%d,%d,%d,%d", time_, req_time_, tar_dist_, cur_dist_, tar_vel_, cur_vel_, est_vel_, sat_vel_, hat_vel_, angle_degree_, fi_encoder_, alpha_, fi_camera_, beta_, fi_lidar_, gamma_, lrc_mode_, crc_mode_);
-    sprintf(buf, "%.10e,%.3f,%.3f,%.3f,%.3f", time_, tar_dist_, cur_dist_,tar_vel_,cur_vel_);
+    sprintf(buf, "%.10e,%.3f,%.3f,%.3f,%.3f,%.3f", time_, tar_dist_, cur_dist_, tar_vel_, ref_vel_, cur_vel_);
     write_file.open(file, std::ios::out | std::ios::app);
     write_file << buf << endl;
   }
@@ -287,7 +281,6 @@ void LocalRC::printStatus(){
     printf("\nCurrent Velocity:\t%.3f", cur_vel_);
     printf("\nTarget Distance:\t%.3f", tar_dist_);
     printf("\nCurrent Distance:\t%.3f", cur_dist_);
-    printf("\nSaturated Velocity:\t%.3f", sat_vel_);
     printf("\nEstimated Value:\t%.3f", fabs(cur_vel_ - hat_vel_));
     printf("\nalpha, beta, gamma:\t%d, %d, %d", alpha_, beta_, gamma_); 
     printf("\nMODE:\t%d", lrc_mode_);

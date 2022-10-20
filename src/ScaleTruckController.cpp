@@ -199,7 +199,8 @@ void* ScaleTruckController::lanedetectInThread() {
   float AngleDegree;
   {
     std::scoped_lock lock(rep_mutex_, image_mutex_);
-    if((!camImageTmp_.empty()) && (cnt != 0) && (TargetVel_ > 0.001f))
+    //if((!camImageTmp_.empty()) && (cnt != 0) && (TargetVel_ > 0.001f))
+    if((!camImageTmp_.empty()) && (cnt != 0) )
     {
       bitwise_xor(camImageCopy_,camImageTmp_, dst);
       split(dst, channels);
@@ -232,6 +233,7 @@ void* ScaleTruckController::lanedetectInThread() {
     if(!rearImageJPEG_.empty()) camImageTmp_ = rearImageJPEG_.clone();
 
     AngleDegree = laneDetector_.display_img(camImageTmp_, waitKeyDelay_, viewImage_);
+    actAngleDegree_ = AngleDegree;
     AngleDegree2_ = laneDetector_.SteerAngle2_;
     droi_ready_ = false;
   }
@@ -278,7 +280,7 @@ void* ScaleTruckController::objectdetectInThread() {
     for(int i = 0; i < ObjCircles_; i++)
     {
       //dist = sqrt(pow(Obstacle_.circles[i].center.x,2)+pow(Obstacle_.circles[i].center.y,2));
-      Obstacle_.circles[i].center.y += 0.035f;
+      //Obstacle_.circles[i].center.y -= 0.06f;
       dist = -Obstacle_.circles[i].center.x - Obstacle_.circles[i].true_radius;
       angle = atanf(Obstacle_.circles[i].center.y/Obstacle_.circles[i].center.x)*(180.0f/M_PI);
       if(dist_tmp >= dist) {
@@ -296,6 +298,7 @@ void* ScaleTruckController::objectdetectInThread() {
     std::scoped_lock lock(rep_mutex_, lane_mutex_);
     if(gamma_ == true && laneDetector_.est_dist_ != 0){
       dist_tmp = laneDetector_.est_dist_;
+      estimatedDist_ = laneDetector_.est_dist_;
     }
     if(beta_ == true){
       angle_tmp = ampersand_;
@@ -307,7 +310,6 @@ void* ScaleTruckController::objectdetectInThread() {
     distance_ = dist_tmp;
     distAngle_ = angle_tmp;
   }
-  estimatedDist_ = laneDetector_.est_dist_;
 
 /* //Play LV rear cam rosbag file in FV1
  * {
@@ -321,11 +323,15 @@ void* ScaleTruckController::objectdetectInThread() {
   /* Dynamic ROI Distance Data */
   /*****************************/
   {
-    std::scoped_lock lock(lane_mutex_);
+    std::scoped_lock lock(rep_mutex_, lane_mutex_);
     if(dist_tmp < 1.24f && dist_tmp > 0.30f) // 1.26 ~ 0.28
     {
-      laneDetector_.distance_ = (int)((1.24f - dist_tmp)*490.0f);
-//      laneDetector_.distance_ = (int)((1.25f - dist_tmp)*480.0f); //Play LV rear cam rosbag file in FV1
+      if (gamma_ == true && laneDetector_.est_dist_ != 0 && name_ == "head") { // dynamic ROI of S6 
+        laneDetector_.distance_ = (int)((1.35f - dist_tmp)*480.0f)+20;
+      }
+      else {
+        laneDetector_.distance_ = (int)((1.24f - dist_tmp)*490.0f)+20;
+      }
     }
     else {
       laneDetector_.distance_ = 0;
@@ -543,14 +549,14 @@ void ScaleTruckController::recordData(struct timeval startTime){
       }
       read_file.close();
     }
-    write_file << "time,tar_vel,act_dist,est_dist" << endl; //seconds
+    write_file << "time,tar_vel,act_dist,est_dist,act_angle,est_angle" << endl; //seconds
     flag = true;
   }
   if(flag){
     std::scoped_lock lock(dist_mutex_);
     gettimeofday(&currentTime, NULL);
     diff_time = ((currentTime.tv_sec - startTime.tv_sec)) + ((currentTime.tv_usec - startTime.tv_usec)/1000000.0);
-    sprintf(buf, "%.10e,%.3f,%.3f,%.3f", diff_time, TargetVel_, actDist_, estimatedDist_);
+    sprintf(buf, "%.10e,%.3f,%.3f,%.3f,%.3f,%.3f", diff_time, TargetVel_, actDist_, estimatedDist_, actAngleDegree_, AngleDegree2_);
     write_file.open(file, std::ios::out | std::ios::app);
     write_file << buf << endl;
   }
