@@ -56,6 +56,7 @@ find_package(catkin REQUIRED
     geometry_msgs
     cv_bridge
     obstacle_detector 
+    pcl_ros
 )
 
 add_message_files(

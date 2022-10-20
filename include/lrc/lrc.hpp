@@ -75,13 +75,13 @@ class LocalRC{
     float angle_degree_ = 0;
     float cur_dist_ = 0.8f;
     float tar_dist_ = 0.8f;
-    float fv1_dist_ = 0.8f;
     float ref_vel_ = 0;
     float cur_vel_ = 0;
     float tar_vel_ = 0;
     float est_vel_ = 0;
     float hat_vel_ = 0;
     float sat_vel_ = 0;
+    float preceding_truck_vel_ = 0;
     double time_ = 0;
     double req_time_ = 0;
 

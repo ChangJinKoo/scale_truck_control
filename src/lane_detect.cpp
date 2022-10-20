@@ -1044,7 +1044,7 @@ float LaneDetector::display_img(Mat _frame, int _delay, bool _view) {
   }
 
   controlSteer();
-  printf("SteerAngle2 = K3 * e1 + K4 * eL -> %.2f = %.2f * %.2f + %.2f * %.2f\n", SteerAngle2_, K3_, log_e1_, K4_, log_el_);
+  //printf("SteerAngle2 = K3 * e1 + K4 * eL -> %.2f = %.2f * %.2f + %.2f * %.2f\n", SteerAngle2_, K3_, log_e1_, K4_, log_el_);
 
   if (_view) {
     resized_frame = draw_lane(sliding_frame, new_frame);

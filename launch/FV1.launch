@@ -9,11 +9,17 @@
   <arg name="lrc_param_file"             default="$(find scale_truck_control)/config/lrc_FV1.yaml"/>
   <arg name="vehicle_param_file"             default="$(find scale_truck_control)/config/FV1.yaml"/>
   <arg name="lidar_param_file"             default="$(find scale_truck_control)/config/laser_filter.yaml"/>
+  <arg name="cluster_param_file"             default="$(find scale_truck_control)/config/laser_cluster.yaml"/>
 
   <!-- Load parameters -->
   <rosparam command="load" ns="scale_truck_control" file="$(arg ros_param_file)"/>
   <rosparam command="load" ns="scale_truck_control" file="$(arg vehicle_param_file)"/>
   <rosparam command="load" ns="LRC" file="$(arg lrc_param_file)"/>
+
+  <!-- Start laser_cluster -->
+  <node pkg="laser_cluster" type="laser_cluster_node" output="screen" name="laser_cluster_node" >
+    <rosparam command="load" file="$(arg cluster_param_file)"/>
+  </node>
 
   <!-- Start usb_cam -->
   <node pkg="usb_cam" type="usb_cam_node" name="usb_cam" >

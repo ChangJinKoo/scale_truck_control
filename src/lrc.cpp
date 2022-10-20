@@ -89,7 +89,7 @@ bool LocalRC::isNodeRunning(){
 
 
 void LocalRC::XavCallback(const scale_truck_control::xav2lrc &msg){
-  std::scoped_lock lock(data_mutex_, time_mutex_);
+  std::scoped_lock lock(data_mutex_);
   angle_degree_ = msg.steer_angle;
   cur_dist_ = msg.cur_dist;
   if(index_ == 10){  //only LV LRC
@@ -114,7 +114,7 @@ void LocalRC::rosPub(){
   scale_truck_control::lrc2xav xav;
   scale_truck_control::lrc2ocr ocr;
   { 
-    std::scoped_lock lock(data_mutex_, time_mutex_);
+    std::scoped_lock lock(data_mutex_);
     xav.cur_vel = cur_vel_;
     xav.tar_vel = tar_vel_;
     xav.tar_dist = tar_dist_;
@@ -128,6 +128,7 @@ void LocalRC::rosPub(){
     ocr.tar_dist = tar_dist_;
     ocr.tar_vel = tar_vel_;
     ocr.est_vel = est_vel_;
+    ocr.preceding_truck_vel = preceding_truck_vel_;
     ocr.fi_encoder = fi_encoder_;
     ocr.alpha = alpha_;
   }
@@ -162,7 +163,7 @@ void LocalRC::request(ZmqData* zmq_data){
   double diff_time = 0.0;
   while(isNodeRunning()){
     {
-      std::scoped_lock lock(data_mutex_, time_mutex_);
+      std::scoped_lock lock(data_mutex_);
       zmq_data->tar_vel = tar_vel_;
       zmq_data->ref_vel = ref_vel_;
       zmq_data->cur_vel = cur_vel_;
@@ -226,6 +227,7 @@ void LocalRC::updateData(ZmqData* zmq_data){
   if(zmq_data->src_index == 30){  //from CRC
     est_vel_ = zmq_data->est_vel;
     crc_mode_ = zmq_data->crc_mode;
+    preceding_truck_vel_ = zmq_data->preceding_truck_vel;
     send_rear_camera_image_ = zmq_data->send_rear_camera_image;
   }
   else if(zmq_data->src_index == 10){  //from LV LRC to FVs LRC
@@ -260,7 +262,7 @@ void LocalRC::recordData(struct timeval *startTime){
     flag = true;
   }
   else{
-    std::scoped_lock lock(data_mutex_, time_mutex_);
+    std::scoped_lock lock(data_mutex_);
     gettimeofday(&currentTime, NULL);
     time_ = ((currentTime.tv_sec - startTime->tv_sec)) + ((currentTime.tv_usec - startTime->tv_usec)/1000000.0);
     sprintf(buf, "%.10e,%.3f,%.3f,%.3f,%.3f,%.3f", time_, tar_dist_, cur_dist_, tar_vel_, ref_vel_, cur_vel_);

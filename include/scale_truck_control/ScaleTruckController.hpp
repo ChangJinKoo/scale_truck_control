@@ -37,6 +37,9 @@
 #include "lane_detect/lane_detect.hpp"
 #include "zmq_class/zmq_class.h"
 
+#include <pcl_ros/point_cloud.h>
+#include <sensor_msgs/PointCloud.h>
+
 //custom msgs
 #include <scale_truck_control/lrc2xav.h>
 #include <scale_truck_control/xav2lrc.h>
@@ -69,8 +72,13 @@ class ScaleTruckController {
     void replyImage(); 
     void displayConsole();
     void spin();
-    bool getImageStatus(void);	
-    
+    bool getImageStatus(void);
+
+    void clusterCallback(const sensor_msgs::PointCloud &msg);
+    ros::Subscriber clusterSubscriber_;
+    sensor_msgs::PointCloud preceding_truck_point_;
+    float pc_distance_ = 0.0f;
+
     ros::NodeHandle nodeHandle_;
     ros::Subscriber imageSubscriber_;
     ros::Subscriber rearImageSubscriber_;

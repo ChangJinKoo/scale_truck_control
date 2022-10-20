@@ -98,6 +98,9 @@ void ScaleTruckController::init() {
   std::string bboxTopicName;
   int bboxQueueSize;
 
+  //std::string clusterTopicName;
+  //int clusterQueueSize; 
+
   std::string XavPubTopicName;
   int XavPubQueueSize;
   std::string runYoloTopicName;
@@ -117,6 +120,9 @@ void ScaleTruckController::init() {
   nodeHandle_.param("subscribers/yolo_detector/topic", bboxTopicName, std::string("/yolo_object_detection/bounding_box"));
   nodeHandle_.param("subscribers/yolo_detector/queue_size", bboxQueueSize, 1);
   
+  //nodeHandle_.param("subscribers/cluster_reading/topic", clusterTopicName, std::string("/preceding_truck_points"));
+  //nodeHandle_.param("subscribers/cluster_reading/queue_size", clusterQueueSize, 5);
+
   /****************************/
   /* Ros Topic Publish Option */
   /****************************/
@@ -139,6 +145,8 @@ void ScaleTruckController::init() {
   XavSubscriber_ = nodeHandle_.subscribe(XavSubTopicName, XavSubQueueSize, &ScaleTruckController::XavSubCallback, this);
   ScanSubError = nodeHandle_.subscribe("/scan_error", 1000, &ScaleTruckController::ScanErrorCallback, this);  
   bboxSubscriber_ = nodeHandle_.subscribe(bboxTopicName, bboxQueueSize, &ScaleTruckController::bboxCallback, this);
+
+  //clusterSubscriber_ = nodeHandle_.subscribe(clusterTopicName, clusterQueueSize, &ScaleTruckController::clusterCallback, this);
 
   /***********************/
   /* Ros Topic Publisher */
@@ -263,8 +271,7 @@ void* ScaleTruckController::lanedetectInThread() {
 }
 
 void* ScaleTruckController::objectdetectInThread() {
-  float rotation_angle = 0.0f;
-  float lateral_offset = 0.0f;
+  //sensor_msgs::PointCloud obstacle;
   float Lw = 0.34f; // 0.236 0.288 0.340 
   float dist, Ld, angle, angle_A;
   float dist_tmp, angle_tmp;
@@ -280,7 +287,7 @@ void* ScaleTruckController::objectdetectInThread() {
     for(int i = 0; i < ObjCircles_; i++)
     {
       //dist = sqrt(pow(Obstacle_.circles[i].center.x,2)+pow(Obstacle_.circles[i].center.y,2));
-      //Obstacle_.circles[i].center.y -= 0.06f;
+      //Obstacle_.circles[i].center.y += 0.057;
       dist = -Obstacle_.circles[i].center.x - Obstacle_.circles[i].true_radius;
       angle = atanf(Obstacle_.circles[i].center.y/Obstacle_.circles[i].center.x)*(180.0f/M_PI);
       if(dist_tmp >= dist) {
@@ -293,6 +300,9 @@ void* ScaleTruckController::objectdetectInThread() {
       }
     }
   } 
+  //obstacle = preceding_truck_point_;
+  //pc_distance_ = sqrt(pow(obstacle.points[0].x, 2) + pow(obstacle.points[0].y, 2));
+  //dist_tmp = pc_distance_;
   actDist_ = dist_tmp;
   {
     std::scoped_lock lock(rep_mutex_, lane_mutex_);
@@ -506,7 +516,7 @@ void ScaleTruckController::displayConsole() {
   printf("\nRefer Vel\t\t: %3.3f m/s", RefVel_);
   printf("\nSend Vel\t\t: %3.3f m/s", ResultVel_);
   printf("\nTar/Cur Vel\t\t: %3.3f / %3.3f m/s", TargetVel_, CurVel_);
-  printf("\nTar/Cur Dist\t\t: %3.3f / %3.3f m", TargetDist_, distance_);
+  printf("\nTar/Cur Dist/Pc Dist\t: %3.3f / %3.3f / %3.3f m", TargetDist_, distance_, pc_distance_);
   printf("\nEncoder, Camera, Lidar Failure: %d / %d / %d", fi_encoder_, fi_camera_, fi_lidar_);
   printf("\nAlpha, Beta, Gamma\t: %d / %d / %d", alpha_, beta_, gamma_);
   printf("\nCRC mode, LRC mode\t: %d / %d", crc_mode_, lrc_mode_);
@@ -757,6 +767,13 @@ void ScaleTruckController::bboxCallback(const yolo_object_detection::bounding_bo
       w_ = msg.w;
       h_ = msg.h;
     }
+  }
+}
+
+void ScaleTruckController::clusterCallback(const sensor_msgs::PointCloud &msg) {
+  {
+    std::scoped_lock lock(object_mutex_);
+    preceding_truck_point_ = msg;
   }
 }
 

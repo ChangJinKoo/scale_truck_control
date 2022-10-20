@@ -11,6 +11,9 @@ subscribers:
   yolo_detector:
     topic: /yolo_object_detection/bounding_box
     queue_size: 1
+  cluster_reading:
+    topic: /preceding_truck_points
+    queue_size: 5
 
 publishers:
   xavier_to_lrc:
