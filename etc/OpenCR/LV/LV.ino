@@ -48,7 +48,7 @@ float tx_throttle_;
 float tx_steer_;
 float tx_dist_;
 float tx_tdist_;
-float est_vel_ = 0;
+float est_vel_;
 float output_;
 volatile int EN_pos_;
 volatile int CountT_;
@@ -118,6 +118,8 @@ float setSPEED(float tar_vel, float current_vel) {
     } else {
       ref_vel = tar_vel;
     }
+
+    pub_msg_.ref_vel = ref_vel;
 
     err = ref_vel - cur_vel;
     P_err = Kp_ * err;

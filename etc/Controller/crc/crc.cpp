@@ -181,14 +181,14 @@ void CentralRC::recordData(struct timeval *startTime){
       }
       read_file.close();
     }
-    write_file << "Time,Tar_vel0,Cur_vel0,Tar_dist0,Cur_dist0,Tar_vel1,Cur_vel1,Tar_dist1,Cur_dist1,Tar_vel2,Cur_vel2,Tar_dist2,Cur_dist2,Alpha0,Beta0,Gamma0,Alpha1,Beta1,Gamma1,Alpha2,Beta2,Gamma2,LRC_mode0,LRC_mode1,LRC_mode2,CRC_mode" << std::endl; //seconds
+    write_file << "Time,Tar_vel0,Ref_vel0,Cur_vel0,Tar_dist0,Cur_dist0,Tar_vel1,Ref_vel1,Cur_vel1,Tar_dist1,Cur_dist1,Tar_vel2,Ref_vel2,Cur_vel2,Tar_dist2,Cur_dist2,Alpha0,Beta0,Gamma0,Alpha1,Beta1,Gamma1,Alpha2,Beta2,Gamma2,LRC_mode0,LRC_mode1,LRC_mode2,CRC_mode" << std::endl; //seconds
     flag = true;
  }
   else{
     std::scoped_lock lock(data_mutex_);
     gettimeofday(&currentTime, NULL);
     time_ = ((currentTime.tv_sec - startTime->tv_sec)) + ((currentTime.tv_usec - startTime->tv_usec)/1000000.0);
-    sprintf(buf, "%.10e,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d", time_, lv_data_->tar_vel, lv_data_->cur_vel, lv_data_->tar_dist, lv_data_->cur_dist, fv1_data_->tar_vel, fv1_data_->cur_vel, fv1_data_->tar_dist, fv1_data_->cur_dist, fv2_data_->tar_vel, fv2_data_->cur_vel, fv2_data_->tar_dist, fv2_data_->cur_dist, lv_data_->alpha, lv_data_->beta, lv_data_->gamma, fv1_data_->alpha, fv1_data_->beta, fv1_data_->gamma, fv2_data_->alpha, fv2_data_->beta, fv2_data_->gamma, lv_data_->lrc_mode, fv1_data_->lrc_mode, fv2_data_->lrc_mode, crc_mode_);
+    sprintf(buf, "%.10e,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d", time_, lv_data_->tar_vel, lv_data_->ref_vel, lv_data_->cur_vel, lv_data_->tar_dist, lv_data_->cur_dist, fv1_data_->tar_vel, fv1_data_->ref_vel, fv1_data_->cur_vel, fv1_data_->tar_dist, fv1_data_->cur_dist, fv2_data_->tar_vel, fv2_data_->ref_vel, fv2_data_->cur_vel, fv2_data_->tar_dist, fv2_data_->cur_dist, lv_data_->alpha, lv_data_->beta, lv_data_->gamma, fv1_data_->alpha, fv1_data_->beta, fv1_data_->gamma, fv2_data_->alpha, fv2_data_->beta, fv2_data_->gamma, lv_data_->lrc_mode, fv1_data_->lrc_mode, fv2_data_->lrc_mode, crc_mode_);
     write_file.open(file, std::ios::out | std::ios::app);
     write_file << buf << std::endl;
   }
@@ -215,6 +215,7 @@ void CentralRC::updateData(ZmqData* zmq_data){
   if(zmq_data->tar_index == 30){
     if(zmq_data->src_index == 10){
       lv_data_->tar_vel = zmq_data->tar_vel;
+      lv_data_->ref_vel = zmq_data->ref_vel;
       lv_data_->cur_vel = zmq_data->cur_vel;
       lv_data_->tar_dist = zmq_data->tar_dist;
       lv_data_->cur_dist = zmq_data->cur_dist;
@@ -225,6 +226,7 @@ void CentralRC::updateData(ZmqData* zmq_data){
     }
     else if(zmq_data->src_index == 11){
       fv1_data_->tar_vel = zmq_data->tar_vel;
+      fv1_data_->ref_vel = zmq_data->ref_vel;
       fv1_data_->cur_vel = zmq_data->cur_vel;
       fv1_data_->tar_dist = zmq_data->tar_dist;
       fv1_data_->cur_dist = zmq_data->cur_dist;
@@ -236,6 +238,7 @@ void CentralRC::updateData(ZmqData* zmq_data){
     }
     else if(zmq_data->src_index == 12){
       fv2_data_->tar_vel = zmq_data->tar_vel;
+      fv2_data_->ref_vel = zmq_data->ref_vel;
       fv2_data_->cur_vel = zmq_data->cur_vel;
       fv2_data_->tar_dist = zmq_data->tar_dist;
       fv2_data_->cur_dist = zmq_data->cur_dist;

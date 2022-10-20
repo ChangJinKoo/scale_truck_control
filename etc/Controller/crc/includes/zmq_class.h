@@ -18,7 +18,7 @@
 
 #include <zmq.hpp>
 
-#define DATASIZE 76
+#define DATASIZE 80
 
 typedef struct LaneCoef{
 	float a = 0.0f;
@@ -32,7 +32,7 @@ typedef struct ImgData{
 
 	struct timeval startTime;
 
-	u_char comp_image[82000] = {0,};
+	u_char comp_image[100000] = {0,};
 	size_t size = 0;
 }ImgData;
 
@@ -52,6 +52,7 @@ typedef struct ZmqData{
 	//flag to send rear camera sensor image
 	bool send_rear_camera_image = false;
 
+	float ref_vel = 0.0f;
 	float cur_vel = 0.0f;
 	float cur_dist = 0.0f;
 	float cur_angle = 0.0f;
