@@ -275,7 +275,6 @@ void* ZMQ_CLASS::requestImageZMQ(ImgData *send_data, ImgData *backup_data)
             expect_reply = false;
           }
           else {
-            std::cout << "W: no response from server, retrying..." << std::endl;
 	    img_socket_change_count_++;
             //  Old socket will be confused; close it and open a new one
 	    req_img_socket_.close();
