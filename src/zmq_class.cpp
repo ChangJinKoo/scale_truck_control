@@ -16,14 +16,23 @@ ZMQ_CLASS::~ZMQ_CLASS()
 {
   std::cout << "Disconnected" << std::endl;
   controlDone_ = true;
-  req_socket_.close();
-  rep_socket_.close();
-  rad_socket_.close();
-  dsh_socket_.close();
+  if(req_flag_) {
+    req_socket_.close();
+    delete req_recv_;
+  }
+  if(rep_flag_) {
+    rep_socket_.close();
+    delete rep_recv_;
+  }
+  if(rad_flag_) {
+    rad_socket_.close();
+  }
+  if(dsh_flag_) {
+    dsh_socket_.close();
+    delete dsh_recv_;
+  }
 
-  delete rep_recv_;
-  delete req_recv_;
-  delete dsh_recv_;
+  delete img_recv_;
 
   context_.close();
 }
@@ -73,9 +82,7 @@ void ZMQ_CLASS::init()
   {
     req_img_socket_ = zmq::socket_t(context_, ZMQ_REQ);
     req_img_socket_.connect(tcpreq_img_ip_);
-    req_img_socket_.setsockopt(ZMQ_RCVTIMEO, -1);  //timeout (infinite) 
     req_img_socket_.setsockopt(ZMQ_LINGER, 0); 
-    req_img_socket_.setsockopt(ZMQ_TCP_MAXRT, 1);
   }
 
   if(rep_img_flag_)
@@ -229,22 +236,61 @@ void* ZMQ_CLASS::dishZMQ()
   }
 }
 
-void* ZMQ_CLASS::requestImageZMQ(ImgData *send_data)
+//void* ZMQ_CLASS::requestImageZMQ(ImgData *send_data)
+//{
+//  if(req_img_socket_.connected() && !controlDone_)
+//  {
+//    size_t data_size = sizeof(ImgData);
+//    zmq::message_t recv_msg, send_msg(data_size);
+//
+//    //send
+//    memcpy(send_msg.data(), send_data, data_size);
+//    req_img_socket_.send(send_msg);
+//
+//    //recv
+//    req_img_socket_.recv(&recv_msg, 0); //trash
+//  }
+//}
+
+void* ZMQ_CLASS::requestImageZMQ(ImgData *send_data, ImgData *backup_data)
 {
-  if(req_img_socket_.connected() && !controlDone_)
-  {
-    size_t data_size = sizeof(ImgData);
-    zmq::message_t recv_msg, send_msg(data_size);
+  if(req_img_socket_.connected() && !controlDone_) {
+      size_t data_size = sizeof(ImgData);
+      zmq::message_t recv_msg, send_msg(data_size);
 
-    //send
-    memcpy(send_msg.data(), send_data, data_size);
-    req_img_socket_.send(send_msg);
+      //send
+      memcpy(send_msg.data(), send_data, data_size);
+      req_img_socket_.send(send_msg);
 
-    //recv
-    req_img_socket_.recv(&recv_msg, 0); //trash
+      bool expect_reply = true;
+      while (expect_reply) {
+          //  Poll socket for a reply, with timeout
+          zmq::pollitem_t items[] = {
+              { req_img_socket_, 0, ZMQ_POLLIN, 0 } };
+          zmq::poll (&items[0], 1, REQUEST_TIMEOUT);
+
+          if (items[0].revents & ZMQ_POLLIN) {
+	    //recv
+            req_img_socket_.recv(&recv_msg, 0); //trash
+            expect_reply = false;
+          }
+          else {
+            std::cout << "W: no response from server, retrying..." << std::endl;
+	    img_socket_change_count_++;
+            //  Old socket will be confused; close it and open a new one
+	    req_img_socket_.close();
+            req_img_socket_ = zmq::socket_t(context_, ZMQ_REQ);
+            req_img_socket_.connect(tcpreq_img_ip_);
+            req_img_socket_.setsockopt(ZMQ_LINGER, 0); 
+
+            //  Send request again, on new socket
+	    zmq::message_t resend_msg(data_size);
+            memcpy(resend_msg.data(), backup_data, data_size);
+            req_img_socket_.send(resend_msg);
+          }
+      }
   }
 }
-
 void* ZMQ_CLASS::replyImageZMQ() //if camera & lidar sensor dual failure
 {
   if(rep_img_socket_.connected() && !controlDone_)

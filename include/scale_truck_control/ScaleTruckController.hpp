@@ -63,7 +63,7 @@ class ScaleTruckController {
     void ScanErrorCallback(const std_msgs::UInt32::ConstPtr &msg);
     void bboxCallback(const yolo_object_detection::bounding_box &msg);
     void recordData(struct timeval startTime);
-    void imageCompress(cv::Mat camImage);
+    void imageCompress(cv::Mat camImage, std::vector<uchar> *compImage);
     void reply(ZmqData* zmq_data);
     void requestImage(ImgData* img_data);
     void replyImage(); 
@@ -127,7 +127,7 @@ class ScaleTruckController {
     float AngleDegree2_ = 0.0f;
     float Ld_offset_ = 0.0f;
     float actDist_;
-    float EstimatedDist_;
+    float estimatedDist_;
     float ppAngle_ = 0.0f;
 
     //bbox
@@ -141,6 +141,7 @@ class ScaleTruckController {
     ZMQ_CLASS ZMQ_SOCKET_;
     ZmqData* zmq_data_;
     ImgData* img_data_;
+    ImgData* backup_data_;
 
     //Thread
     std::thread controlThread_;
@@ -168,7 +169,7 @@ class ScaleTruckController {
     bool imageStatus_ = false;
     std_msgs::Header imageHeader_;
     cv::Mat camImageCopy_, camImageTmp_;
-    cv::Mat rearImageCopy_, rearImageTmp_, rearImageJPEG_;
+    cv::Mat rearImageCopy_, rearImageTmp_, rearImageJPEG_, rearImageBackup_;
     bool droi_ready_ = false;
 
     bool isNodeRunning_ = true;
@@ -190,6 +191,7 @@ class ScaleTruckController {
     double DelayTime_ = 0.0;
     std::vector<uchar> compImageSend_;
     std::vector<uchar> compImageRecv_;
+    std::vector<uchar> compImageBackup_;
 };
 
 } /* namespace scale_truck_control */

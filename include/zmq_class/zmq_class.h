@@ -22,6 +22,7 @@
 #include <cv_bridge/cv_bridge.h>
 
 #define DATASIZE 76  // size of ZmqData 
+#define REQUEST_TIMEOUT 100 // milliseconds
 
 typedef struct LaneCoef{
 	float a = 0.0f;
@@ -35,7 +36,7 @@ typedef struct ImgData{
 
 	struct timeval startTime;
 
-	u_char comp_image[82000] = {0,};
+	u_char comp_image[100000] = {0,};
 	size_t size = 0;
 }ImgData;
 
@@ -78,7 +79,7 @@ public:
   void* replyZMQ(ZmqData *send_data);
   void* radioZMQ(ZmqData *send_data);
   void* dishZMQ();
-  void* requestImageZMQ(ImgData *send_data);
+  void* requestImageZMQ(ImgData *send_data, ImgData *backup_data);
   void* replyImageZMQ();
   std::string getIPAddress();
 
@@ -91,6 +92,7 @@ public:
   bool req_img_flag_, rep_img_flag_;
   ZmqData *dsh_recv_, *req_send_, *req_recv_, *rep_send_, *rep_recv_;
   ImgData *img_recv_;
+  int img_socket_change_count_ = 0;
 
 private:
   ros::NodeHandle nodeHandle_;

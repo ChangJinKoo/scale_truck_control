@@ -173,8 +173,8 @@ LaneDetector::LaneDetector(ros::NodeHandle nh)
   nodeHandle_.param("params/b/c", b_[2], 5.0931);
   nodeHandle_.param("params/b/d", b_[3], -4.9047);
   nodeHandle_.param("params/b/e", b_[4], 1.6722);
-  nodeHandle_.param("params/K3", K3_, 0.01f);
-  nodeHandle_.param("params/K4", K4_, 0.01f);
+  nodeHandle_.param("params/K3", K3_, 0.25f);
+  nodeHandle_.param("params/K4", K4_, 0.51f);
 
   LoadParams();
 }
@@ -789,6 +789,8 @@ void LaneDetector::controlSteer() {
 
     e_values_[0] = l6 * cos(est_pose); //eL
     e_values_[1] = l3 * cos(est_pose); //e1
+    log_e1_ = e_values_[1];
+    log_el_ = e_values_[0];
     SteerAngle2_ = (K3_ * e_values_[1]) + (K4_ * e_values_[0]);
   }
 }
@@ -835,6 +837,7 @@ Mat LaneDetector::estimateDistance(Mat frame, Mat trans, double cycle_time, bool
   else{
     est_dist = 1.25f - (dist_pixel/480.0f); //rear camera
     if (est_dist > 0.26f && est_dist < 1.24f) est_dist_ = est_dist;
+    cout << "est_dist: " << est_dist_ << endl;
   }
 
   return res_frame;
@@ -892,8 +895,13 @@ Mat LaneDetector::estimatePose(Mat frame, double cycle_time, bool _view){
   int crop_y = crop_y_;
   int crop_width = crop_width_;
   int crop_height = crop_height_;
+
+  int width_offset = 0;
+  int height_offset = 0;
+  if (crop_width > crop_height) width_offset = crop_width - crop_height;
+  else height_offset = crop_height - crop_width;
   Rect rect(crop_x, crop_y, crop_width, crop_height);
-  Point left_down(0, crop_height), right_down(crop_width, crop_height);
+  Point left_down(0, crop_height), right_down(crop_width-width_offset, crop_height-height_offset);
   Point left, right;
   static Point prev_left, prev_right;
   float min_dist = FLT_MAX;
@@ -957,10 +965,8 @@ Mat LaneDetector::estimatePose(Mat frame, double cycle_time, bool _view){
   prev_right = right;
 
   est_pose = atanf((float)(right.y - left.y) / (float)(right.x - left.x));
-  printf("est_pose: %.3f degree\n", est_pose * (180.0f/M_PI));
 
   if (fabs(est_pose * (180.0f/M_PI)) < 18.0f){
-  //need measuring est_pose boundary
     est_pose_ = est_pose;
   }
 
@@ -1020,6 +1026,7 @@ float LaneDetector::display_img(Mat _frame, int _delay, bool _view) {
   }
 
   controlSteer();
+  //printf("SteerAngle2 = K3 * e1 + K4 * eL -> %.2f = %.2f * %.2f + %.2f * %.2f\n", SteerAngle2_, K3_, log_e1_, K4_, log_el_);
 
   if (_view) {
     resized_frame = draw_lane(sliding_frame, new_frame);

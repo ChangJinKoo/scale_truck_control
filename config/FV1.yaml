@@ -9,8 +9,8 @@ tcp_ip:
 tcpimg_ip:
   ip_addr_server: "tcp://*"
   ip_addr_client: "tcp://192.168.0.12"
-  req_port: "5050"
-  rep_port: "4040"
+  req_port: ""
+  rep_port: "50000"
 
 udp_ip:
   ip_addr: "udp://239.255.255.251"
@@ -51,9 +51,10 @@ params:
     c: 4.1189
     d: -4.0208
     e: 1.41
-  K3: 0.25 
-  K4: 0.51
-  LdOffset: -0.5
+  K3: 0.40 # 0.25 
+  K4: 0.15 # 0.51
+  LdOffset: -0.35 #-0.37 35 ~ 38-0.5
+  LdOffset2: 0.5
   
 Calibration:
   f_matrix:
@@ -108,8 +109,8 @@ ROI:
     bot_gap: 0.17
     top_height: 0.99
     bot_height: 0.47
-    extra_f: 0
-    extra_b: -3
+    extra_f: 1
+    extra_b: 10
     extra_up: 140
     extra_down: 180
 
