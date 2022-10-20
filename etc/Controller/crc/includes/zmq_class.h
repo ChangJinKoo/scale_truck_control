@@ -18,7 +18,7 @@
 
 #include <zmq.hpp>
 
-#define DATASIZE 80
+#define DATASIZE 84
 
 typedef struct LaneCoef{
 	float a = 0.0f;
@@ -59,6 +59,7 @@ typedef struct ZmqData{
 	float tar_vel = 0.0f;
 	float tar_dist = 0.0f;
 	float est_vel = 0.0f;  //estimated velocity
+	float preceding_truck_vel = 0.0f;
 
 	//TM = 0, RCM = 1, GDM = 2
 	uint8_t lrc_mode = 0;

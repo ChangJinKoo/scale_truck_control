@@ -228,6 +228,7 @@ void CentralRC::updateData(ZmqData* zmq_data){
       fv1_data_->tar_vel = zmq_data->tar_vel;
       fv1_data_->ref_vel = zmq_data->ref_vel;
       fv1_data_->cur_vel = zmq_data->cur_vel;
+      fv1_data_->preceding_truck_vel = lv_data_->cur_vel;
       fv1_data_->tar_dist = zmq_data->tar_dist;
       fv1_data_->cur_dist = zmq_data->cur_dist;
       fv1_data_->alpha = zmq_data->alpha;
@@ -240,6 +241,7 @@ void CentralRC::updateData(ZmqData* zmq_data){
       fv2_data_->tar_vel = zmq_data->tar_vel;
       fv2_data_->ref_vel = zmq_data->ref_vel;
       fv2_data_->cur_vel = zmq_data->cur_vel;
+      fv2_data_->preceding_truck_vel = fv1_data_->cur_vel;
       fv2_data_->tar_dist = zmq_data->tar_dist;
       fv2_data_->cur_dist = zmq_data->cur_dist;
       fv2_data_->alpha = zmq_data->alpha;

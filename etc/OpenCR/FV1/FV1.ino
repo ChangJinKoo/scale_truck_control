@@ -49,6 +49,7 @@ float tx_steer_;
 float tx_dist_;
 float tx_tdist_;
 float est_vel_;
+float preceding_truck_vel_;
 float output_;
 float u_k_;
 volatile int EN_pos_;
@@ -71,6 +72,7 @@ void LrcCallback(const scale_truck_control::lrc2ocr &msg) {
   tx_tdist_ = msg.tar_dist;
   tx_throttle_ = msg.tar_vel;
   est_vel_ = msg.est_vel;
+  preceding_truck_vel_ = msg.preceding_truck_vel;
   fi_encoder_ = msg.fi_encoder;
   Alpha_ = msg.alpha;
 }
@@ -118,7 +120,7 @@ float setSPEED(float tar_vel, float current_vel) {
       dist_err = tx_dist_ - tx_tdist_;    
       P_dist_err = Kp_dist_ * dist_err;
       D_dist_err = (Kd_dist_ * ((dist_err - prev_dist_err) / dt_ )); 
-      u_dist = P_dist_err + D_dist_err + tar_vel;
+      u_dist = P_dist_err + D_dist_err + preceding_truck_vel_;
   
       // sat(u(k))  saturation start 
       if(u_dist > 1.2) u_dist_k = 1.2;
