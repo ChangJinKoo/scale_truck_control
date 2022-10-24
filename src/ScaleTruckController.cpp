@@ -287,7 +287,7 @@ void* ScaleTruckController::objectdetectInThread() {
     for(int i = 0; i < ObjCircles_; i++)
     {
       //dist = sqrt(pow(Obstacle_.circles[i].center.x,2)+pow(Obstacle_.circles[i].center.y,2));
-      //Obstacle_.circles[i].center.y += 0.057;
+      Obstacle_.circles[i].center.y -= 0.035;
       dist = -Obstacle_.circles[i].center.x - Obstacle_.circles[i].true_radius;
       angle = atanf(Obstacle_.circles[i].center.y/Obstacle_.circles[i].center.x)*(180.0f/M_PI);
       if(dist_tmp >= dist) {
@@ -746,10 +746,18 @@ void ScaleTruckController::XavSubCallback(const scale_truck_control::lrc2xav &ms
     std::scoped_lock lock(vel_mutex_);
     CurVel_ = msg.cur_vel;
   }
-  if (index_ != 0){  //FVs
+  if (index_ != 0) {  //FVs
     std::scoped_lock lock(rep_mutex_);
-    TargetVel_ = msg.tar_vel;
-    TargetDist_ = msg.tar_dist;
+    if (lrc_mode_ == 0) {
+      TargetVel_ = msg.tar_vel;
+      TargetDist_ = msg.tar_dist;
+    }
+    else {
+      if (msg.tar_vel > RCMVel_)  TargetVel_ = RCMVel_;
+      else TargetVel_ = msg.tar_vel;
+      if (msg.tar_dist < RCMDist_)  TargetDist_ = RCMDist_; 
+      else TargetDist_ = msg.tar_dist;
+    }
   }
   send_rear_camera_image_ = msg.send_rear_camera_image;
 }
