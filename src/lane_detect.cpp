@@ -575,6 +575,11 @@ Point LaneDetector::warpPoint(Point center, Mat trans){
 
 Mat LaneDetector::draw_lane(Mat _sliding_frame, Mat _frame) {
   Mat new_frame, left_coef(left_coef_), right_coef(right_coef_), center_coef(center_coef_), trans;
+
+  static struct timeval endTime, startTime;
+  static bool flag;
+  double diffTime;
+
   //trans = getPerspectiveTransform(fROIwarpCorners_, fROIcorners_);
   trans = getPerspectiveTransform(warpCorners_, corners_);
   _frame.copyTo(new_frame);
@@ -653,6 +658,23 @@ Mat LaneDetector::draw_lane(Mat _sliding_frame, Mat _frame) {
     int right_points_number = Mat(right_points).rows;
     const Point* center_points_point = (const cv::Point*) Mat(center_points).data;
     int center_points_number = Mat(center_points).rows;
+
+    cout << center_points_number << endl;
+    Point lane_center = *(center_points_point + center_points_number - 10);
+    static Point prev_lane_center;
+    gettimeofday(&endTime, NULL);
+    if (!flag){
+      diffTime = (endTime.tv_sec - start_.tv_sec) + (endTime.tv_usec - start_.tv_usec)/1000000.0;
+      flag = true;
+    }
+    else{
+      diffTime = (endTime.tv_sec - startTime.tv_sec) + (endTime.tv_usec - startTime.tv_usec)/1000000.0;
+      startTime = endTime;
+    }
+    lane_center.x = lowPassFilter(diffTime, lane_center.x, prev_lane_center.x);
+    lane_center.y = lowPassFilter(diffTime, lane_center.y, prev_lane_center.y);
+
+    prev_lane_center = lane_center;
     
     polylines(new_frame, &left_points_point, &left_points_number, 1, false, Scalar(255, 100, 100), 5);
     polylines(new_frame, &right_points_point, &right_points_number, 1, false, Scalar(100, 100, 255), 5);
@@ -707,8 +729,8 @@ Mat LaneDetector::draw_lane(Mat _sliding_frame, Mat _frame) {
     const Point* droi_points_point = (const cv::Point*) Mat(droi_points).data;
     int droi_points_number = Mat(droi_points).rows;
 
-    polylines(_frame, &roi_points_point, &roi_points_number, 1, false, Scalar(0, 255, 0), 5);
-    polylines(_frame, &droi_points_point, &droi_points_number, 1, false, Scalar(0, 0, 255), 5);
+    polylines(_frame, &roi_points_point, &roi_points_number, 1, false, Scalar(0, 0, 255), 5);
+    polylines(_frame, &droi_points_point, &droi_points_number, 1, false, Scalar(0, 255, 0), 5);
 
     string TEXT = "ROI";
     Point2f T_pos(Point2f(270, _frame.rows-120));
@@ -801,7 +823,8 @@ Mat LaneDetector::drawBox(Mat frame)
   std::string name = name_;
   Size text_size = getTextSize(name, FONT_HERSHEY_COMPLEX_SMALL, 1.2, 2, 0);
   int max_width = (text_size.width > w_ + 2) ? text_size.width : (w_ + 2);
-  Scalar color(150, 0, 150);
+  Scalar color(55, 200, 55); // trailer
+  //Scalar color(255, 0, 255); // tractor
   max_width = max(max_width, (int)w_ + 2);
   rectangle(frame, Rect(x_, y_, w_, h_), color, 2);
   rectangle(frame, Point2f(max((int)x_ - 1, 0), max((int)y_ - 35, 0)), Point2f(min((int)x_ + max_width, frame.cols - 1), min((int)y_, frame.rows - 1)), color, -1, 8, 0);
@@ -825,11 +848,6 @@ Mat LaneDetector::estimateDistance(Mat frame, Mat trans, double cycle_time, bool
   warp_center_ = warp_center;
   dist_pixel = warp_center.y;
 
-  if (_view){
-    circle(res_frame, warp_center, 5, Scalar(255, 0, 255), 2, -1);
-    line(res_frame, Point(180, dist_pixel), Point(460, dist_pixel), Scalar::all(255), 1, 8, 0);
-  }
-
   if (name_ == "tail"){
     //est_dist = 1.24f - (dist_pixel/490.0f);
     est_dist = 1.2f - (dist_pixel/500.0f); //front-facing camera
@@ -837,7 +855,7 @@ Mat LaneDetector::estimateDistance(Mat frame, Mat trans, double cycle_time, bool
   }
   else{
     est_dist = 1.35f - (dist_pixel/480.0f); //rear camera
-    if (est_dist > 0.26f && est_dist < 1.24f) est_dist_ = est_dist;
+    if (est_dist > 0.26f && est_dist < 1.35f) est_dist_ = est_dist;
   }
 
   return res_frame;
@@ -974,29 +992,35 @@ Mat LaneDetector::estimatePose(Mat frame, double cycle_time, bool _view){
 }
 
 float LaneDetector::display_img(Mat _frame, int _delay, bool _view) {    
-  Mat new_frame, gray_frame, binary_frame, sliding_frame, resized_frame, crop_frame;
-  cuda::GpuMat gpu_frame, gpu_remap_frame, gpu_warped_frame, gpu_blur_frame, gpu_gray_frame;
+  Mat new_frame, gray_frame, binary_frame, sliding_frame, resized_frame, crop_frame, bbox_frame, res_frame, res2_frame, rot_frame;
+  cuda::GpuMat gpu_frame, gpu_remap_frame, gpu_warped_frame, gpu_blur_frame, gpu_gray_frame, gpu_remap_bbox_frame, gpu_warped_bbox_frame, gpu_blur_bbox_frame, gpu_res_frame;
   static struct timeval startTime, endTime;
   static bool flag = false;
   double diffTime = 0.0;
 
-  if (beta_ && gamma_ && name_ == "head"){
+  if (beta_){
     map1_ = r_map1_.clone();
     map2_ = r_map2_.clone();
 
     std::vector<Point2f> rROIcorners(4);
-    int lv_rear_camera_offset = (int)(center_coef_.at<float>(2,0) * pow(480,2) + center_coef_.at<float>(1,0) * 480 + center_coef_.at<float>(0,0)) - ((rROIcorners_.at(2).x + rROIcorners_.at(3).x)/2); // move ROI to center of lane
-    int f_extra = lv_rear_camera_offset*4/13;
-    int b_extra = lv_rear_camera_offset;
+    int lv_rear_camera_offset = (int)(center_coef_.at<float>(2,0) * pow(480,2) + center_coef_.at<float>(1,0) * 480 + center_coef_.at<float>(0,0)) - 320;
+    int h_pixel = (int)(right_coef_.at<float>(2,0) * pow(480,2) + right_coef_.at<float>(1,0) * 480 + right_coef_.at<float>(0,0)) - (int)(left_coef_.at<float>(2,0) * pow(480,2) + left_coef_.at<float>(1,0) * 480 + left_coef_.at<float>(0,0));// the number of pixel
+    if (h_pixel <= 250 && h_pixel >= 200) {
+      float h_ratio = 0.33f / h_pixel;
+      y_offset_ = (float)lv_rear_camera_offset * h_ratio; // offset between lane center and trailer center
+    }
+    else{
+      y_offset_ = 0.0f;
+    }
 
-    std::copy(rROIcorners_.begin(), rROIcorners_.end(), rROIcorners.begin());
-
-    if (lv_rear_camera_offset < 55) {  // bigger than 55 might be error image
+    if (gamma_ && abs(lv_rear_camera_offset < 60)) {  // bigger than 60 might be error image
+      int f_extra = lv_rear_camera_offset*4/13;
+      int b_extra = lv_rear_camera_offset;
+      std::copy(rROIcorners_.begin(), rROIcorners_.end(), rROIcorners.begin());
       rROIcorners.at(0).x += f_extra;
       rROIcorners.at(1).x += f_extra;
       rROIcorners.at(2).x += b_extra;
       rROIcorners.at(3).x += b_extra;
-
       std::copy(rROIcorners.begin(), rROIcorners.end(), corners_.begin());
     }
     else {
@@ -1015,6 +1039,7 @@ float LaneDetector::display_img(Mat _frame, int _delay, bool _view) {
   cuda::remap(gpu_frame, gpu_remap_frame, gpu_map1, gpu_map2, INTER_LINEAR);
   gpu_remap_frame.download(new_frame);
 
+
   cuda::warpPerspective(gpu_remap_frame, gpu_warped_frame, trans, Size(width_, height_));
   static cv::Ptr< cv::cuda::Filter > filters;
   filters = cv::cuda::createGaussianFilter(gpu_warped_frame.type(), gpu_blur_frame.type(), cv::Size(5,5), 0, 0, cv::BORDER_DEFAULT);
@@ -1027,7 +1052,6 @@ float LaneDetector::display_img(Mat _frame, int _delay, bool _view) {
 
   //estimate Distance
   if (gamma_ && (x_!=0 && y_!=0 && w_!=0 && h_!=0)){
-  //if ((x_!=0 && y_!=0 && w_!=0 && h_!=0)){
     gettimeofday(&endTime, NULL);
     if (!flag){
       diffTime = (endTime.tv_sec - start_.tv_sec) + (endTime.tv_usec - start_.tv_usec)/1000000.0;
@@ -1044,11 +1068,9 @@ float LaneDetector::display_img(Mat _frame, int _delay, bool _view) {
   }
 
   controlSteer();
-  //printf("SteerAngle2 = K3 * e1 + K4 * eL -> %.2f = %.2f * %.2f + %.2f * %.2f\n", SteerAngle2_, K3_, log_e1_, K4_, log_el_);
 
   if (_view) {
     resized_frame = draw_lane(sliding_frame, new_frame);
-    cv::circle(new_frame, center_, 5, Scalar(255, 0, 255), 2, -1);
     
     namedWindow("Window1");
     moveWindow("Window1", 0, 0);
@@ -1072,8 +1094,8 @@ float LaneDetector::display_img(Mat _frame, int _delay, bool _view) {
       imshow("Window3", resized_frame);
     }
     if(!crop_frame.empty()){
-      cv::circle(crop_frame, left_, 10, Scalar::all(255), cv::FILLED, 8,0);
-      cv::circle(crop_frame, right_, 10, Scalar::all(255), cv::FILLED, 8,0);
+      cv::circle(crop_frame, left_, 5, Scalar::all(255), cv::FILLED, 8,0);
+      cv::circle(crop_frame, right_, 5, Scalar::all(255), cv::FILLED, 8,0);
       cv::line(crop_frame, left_, right_, Scalar::all(255), 5, 8, 0);
       imshow("Window4", crop_frame);
     }

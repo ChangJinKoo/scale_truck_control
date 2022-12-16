@@ -37,6 +37,8 @@ void LocalRC::init(){
   nodeHandle_.param("LrcParams/lu_ob_A", a_, 0.6817f);
   nodeHandle_.param("LrcParams/lu_ob_B", b_, 0.3183f);
   nodeHandle_.param("LrcParams/lu_ob_L", l_, 0.2817f);
+  nodeHandle_.param("LrcParams/rcm_vel", rcm_vel_, 0.6f);
+  nodeHandle_.param("LrcParams/rcm_dist", rcm_dist_, 0.8f);
   nodeHandle_.param("LrcParams/enable_console_output", EnableConsoleOutput_, true);
 
   /******************************/
@@ -89,6 +91,29 @@ bool LocalRC::isNodeRunning(){
 
 
 void LocalRC::XavCallback(const scale_truck_control::xav2lrc &msg){
+/* time delay check */
+//  static struct timeval start_time, end_time;
+//  static bool flag = false;
+//  static double diff_time = 0.0;
+//  double avg_time = 0.0;
+//  static int cnt = 0;
+//  if (!flag){
+//    gettimeofday(&start_time, NULL);
+//    flag = true;
+//  }
+//  else{
+//    gettimeofday(&end_time, NULL);
+//    diff_time += ((end_time.tv_sec - start_time.tv_sec) * 1000.0 + (end_time.tv_usec - start_time.tv_usec) / 1000.0); 
+//    cnt++;
+//    avg_time = diff_time / cnt;
+//    if (cnt > 3000){
+//      diff_time = 0.0;
+//      cnt = 0;
+//    }
+//    printf("2 - LRC sub from STC cycle time:\t %.3f\n", avg_time); 
+//    gettimeofday(&start_time, NULL);
+//  }
+
   std::scoped_lock lock(data_mutex_);
   angle_degree_ = msg.steer_angle;
   cur_dist_ = msg.cur_dist;
@@ -99,11 +124,35 @@ void LocalRC::XavCallback(const scale_truck_control::xav2lrc &msg){
   fi_encoder_ = msg.fi_encoder;
   fi_camera_ = msg.fi_camera;
   fi_lidar_ = msg.fi_lidar;
+  alpha_ = msg.alpha;
   beta_ = msg.beta;
   gamma_ = msg.gamma;
 }
 
 void LocalRC::OcrCallback(const scale_truck_control::ocr2lrc &msg){
+/* time delay check */
+//  static struct timeval start_time, end_time;
+//  static bool flag = false;
+//  static double diff_time = 0.0;
+//  double avg_time = 0.0;
+//  static int cnt = 0;
+//  if (!flag){
+//    gettimeofday(&start_time, NULL);
+//    flag = true;
+//  }
+//  else{
+//    gettimeofday(&end_time, NULL);
+//    diff_time += ((end_time.tv_sec - start_time.tv_sec) * 1000.0 + (end_time.tv_usec - start_time.tv_usec) / 1000.0); 
+//    cnt++;
+//    avg_time = diff_time / cnt;
+//    if (cnt > 3000){
+//      diff_time = 0.0;
+//      cnt = 0;
+//    }
+//    printf("1 - LRC sub from OpenCR cycle time:\t %.3f\n", avg_time); 
+//    gettimeofday(&start_time, NULL);
+//  }
+
   std::scoped_lock lock(data_mutex_);
   ref_vel_ = msg.ref_vel;
   cur_vel_ = msg.cur_vel;
@@ -231,8 +280,16 @@ void LocalRC::updateData(ZmqData* zmq_data){
     send_rear_camera_image_ = zmq_data->send_rear_camera_image;
   }
   else if(zmq_data->src_index == 10){  //from LV LRC to FVs LRC
-    tar_vel_ = zmq_data->tar_vel;
-    tar_dist_ = zmq_data->tar_dist;
+    if (lrc_mode_ == 0) {
+      tar_vel_ = zmq_data->tar_vel;
+      tar_dist_ = zmq_data->tar_dist;
+    }
+    else {  //FV1 reference velocity and gap distance on RCM mode
+      if(zmq_data->tar_vel > rcm_vel_) tar_vel_ = rcm_vel_;
+      else tar_vel_ = zmq_data->tar_vel;
+      if(zmq_data->tar_dist < rcm_dist_) tar_dist_ = rcm_dist_;
+      else tar_dist_ = zmq_data->tar_dist;
+    }
   }
 }
 
@@ -258,14 +315,14 @@ void LocalRC::recordData(struct timeval *startTime){
       }
       read_file.close();
     }
-    write_file << "Time,Tar_dist,Cur_dist,Tar_vel,Ref_vel,Cur_vel" << endl; //seconds
+    write_file << "Time,Tar_dist,Cur_dist,Tar_vel,Ref_vel,Cur_vel,Lrc_mode" << endl; //seconds
     flag = true;
   }
   else{
     std::scoped_lock lock(data_mutex_);
     gettimeofday(&currentTime, NULL);
     time_ = ((currentTime.tv_sec - startTime->tv_sec)) + ((currentTime.tv_usec - startTime->tv_usec)/1000000.0);
-    sprintf(buf, "%.10e,%.3f,%.3f,%.3f,%.3f,%.3f", time_, tar_dist_, cur_dist_, tar_vel_, ref_vel_, cur_vel_);
+    sprintf(buf, "%.10e,%.3f,%.3f,%.3f,%.3f,%.3f,%d", time_, tar_dist_, cur_dist_, tar_vel_, ref_vel_, cur_vel_, lrc_mode_);
     write_file.open(file, std::ios::out | std::ios::app);
     write_file << buf << endl;
   }
@@ -295,7 +352,7 @@ void LocalRC::communicate(){
   gettimeofday(&startTime, NULL);
   static int cnt = 0;
   while(ros::ok()){
-    encoderCheck();
+    //encoderCheck();
     updateMode(crc_mode_);
     rosPub();
     printStatus();

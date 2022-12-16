@@ -72,6 +72,8 @@ class LocalRC{
     bool gamma_ = false;
     bool send_rear_camera_image_ = false;
 
+    float rcm_vel_ = 0;
+    float rcm_dist_ = 0;
     float angle_degree_ = 0;
     float cur_dist_ = 0.8f;
     float tar_dist_ = 0.8f;

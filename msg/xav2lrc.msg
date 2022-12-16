@@ -5,5 +5,6 @@ float32 tar_vel
 bool fi_encoder
 bool fi_camera
 bool fi_lidar
+bool alpha
 bool beta
 bool gamma

@@ -1,8 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 
 <launch>
-  <!-- Console launch prefix -->
-  <arg name="image" default="/usb_cam/image_raw" />
 
   <!-- ROS parameter files -->
   <arg name="ros_param_file"             default="$(find scale_truck_control)/config/config.yaml"/>
@@ -15,7 +13,7 @@
   <rosparam command="load" ns="scale_truck_control" file="$(arg vehicle_param_file)"/>
   <rosparam command="load" ns="LRC" file="$(arg lrc_param_file)"/>
 
-  <!-- Start usb_cam -->
+  <!-- Start front_cam -->
   <node pkg="usb_cam" type="usb_cam_node" name="usb_cam" >
     <param name="video_device" value="/dev/video0" />
     <param name="image_width" value="640" />
@@ -23,6 +21,17 @@
     <param name="pixel_format" value="yuyv" />
     <param name="camera_frame_id" value="usb_cam" />
     <param name="io_method" value="mmap" />
+  </node>
+
+  <!-- Start lane_cam -->
+  <node name="lane_cam" pkg="usb_cam" type="usb_cam_node" >
+    <param name="video_device" value="/dev/video2" />
+    <param name="image_width" value="640" />
+    <param name="image_height" value="360" />
+    <param name="pixel_format" value="yuyv" />
+    <param name="camera_frame_id" value="usb_cam" />
+    <param name="io_method" value="mmap"/>
+    <remap from="/usb_cam/" to="/lane_cam/"/>
   </node>
 
   <!-- Start rplidar_ros -->

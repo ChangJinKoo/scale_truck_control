@@ -41,6 +41,7 @@ public:
 	float rotation_angle_ = 0.0f;
 	float lateral_offset_ = 0.0f;
 	Point left_, right_;
+	float y_offset_ = 0.0f;
 
 	/********** bbox *********/
 	std::string name_;

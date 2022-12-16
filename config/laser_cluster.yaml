@@ -1,4 +1,0 @@
-cluster_params:
-  tolerance: 0.4
-  minsize: 3
-  maxsize: 100

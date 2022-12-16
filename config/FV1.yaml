@@ -53,8 +53,9 @@ params:
     e: 1.41
   K3: 0.20 # 0.25 
   K4: 0.30 # 0.51
-  LdOffset: -0.35 #-0.37 35 ~ 38-0.5
-  LdOffset2: 0.5
+  Lw: 0.34
+  LdOffset: 0 # -0.37 35 ~ 38-0.5
+  LdOffset2: -0.5 # -0.5
   
 Calibration:
   f_matrix:

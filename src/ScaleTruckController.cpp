@@ -77,7 +77,9 @@ bool ScaleTruckController::readParameters() {
   nodeHandle_.param("params/target_dist", TargetDist_, 0.8f); // m
   nodeHandle_.param("params/rcm_dist", RCMDist_, 0.8f);
 
+  nodeHandle_.param("params/Lw", Lw_, 0.34f);
   nodeHandle_.param("params/LdOffset", Ld_offset_, 0.0f);
+  nodeHandle_.param("params/LdOffset2", Ld_offset2_, 0.0f);
 
   return true;
 }
@@ -241,6 +243,7 @@ void* ScaleTruckController::lanedetectInThread() {
     if(!rearImageJPEG_.empty()) camImageTmp_ = rearImageJPEG_.clone();
 
     AngleDegree = laneDetector_.display_img(camImageTmp_, waitKeyDelay_, viewImage_);
+
     actAngleDegree_ = AngleDegree;
     AngleDegree2_ = laneDetector_.SteerAngle2_;
     droi_ready_ = false;
@@ -262,72 +265,96 @@ void* ScaleTruckController::lanedetectInThread() {
     }
     else if (_beta && gamma_ && name_ == "head"){
       AngleDegree_ = AngleDegree2_;
+//      AngleDegree_ = ampersand2_;
+//      printf("TW's Algorithm!!");
+      
     }
     else { //pure pursuit angle
-      AngleDegree_ = -distAngle_;
+      AngleDegree_ = distAngle_;
     }
   }
 
 }
 
 void* ScaleTruckController::objectdetectInThread() {
-  //sensor_msgs::PointCloud obstacle;
-  float Lw = 0.34f; // 0.236 0.288 0.340 
+  float Lw = Lw_; // 0.236 0.288 0.340 
   float dist, Ld, angle, angle_A;
-  float dist_tmp, angle_tmp;
-  dist_tmp = 10.f; 
+  float dist_tmp, angle_tmp, theta_;
+  dist_tmp = 10.1f; 
+  Point center_;
+  Point2d normalize_;
+  Point3d LV3D_, FV3D_;
   /**************/
   /* Lidar Data */
   /**************/
   {
-    std::scoped_lock lock(object_mutex_);
+    std::scoped_lock lock(lane_mutex_, object_mutex_);
     ObjSegments_ = Obstacle_.segments.size();
     ObjCircles_ = Obstacle_.circles.size();
   
     for(int i = 0; i < ObjCircles_; i++)
     {
       //dist = sqrt(pow(Obstacle_.circles[i].center.x,2)+pow(Obstacle_.circles[i].center.y,2));
-      Obstacle_.circles[i].center.y -= 0.035;
       dist = -Obstacle_.circles[i].center.x - Obstacle_.circles[i].true_radius;
       angle = atanf(Obstacle_.circles[i].center.y/Obstacle_.circles[i].center.x)*(180.0f/M_PI);
       if(dist_tmp >= dist) {
         dist_tmp = dist;
         angle_tmp = angle;
-        Ld = sqrt(pow(Obstacle_.circles[i].center.x-Lw, 2) + pow(Obstacle_.circles[i].center.y, 2)) + Ld_offset_;
-        angle_A = atanf(Obstacle_.circles[i].center.y/(Obstacle_.circles[i].center.x-Lw));
-        ampersand_ = atanf(2*Lw*sin(angle_A)/Ld) * (180.0f/M_PI); // pure pursuit
-	ppAngle_ = (-1.0f) * ampersand_;
+	x_coord_ = dist_tmp;
+	y_coord_ = Obstacle_.circles[i].center.y + laneDetector_.y_offset_; // correction to lane center
       }
     }
+    Ld = sqrt(pow(x_coord_+Lw, 2) + pow(y_coord_, 2)) + Ld_offset_;
+    angle_A = atanf(y_coord_/(x_coord_+Lw));
+    ampersand_ = atanf(2*Lw*sin(angle_A)/Ld) * (180.0f/M_PI); // pure pursuit
+    ppAngle_ = ampersand_;
   } 
-  //obstacle = preceding_truck_point_;
-  //pc_distance_ = sqrt(pow(obstacle.points[0].x, 2) + pow(obstacle.points[0].y, 2));
-  //dist_tmp = pc_distance_;
   actDist_ = dist_tmp;
   {
-    std::scoped_lock lock(rep_mutex_, lane_mutex_);
+    std::scoped_lock lock(lane_mutex_);
     if(gamma_ == true && laneDetector_.est_dist_ != 0){
       dist_tmp = laneDetector_.est_dist_;
-      estimatedDist_ = laneDetector_.est_dist_;
+      estimatedDist_ = dist_tmp;
     }
     if(beta_ == true){
-      angle_tmp = ampersand_;
+      angle_tmp = ppAngle_;
     }
+//    
+//    if(gamma_ == true && beta_ == true && laneDetector_.est_dist_ != 0){
+//      dist_tmp = laneDetector_.est_dist_;
+//      if(laneDetector_.est_pose_len_ > 90){
+//        theta_ = laneDetector_.est_pose_;
+//      } else {
+//        theta_ = 0;
+//      }
+//      center_ = Point(x_ + w_ / 2, y_ + h_);
+//      normalize_.x = ((center_.x - 320)/326.31389227574556);
+//      LV3D_.x = normalize_.x*dist_tmp - laneDetector_.y_offset_; // FV1(0,0) LV(X,Z) 
+//      //LV3D_.x = normalize_.x*dist_tmp; // FV1(0,0) LV(X,Z) 
+//      LV3D_.z = dist_tmp;
+//      FV3D_.x = -(LV3D_.z*sin(theta_) - LV3D_.x*cos(theta_));
+//      FV3D_.z = LV3D_.z*cos(theta_) + LV3D_.x*sin(theta_);
+///* 1. following angle */
+//      Ld = sqrt(pow(FV3D_.x, 2) + pow((FV3D_.z+Lw), 2)) + Ld_offset2_; // 1.1 
+//      angle_A = atanf(FV3D_.x/(FV3D_.z+Lw));
+///* 2. pure pursuit angle */
+//      ampersand2_ = -atanf(2*Lw*sin(angle_A)/Ld) * (180.0f/M_PI);
+//      //ampersand2_ = -atanf(FV3D_.x/FV3D_.z) * (180.0f/M_PI);
+//      
+//      printf("\npose : (%.3f)", theta_*(180.0f/M_PI));
+//      printf("\npose_len : (%.3f)", laneDetector_.est_pose_len_);
+//      printf("\nLV3D : (%.3lf, %.3lf)", LV3D_.x, LV3D_.z);
+//      printf("\nFV3D : (%.3lf, %.3lf)", FV3D_.x, FV3D_.z);
+//      printf("\nLd : (%.3lf)", Ld);
+//    }
   }
+
   if(ObjCircles_ != 0)
   {
     std::scoped_lock lock(dist_mutex_);
     distance_ = dist_tmp;
     distAngle_ = angle_tmp;
   }
-
-/* //Play LV rear cam rosbag file in FV1
- * {
- *   std::scoped_lock lock(dist_mutex_);
- *   dist_tmp = laneDetector_.est_dist_;
- *   distance_ = dist_tmp;
- * }
-*/
 
   /*****************************/
   /* Dynamic ROI Distance Data */
@@ -336,8 +363,8 @@ void* ScaleTruckController::objectdetectInThread() {
     std::scoped_lock lock(rep_mutex_, lane_mutex_);
     if(dist_tmp < 1.24f && dist_tmp > 0.30f) // 1.26 ~ 0.28
     {
-      if (gamma_ == true && laneDetector_.est_dist_ != 0 && name_ == "head") { // dynamic ROI of S6 
-        laneDetector_.distance_ = (int)((1.35f - dist_tmp)*480.0f)+20;
+      if (beta_ == true || (gamma_ == true && laneDetector_.est_dist_ != 0 && name_ == "head")){
+        laneDetector_.distance_ = (int)((1.35f - dist_tmp)*480.0f)+25;
       }
       else {
         laneDetector_.distance_ = (int)((1.24f - dist_tmp)*490.0f)+20;
@@ -452,7 +479,7 @@ void ScaleTruckController::reply(ZmqData* zmq_data){
       {
         std::scoped_lock lock(vel_mutex_, dist_mutex_);
 	zmq_data->cur_vel = CurVel_;
-	zmq_data->cur_dist = distance_;
+	zmq_data->cur_dist = actDist_;
 	zmq_data->cur_angle = AngleDegree_;
       }
       {
@@ -497,9 +524,10 @@ void ScaleTruckController::reply(ZmqData* zmq_data){
             TargetDist_ = t_dist;
 	  }
 	}
-	fi_encoder_ = ZMQ_SOCKET_.rep_recv_->fi_encoder;
+        fi_encoder_ = ZMQ_SOCKET_.rep_recv_->fi_encoder;
         fi_camera_ = ZMQ_SOCKET_.rep_recv_->fi_camera;
         fi_lidar_ = ZMQ_SOCKET_.rep_recv_->fi_lidar;
+        alpha_ = ZMQ_SOCKET_.rep_recv_->fi_encoder;
       }
     }
     std::this_thread::sleep_for(std::chrono::milliseconds(2));
@@ -516,7 +544,7 @@ void ScaleTruckController::displayConsole() {
   printf("\nRefer Vel\t\t: %3.3f m/s", RefVel_);
   printf("\nSend Vel\t\t: %3.3f m/s", ResultVel_);
   printf("\nTar/Cur Vel\t\t: %3.3f / %3.3f m/s", TargetVel_, CurVel_);
-  printf("\nTar/Cur Dist/Pc Dist\t: %3.3f / %3.3f / %3.3f m", TargetDist_, distance_, pc_distance_);
+  printf("\nTar/Cur/Est Dist\t\t: %3.3f / %3.3f / %3.3f m", TargetDist_, distance_, estimatedDist_);
   printf("\nEncoder, Camera, Lidar Failure: %d / %d / %d", fi_encoder_, fi_camera_, fi_lidar_);
   printf("\nAlpha, Beta, Gamma\t: %d / %d / %d", alpha_, beta_, gamma_);
   printf("\nCRC mode, LRC mode\t: %d / %d", crc_mode_, lrc_mode_);
@@ -532,7 +560,9 @@ void ScaleTruckController::displayConsole() {
   if(ObjCircles_ > 0) {
     printf("\nCirs\t\t\t: %d", ObjCircles_);
     printf("\nDistAng\t\t\t: %2.3f degree", distAngle_);
+    printf("\nObject\t\t\t: [%.2f,%.2f]", x_coord_, y_coord_); 
   }
+  printf("\nampersandt\t\t: %2.3f degree", ampersand2_); 
   printf("\n");
 }
 
@@ -559,14 +589,15 @@ void ScaleTruckController::recordData(struct timeval startTime){
       }
       read_file.close();
     }
-    write_file << "time,tar_vel,act_dist,est_dist,act_angle,est_angle" << endl; //seconds
+    //write_file << "time,tar_vel,act_dist,est_dist" << endl; //seconds
+    write_file << "time,tar_vel,angle,beta" << endl; //seconds
     flag = true;
   }
   if(flag){
     std::scoped_lock lock(dist_mutex_);
     gettimeofday(&currentTime, NULL);
     diff_time = ((currentTime.tv_sec - startTime.tv_sec)) + ((currentTime.tv_usec - startTime.tv_usec)/1000000.0);
-    sprintf(buf, "%.10e,%.3f,%.3f,%.3f,%.3f,%.3f", diff_time, TargetVel_, actDist_, estimatedDist_, actAngleDegree_, AngleDegree2_);
+    sprintf(buf, "%.10e,%.3f,%.3f,%d", diff_time, TargetVel_, AngleDegree_, beta_);
     write_file.open(file, std::ios::out | std::ios::app);
     write_file << buf << endl;
   }
@@ -605,7 +636,7 @@ void ScaleTruckController::spin() {
         runYoloPublisher_.publish(yolo_flag_msg);
       }
   
-      if (gamma_ && beta_ && !req_lv_){
+      if (beta_ && !req_lv_){
         req_lv_ = true;
       }
     }
@@ -629,6 +660,7 @@ void ScaleTruckController::spin() {
       msg.fi_encoder = fi_encoder_;
       msg.fi_camera = fi_camera_;
       msg.fi_lidar = fi_lidar_;
+      msg.alpha = alpha_;
       msg.beta = beta_;
       msg.gamma = gamma_;
     }
@@ -650,7 +682,7 @@ void ScaleTruckController::spin() {
       tcp_img_rep_ = true;
     }
 
-    recordData(laneDetector_.start_);
+    //recordData(laneDetector_.start_);
 
     if(enableConsoleOutput_)
       displayConsole();
@@ -661,7 +693,7 @@ void ScaleTruckController::spin() {
 
     CycleTime_ = diff_time / (double)cnt;
 
-//    printf("cnt: %d\n", cnt);
+    printf("cnt: %d\n", cnt);
     if (cnt > 3000){
       diff_time = 0.0;
       cnt = 0;
@@ -738,7 +770,7 @@ void ScaleTruckController::rearImageCallback(const sensor_msgs::ImageConstPtr &m
 void ScaleTruckController::XavSubCallback(const scale_truck_control::lrc2xav &msg){
   {
     std::scoped_lock lock(mode_mutex_);
-    alpha_ = msg.alpha;
+    //alpha_ = msg.alpha;
     lrc_mode_ = msg.lrc_mode;
     crc_mode_ = msg.crc_mode;
   }

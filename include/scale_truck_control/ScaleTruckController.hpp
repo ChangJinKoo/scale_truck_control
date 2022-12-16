@@ -124,6 +124,7 @@ class ScaleTruckController {
     float distance_ = 0.8f;
     float distAngle_ = 0.0f;
     float ampersand_ = 0.0f;
+    float ampersand2_ = 0.0f;
     float LVstopDist_;
     float FVstopDist_;
     float TargetDist_;
@@ -134,10 +135,14 @@ class ScaleTruckController {
     float log_est_dist_ = 0.0f;
     float AngleDegree2_ = 0.0f;
     float actAngleDegree_ = 0.0f;
+    float Lw_ = 0.34f;
     float Ld_offset_ = 0.0f;
-    float actDist_;
+    float Ld_offset2_ = 0.0f;
+    float actDist_ = 0.8f;
     float estimatedDist_;
     float ppAngle_ = 0.0f;
+    float x_coord_ = 0.0f;
+    float y_coord_ = 0.0f;
 
     //bbox
     std::string name_;
